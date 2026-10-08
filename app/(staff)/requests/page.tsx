@@ -19,6 +19,7 @@ export const metadata: Metadata = { title: 'Requests' };
 export default async function RequestsPage() {
   await requireStaffPage('/requests');
   const requests = await listPendingRequests();
+  const passed = requests.filter((r) => r.startPassed).length;
 
   return (
     <>
@@ -26,7 +27,7 @@ export default async function RequestsPage() {
         title="Pending requests"
         description={
           requests.length
-            ? `${requests.length} online request${requests.length === 1 ? '' : 's'} waiting. Oldest first; open one to pick a chair and confirm, or decline.`
+            ? `${requests.length} online request${requests.length === 1 ? '' : 's'} waiting${passed ? ` (${passed} already past ${passed === 1 ? 'its' : 'their'} time; decline ${passed === 1 ? 'it' : 'them'} to clear the badge)` : ''}. Oldest first; open one to pick a chair and confirm, or decline.`
             : 'Online requests from the booking form show up here.'
         }
       />
