@@ -39,8 +39,8 @@ test.describe('FR1/FR3: form validation and navigation details', () => {
     await expect(page).toHaveURL(/\/appointments\/new\?/);
     await expect(page.getByLabel(/^Dentist/)).toHaveValue(String(LIM));
     await expect(page.getByLabel(/^Date/)).toHaveValue(date);
-    // the time is pre-selected once a service is picked (slots need a service duration)
-    await page.getByLabel(/^Service/).selectOption({ label: 'Oral prophylaxis (30 min)' });
+    // N2: the link carries the shortest service (the one open times are computed for), so the time is pre-selected
+    await expect(page.getByLabel(/^Service/)).toHaveValue(String(SVC.prophylaxis));
     await expect(page.getByRole('radio', { name: time12(slot.start), exact: true }).first()).toBeChecked();
 
     // find Maria by a formatted number

@@ -125,6 +125,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             title="Clinic closed"
             description={`No dentist works on ${DAYS_OF_WEEK[day.dayOfWeek]}s and nothing is booked for ${formatDateHuman(date)}.`}
           />
+          {day.dentists.length > 0 && (
+            <ul className="divide-y divide-slate-100 border-t border-slate-100" aria-label="Dentists this day">
+              {day.dentists.map((d) => (
+                <li key={d.dentistId} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                  <span className="font-medium text-slate-800">{d.dentistName}</span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Not working</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </Card>
       ) : (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_17rem]">
@@ -336,7 +346,12 @@ function OpenSlotsPanel({ day, date, past }: { day: Awaited<ReturnType<typeof ge
                 {d.openSlots.map((s) => (
                   <li key={s.start}>
                     <Link
-                      href={`/appointments/new?${new URLSearchParams({ date, dentistId: String(d.dentistId), start: s.start })}`}
+                      href={`/appointments/new?${new URLSearchParams({
+                        date,
+                        dentistId: String(d.dentistId),
+                        start: s.start,
+                        ...(day.slotServiceId ? { serviceId: String(day.slotServiceId) } : {}),
+                      })}`}
                       className="inline-flex h-8 items-center rounded-md bg-brand-50 px-2 text-xs font-semibold text-brand-800 tabular-nums ring-1 ring-brand-200 hover:bg-brand-100"
                     >
                       {formatTime12(s.start)}

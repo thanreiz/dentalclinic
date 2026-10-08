@@ -140,6 +140,8 @@ export type DaySchedule = {
   gridEnd: string | null;
   /** Duration (minutes) used for openSlots: the shortest service. */
   slotDurationMinutes: number;
+  /** The service whose duration is slotDurationMinutes (open-time links pass it so the start preselects); null = no services. */
+  slotServiceId: number | null;
 };
 
 export type DashboardSummary = { todayTotal: number; pendingCount: number; tomorrowCount: number };

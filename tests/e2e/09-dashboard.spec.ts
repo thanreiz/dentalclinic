@@ -18,6 +18,10 @@ test.describe('FR6/NF05: dashboard reads the database on every load', () => {
     await page.reload();
     await expect(page.getByRole('link', { name: new RegExp(name) })).toBeVisible();
 
+    // N2: open-time links carry a service (the shortest one) so the start time preselects on the form
+    const openTime = page.locator('a[href^="/appointments/new?"][href*="start="]').first();
+    await expect(openTime).toHaveAttribute('href', /serviceId=\d+/);
+
     // A dentist with no hours that weekday shows "Not working" (Phase 6 acceptance): temp dentist works Mondays only
     const dName = uniqueName('Dr. MonOnly');
     const created = await request.post('/api/setup/dentists', { data: { dentistName: dName, schedules: [{ dayOfWeek: 1, startTime: '09:00', endTime: '12:00' }] } });
@@ -33,10 +37,13 @@ test.describe('FR6/NF05: dashboard reads the database on every load', () => {
       await request.delete(`/api/setup/dentists?id=${id}`, { data: { id } });
     }
 
-    // Sunday: nobody works -> the page says the clinic is closed
+    // Sunday: nobody works -> the page says the clinic is closed and still lists each dentist as "Not working" (N1)
     let sunday = addDays(manilaToday(), 7);
     while (dow(sunday) !== 0) sunday = addDays(sunday, 1);
     await gotoReady(page, `/dashboard?date=${sunday}`);
     await expect(page.getByText('Clinic closed')).toBeVisible();
+    const dentistsList = page.getByRole('list', { name: 'Dentists this day' });
+    await expect(dentistsList.getByText('Dr. Reyes', { exact: false })).toBeVisible();
+    await expect(dentistsList.getByText('Not working')).toHaveCount(await dentistsList.getByRole('listitem').count());
   });
 });

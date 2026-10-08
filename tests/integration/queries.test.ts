@@ -58,6 +58,7 @@ describe('dashboard', () => {
     expect(d.gridStart).toBe('09:00');
     expect(d.gridEnd).toBe('17:00');
     expect(d.slotDurationMinutes).toBe(30);
+    expect(d.slotServiceId).toBe(1); // prophylaxis, the shortest service (open-time links carry it)
     const reyes = d.dentists[0];
     expect(reyes.hours).toEqual({ start: '09:00', end: '17:00' });
     expect(reyes.appointments).toEqual([

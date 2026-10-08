@@ -62,10 +62,12 @@ export async function getDaySchedule(date: string, now: { date: string; time: st
       [dow],
     ),
     query<BlockRow>(DAY_BLOCKS_SQL, [date]),
-    queryOne<{ m: number | null }>('SELECT MIN(duration_minutes) AS m FROM services'),
+    queryOne<{ service_id: number; duration_minutes: number }>(
+      'SELECT service_id, duration_minutes FROM services ORDER BY duration_minutes, service_id LIMIT 1',
+    ),
   ]);
 
-  const duration = Number(shortest?.m ?? 0) || slotIntervalMinutes();
+  const duration = Number(shortest?.duration_minutes ?? 0) || slotIntervalMinutes();
   const blocks = rows.map((r) => ({ row: r, block: toBlock(r) }));
 
   const dentistDays: DentistDay[] = dentists.map((d) => {
@@ -112,6 +114,7 @@ export async function getDaySchedule(date: string, now: { date: string; time: st
     gridStart,
     gridEnd,
     slotDurationMinutes: duration,
+    slotServiceId: shortest ? Number(shortest.service_id) : null,
   };
 }
 
