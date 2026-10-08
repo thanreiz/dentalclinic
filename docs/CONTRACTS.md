@@ -165,3 +165,51 @@ Row types use the exact Listing 3.2 column names: `UserRow`, `PatientRow`/`Patie
 - Patients 1–12: Maria Santos `09175550101`, Jose Ramos `09185550102`, Ana Dela Cruz, Juan Bautista, Liza Mendoza, Paolo Garcia (no email), Kristine Villanueva, Ramon Aquino, Carmela Torres (no email), Miguel Fernandez, Bea Castillo, Nestor Pascual.
 - Appointments 1–3 = Table 3.6 (1: Maria Oct 12 09:00 attended; 2: Maria Oct 19 10:00–11:00 Reyes Chair 1 **scheduled**; 3: Jose Oct 12 09:30 Lim no-show). 36 more on Oct 1–8. Nothing else after Oct 12 → the only active row is #2.
 - October 2026: Reyes 18/2/2 (10.0%), Lim 12/1/3 (20.0%), total 14.3%. Repeat no-shows at threshold 2: Jose Ramos, Miguel Fernandez; threshold 3: none.
+
+## Read queries for staff pages (Backend-B) — `lib/queries/*`
+
+Server-only (they import `lib/db`). Call them from staff Server Components (`export const dynamic = 'force-dynamic'`). Every call reads the DB live (NF04/NF05); nothing is cached. DTO types are in `lib/types.ts` (camelCase; dates `'YYYY-MM-DD'`, times `'HH:MM'`, datetimes `'YYYY-MM-DD HH:MM:SS'` Manila). `now` params are optional (tests inject them).
+
+| Module | Function | Returns |
+| --- | --- | --- |
+| `dashboard.ts` | `getDaySchedule(date, now?)` | `DaySchedule` = `{ date, dayOfWeek, dentists: DentistDay[], chairs: ChairDay[], unassigned: ApptBlock[], gridStart, gridEnd, slotDurationMinutes }` |
+| | `getDashboardSummary(date = today)` | `{ todayTotal, pendingCount, tomorrowCount }` |
+| `requests.ts` | `listPendingRequests(now?)` | `PendingRequest[]`, oldest `requestedAt` first |
+| | `countPending()` | `number` (nav badge) |
+| `appointments.ts` | `getAppointmentDetail(id, now?)` | `AppointmentDetailView \| null` |
+| `patients.ts` | `searchPatients(q, page = 1, pageSize = 20)` | `{ rows: PatientListItem[], total }` |
+| | `getPatient(id)` | `PatientProfile \| null` |
+| | `getPatientHistory(id)` | `PatientHistoryItem[]`, newest first (Listing 3.4 style, `PATIENT_HISTORY_SQL`) |
+| `setup.ts` | `listDentistsWithSchedules()` | `DentistWithSchedules[]` (`schedules` rows + `week[0..6]` with `null` = off + `appointmentCount`) |
+| | `listServices()` / `listChairs()` | `ServiceItem[]` / `ChairItem[]` (each with `appointmentCount`) |
+| `reports.ts` | `getMonthlyReport('YYYY-MM')` | `MonthlyReport` = `{ month, totals, byDentist[], byService[] }`, each a `ReportCounts` |
+| | `getRepeatNoShows(threshold)` | `RepeatNoShow[]` = `{ patientId, fullName, contactNumber, noShowCount, lastNoShowDate }` |
+
+Shapes:
+
+```ts
+ApptBlock      = { appointmentId, start, end, status, channel, patientName, serviceName, dentistName, chairName: string | null }
+DentistDay     = { dentistId, dentistName, hours: {start,end} | null /* null = "Not working" */, appointments: ApptBlock[], openSlots: {start,end}[] }
+ChairDay       = { chairId, chairName, appointments: ApptBlock[] }
+PendingRequest = { appointmentId, patientId, patientName, contactNumber, email, serviceId, serviceName, durationMinutes,
+                   dentistId, dentistName, date, start, end, patientNote, requestedAt, startPassed }
+AppointmentDetailView = { appointmentId, patient: {id,name,contact,email,birthdate}, dentist: {id,name},
+                   service: {id,name,durationMinutes}, chair: {id,name} | null, status, channel, date, start, end,
+                   requestedAt, patientNote, dentistNote, reminderSentAt, rescheduledFromId, replacedById,
+                   allowedTransitions: AppointmentStatus[], startPassed }
+PatientListItem = { patientId, fullName, contactNumber, email, birthdate, appointmentCount, lastVisitDate /* last attended */ }
+PatientHistoryItem = { appointmentId, date, start, end, serviceName, dentistName, chairName, status, channel,
+                   dentistNote, patientNote, rescheduledFromId, requestedAt }
+ReportCounts   = { attended, cancelled, noShow, total /* = a + c + n */, noShowRate: number | null /* formatRate() */ }
+```
+
+Semantics:
+
+- **Dashboard grid** shows `pending`, `scheduled`, `attended`, `no-show`. `cancelled` and `declined` are left out (they hold no time; a rescheduled original would otherwise appear twice). Pending requests have no chair, so in the chair view they only appear in `unassigned`.
+- **`openSlots`** per dentist = Rule 5 (`lib/rules openSlots`) stepping `SLOT_INTERVAL_MINUTES`, using the **shortest service duration** (`slotDurationMinutes`), against that dentist's pending + scheduled rows; past starts dropped for today. Use `GET /api/slots` for a specific service.
+- **`gridStart`/`gridEnd`**: earliest start / latest end over that weekday's working hours and that day's blocks; `null` when nobody works and nothing is booked.
+- **Summary**: `todayTotal` = grid rows on `date`; `pendingCount` = all pending (any date); `tomorrowCount` = `scheduled` rows on `date + 1` (reminder candidates).
+- **`allowedTransitions`** comes from `lib/rules allowedTransitions(status, { startPassed })` with Manila now: for pending it is `['scheduled','declined']` (scheduled = Confirm button); for scheduled before start `['cancelled']`, after start `['attended','cancelled','no-show']`. Reschedule is allowed when `status === 'scheduled'`.
+- **`replacedById`**: the row whose `rescheduled_from_id` = this id (link "Rescheduled to #…"); `rescheduledFromId` links back.
+- **Patient search**: `q` matches `full_name LIKE %q%` OR (if `q` has ≥ 3 digits) the normalized digits as a partial contact match (`+63 917-555` → `0917555`). Empty `q` lists everyone. Sorted by name.
+- **Reports**: only `attended`/`cancelled`/`no-show` rows in the month count; `cancelled` excludes reschedules. Groups with no such rows are omitted. Repeat no-shows are all-time (not month-scoped), `HAVING COUNT(*) >= :threshold`, most no-shows first. Default threshold: `defaultNoShowThreshold()` from `lib/rules`.
