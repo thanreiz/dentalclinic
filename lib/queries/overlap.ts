@@ -73,7 +73,7 @@ export async function findOverlaps(conn: Queryable, p: OverlapParams): Promise<O
  * ignoring `excludeAppointmentId` (the row being confirmed/rescheduled; 0 for new bookings).
  */
 export async function freeChairs(
-  conn: Queryable,
+  conn: Queryable | undefined,
   date: string,
   start: string,
   end: string,
@@ -100,6 +100,11 @@ export async function freeChairs(
     },
     conn,
   );
+}
+
+/** Rule 6 for read-only callers (GET /api/chairs/free): `freeChairs` on the shared pool. */
+export function listFreeChairs(date: string, start: string, end: string, excludeAppointmentId = 0): Promise<ChairRow[]> {
+  return freeChairs(undefined, date, start, end, excludeAppointmentId);
 }
 
 /** Rule 9: lock the dentist row for the rest of the transaction. Null if it does not exist. */

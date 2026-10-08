@@ -5,9 +5,8 @@
  */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getPool } from '@/lib/db';
 import { jsonError, parseSearchParams, requireStaffApi } from '@/lib/http';
-import { freeChairs } from '@/lib/queries/overlap';
+import { listFreeChairs } from '@/lib/queries/overlap';
 import { endTimeOrThrow } from '@/lib/services/booking';
 import { errorResponse } from '@/lib/services/errors';
 import { getServiceOrThrow } from '@/lib/services/lookups';
@@ -40,7 +39,7 @@ export async function GET(req: Request) {
     if (toMinutes(end) <= toMinutes(q.start)) {
       return jsonError(400, 'validation_error', { message: 'End must be after start', issues: { end: 'End must be after start' } });
     }
-    const chairs = await freeChairs(getPool(), q.date, q.start, end, q.excludeId ?? 0);
+    const chairs = await listFreeChairs(q.date, q.start, end, q.excludeId ?? 0);
     return NextResponse.json({ chairs: chairs.map((c) => ({ chairId: c.chair_id, chairName: c.chair_name })) });
   } catch (err) {
     return errorResponse(err, 'GET /api/chairs/free');
