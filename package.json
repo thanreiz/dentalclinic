@@ -16,7 +16,7 @@
     "test:integration": "vitest run --project integration",
     "db:local": "tsx scripts/db-local.ts",
     "db:reset": "tsx scripts/db-reset.ts",
-    "e2e": "echo \"e2e: Playwright suite not added yet (QA agent owns tests/e2e)\" && exit 0"
+    "e2e": "playwright test"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24.19.1",
     "@types/nodemailer": "^8.0.2",
