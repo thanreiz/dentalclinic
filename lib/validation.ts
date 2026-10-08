@@ -240,17 +240,41 @@ const weekSchema = z
     message: 'Each weekday can appear only once',
   });
 
+/**
+ * Weekly-grid form of the hours (Backend-B): exactly 7 entries, index 0 = Sunday, null = off.
+ * Converted to `scheduleEntrySchema` rows with `weekToSchedules()`.
+ */
+const dayHoursSchema = z
+  .object({ startTime: timeSchema, endTime: timeSchema })
+  .refine(startBeforeEnd, { message: 'End time must be after start time', path: ['endTime'] });
+export const weekHoursSchema = z.array(z.union([z.null(), dayHoursSchema])).length(7, { error: 'Give 7 days (null = off)' });
+export type WeekHours = z.infer<typeof weekHoursSchema>;
+
+export function weekToSchedules(week: WeekHours): ScheduleEntry[] {
+  return week.flatMap((d, dayOfWeek) => (d ? [{ dayOfWeek, startTime: d.startTime, endTime: d.endTime }] : []));
+}
+
 export const dentistCreateSchema = z.object({
   dentistName: z.string().trim().min(2).max(100),
   /** Optional weekly hours; omitted days = not working. */
   schedules: weekSchema.optional(),
+  /** Alternative to `schedules`: 7 entries, null = off (`schedules` wins if both are sent). */
+  week: weekHoursSchema.optional(),
 });
 export const dentistUpdateSchema = z.object({
   id: idSchema,
   dentistName: z.string().trim().min(2).max(100).optional(),
   /** When present, replaces the dentist's whole week (blank day = off). */
   schedules: weekSchema.optional(),
+  /** Alternative to `schedules`: 7 entries, null = off; replaces the whole week. */
+  week: weekHoursSchema.optional(),
 });
+
+/** PATCH /api/setup/schedules replace form: `{ dentistId, schedules }` or `{ dentistId, week }`. */
+export const scheduleReplaceSchema = z
+  .object({ dentistId: idSchema, schedules: weekSchema.optional(), week: weekHoursSchema.optional() })
+  .refine((v) => v.schedules !== undefined || v.week !== undefined, { message: 'Send schedules or week', path: ['week'] });
+export type ScheduleReplace = z.infer<typeof scheduleReplaceSchema>;
 
 export const scheduleCreateSchema = z
   .object({ dentistId: idSchema, dayOfWeek: dayOfWeekSchema, startTime: timeSchema, endTime: timeSchema })
