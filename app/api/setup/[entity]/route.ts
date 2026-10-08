@@ -8,7 +8,7 @@
  * Body shapes: lib/validation setupSchemas. See docs/CONTRACTS.md.
  */
 import { NextResponse } from 'next/server';
-import { jsonError, parseJsonBody, parseWith, requireStaffApi } from '@/lib/http';
+import { jsonError, parseJsonBody, parseWith, readJsonBody, requireStaffApi } from '@/lib/http';
 import { errorResponse } from '@/lib/services/errors';
 import * as setup from '@/lib/services/setup';
 import { scheduleReplaceSchema, setupDeleteSchema, setupEntitySchema, setupSchemas, type SetupEntity } from '@/lib/validation';
@@ -82,12 +82,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
   if (!auth.ok) return auth.response;
   const entity = await entityOf(ctx);
   if (!entity) return unknownEntity();
-  let raw: unknown;
-  try {
-    raw = await req.json();
-  } catch {
-    return jsonError(400, 'invalid_json', { message: 'Request body must be JSON' });
-  }
+  const body = await readJsonBody(req);
+  if (!body.ok) return body.response;
+  const raw = body.raw;
   try {
     switch (entity) {
       case 'dentists': {
@@ -133,15 +130,9 @@ export async function DELETE(req: Request, ctx: Ctx) {
   if (!auth.ok) return auth.response;
   const entity = await entityOf(ctx);
   if (!entity) return unknownEntity();
-  let raw: unknown = { id: new URL(req.url).searchParams.get('id') ?? undefined };
-  const text = await req.text();
-  if (text.trim()) {
-    try {
-      raw = JSON.parse(text);
-    } catch {
-      return jsonError(400, 'invalid_json', { message: 'Request body must be JSON' });
-    }
-  }
+  const body = await readJsonBody(req, { allowEmpty: true });
+  if (!body.ok) return body.response;
+  const raw = body.raw === undefined ? { id: new URL(req.url).searchParams.get('id') ?? undefined } : body.raw;
   const p = parseWith(setupDeleteSchema, raw);
   if (!p.ok) return p.response;
   try {

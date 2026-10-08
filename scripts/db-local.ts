@@ -100,6 +100,7 @@ function writeEnvLocal(): void {
       'CLINIC_PHONE="0917 000 0000"',
       'SLOT_INTERVAL_MINUTES=30',
       'NO_SHOW_THRESHOLD=2',
+      '# Local only: db:reset refuses this default for any non-local DATABASE_URL (SECURITY-REVIEW H2).',
       'SEED_STAFF_PASSWORD=ClinicDemo2026!',
       '',
     ].join('\n'),
@@ -233,7 +234,18 @@ async function runPersistent(forceReset: boolean): Promise<void> {
 
 let activeChild: ChildProcess | null = null;
 
+/** SECURITY-REVIEW M4: `next start` auto-loads .env.production(.local); keep hosted secrets out of those names. */
+function warnAboutProductionEnvFiles(): void {
+  for (const name of ['.env.production.local', '.env.production']) {
+    if (existsSync(path.join(PROJECT_ROOT, name))) {
+      log(`WARNING: ${name} exists. \`next start\` loads it automatically, so a local production build may talk to`);
+      log('         the hosted DB and send real email. Rename it (e.g. .env.hosted) and load it only on purpose.');
+    }
+  }
+}
+
 async function main() {
+  warnAboutProductionEnvFiles();
   const args = process.argv.slice(2);
   if (args.includes('--ephemeral')) return runEphemeral();
   return runPersistent(args.includes('--reset'));

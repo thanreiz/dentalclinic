@@ -67,12 +67,12 @@ export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, BCRYPT_COST);
 }
 
-let dummyHash: string | null = null;
-/** A real cost-12 hash to compare against when the email is unknown (equalizes timing). */
-function getDummyHash(): string {
-  if (!dummyHash) dummyHash = bcrypt.hashSync('dummy-password-for-timing', BCRYPT_COST);
-  return dummyHash;
-}
+/**
+ * A real cost-12 hash (of a random string nobody knows) to compare against when the email is
+ * unknown, so timing doesn't reveal valid emails. A constant, so even the first unknown-email
+ * login costs the same as a known one (SECURITY-REVIEW I4).
+ */
+export const DUMMY_HASH = '$2b$12$iwhi3eRu2yeFwkUnZZxBvOnA9n8XOS/Xx0NRyi.Ou9m/8fVVpA.au';
 
 /**
  * Check email + password. Returns the staff user or null. Always runs one bcrypt compare,
@@ -83,7 +83,7 @@ export async function verifyCredentials(email: string, password: string): Promis
     'SELECT user_id, name, email, password FROM users WHERE email = ? LIMIT 1',
     [email.trim().toLowerCase()],
   );
-  const ok = await bcrypt.compare(password, row ? row.password : getDummyHash());
+  const ok = await bcrypt.compare(password, row ? row.password : DUMMY_HASH);
   if (!row || !ok) return null;
   return { userId: row.user_id, name: row.name, email: row.email };
 }

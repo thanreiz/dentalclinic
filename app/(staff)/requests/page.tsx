@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireStaffPage } from '@/lib/auth';
+import { splitMismatchFlag } from '@/lib/patient-note';
 import { listPendingRequests } from '@/lib/queries/requests';
 import { formatContact } from '@/lib/rules';
 import { formatDateHuman, formatTime12 } from '@/lib/time';
@@ -8,6 +9,7 @@ import { formatDateTimeHuman } from '@/components/format';
 import { Card, PageHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { DetailsDifferFlag } from '@/components/staff/DetailsDifferFlag';
 import { AlertIcon, ChevronRight, ClockIcon, InboxIcon, MailIcon, PhoneIcon } from '@/components/ui/icons';
 
 export const dynamic = 'force-dynamic';
@@ -80,12 +82,20 @@ export default async function RequestsPage() {
                       Sent {formatDateTimeHuman(r.requestedAt)}
                     </span>
                   </div>
-                  {r.patientNote && (
-                    <p className="mt-2.5 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700 ring-1 ring-slate-200">
-                      <span className="font-medium text-slate-900">Patient note: </span>
-                      {r.patientNote}
-                    </p>
-                  )}
+                  {(() => {
+                    const { flag, note } = splitMismatchFlag(r.patientNote);
+                    return (
+                      <>
+                        {flag && <DetailsDifferFlag flag={flag} className="mt-2.5" />}
+                        {note && (
+                          <p className="mt-2.5 rounded-md bg-slate-50 px-3 py-2 text-sm whitespace-pre-wrap text-slate-700 ring-1 ring-slate-200">
+                            <span className="font-medium text-slate-900">Patient note: </span>
+                            {note}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                   {r.startPassed && (
                     <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-red-700">
                       <AlertIcon className="size-4" /> This time has passed; it can only be declined.

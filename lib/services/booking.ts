@@ -5,6 +5,7 @@
  * (Listing 3.1 with :appointment_id = 0), then INSERT. A deadlock is retried once (tx.ts).
  */
 import { execute, type Queryable } from '../db';
+import { mismatchFlag, withMismatchFlag } from '../patient-note';
 import { checkBookable, lockChair, lockDentist, workingHoursOn, type BookableResult } from '../queries/overlap';
 import { computeEndTime, slotIntervalMinutes } from '../rules';
 import { nowManila, toHHMMSS, toMinutes } from '../time';
@@ -13,6 +14,7 @@ import type { BookingRequest, StaffBooking } from '../validation';
 import { ServiceError } from './errors';
 import { allDentistIds, getServiceOrThrow } from './lookups';
 import { createPatientStrict, matchOrCreatePatient } from './patients';
+import { assertContactRequestCap, assertGlobalRequestCaps } from './request-limits';
 import { getSlots } from './slots';
 import { transaction } from './tx';
 
@@ -134,12 +136,17 @@ export async function createOnlineRequest(
       }
       if (chosen === null) throw new ServiceError(409, 'slot_taken', SLOT_TAKEN_MESSAGE);
 
-      const patientId = await matchOrCreatePatient(conn, {
-        fullName: input.fullName,
-        contactNumber: input.contactNumber,
-        email: input.email,
-        birthdate: input.birthdate,
-      });
+      // H1: clinic-wide caps, then the per-contact cap once the patient is known. Same 429 for a
+      // new or matched number (a new number can't reach the per-contact cap).
+      await assertGlobalRequestCaps(conn);
+      const typed = { fullName: input.fullName, email: input.email, birthdate: input.birthdate };
+      const { patientId, existing } = await matchOrCreatePatient(conn, { ...typed, contactNumber: input.contactNumber });
+      if (existing) await assertContactRequestCap(conn, patientId);
+
+      // M2: never overwrite the record (B6), but flag a mismatch for staff in patient_note.
+      const flag = existing
+        ? mismatchFlag({ fullName: existing.full_name, email: existing.email, birthdate: existing.birthdate }, typed)
+        : null;
       const appointmentId = await insertAppointment(conn, {
         patientId,
         dentistId: chosen,
@@ -150,7 +157,7 @@ export async function createOnlineRequest(
         end,
         status: 'pending',
         channel: 'online',
-        patientNote: input.patientNote ?? null,
+        patientNote: withMismatchFlag(flag, input.patientNote),
       });
       return { appointmentId, dentistId: chosen, patientId };
     });

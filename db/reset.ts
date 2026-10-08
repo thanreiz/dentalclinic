@@ -5,8 +5,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
-import { buildPoolOptions, parseDatabaseUrl } from '../lib/db-config';
-import { seedDatabase, type SeedOptions } from './seed';
+import { buildPoolOptions, isLocalHost, parseDatabaseUrl } from '../lib/db-config';
+import { remoteSeedPasswordProblem, seedDatabase, type SeedOptions } from './seed';
 
 export const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
@@ -34,6 +34,7 @@ export type ResetOptions = SeedOptions & { seed?: boolean; createDatabase?: bool
 
 /** Drop and recreate all seven tables, then (by default) seed. */
 export async function resetDatabase(url: string, opts: ResetOptions = {}): Promise<void> {
+  assertSeedAllowed(url, opts);
   if (opts.createDatabase) await ensureDatabase(url);
   const schema = await readFile(SCHEMA_PATH, 'utf8');
   const conn = await mysql.createConnection(connectionOptions(url, true));
@@ -44,5 +45,20 @@ export async function resetDatabase(url: string, opts: ResetOptions = {}): Promi
     if (opts.seed !== false) await seedDatabase(conn, opts);
   } finally {
     await conn.end();
+  }
+}
+
+/**
+ * SECURITY-REVIEW H2: never seed a NON-local database with the default or a short staff password.
+ * Checked here (not only in scripts/db-reset.ts) so every caller is covered, before anything is dropped.
+ */
+export function assertSeedAllowed(url: string, opts: ResetOptions = {}, env: NodeJS.ProcessEnv = process.env): void {
+  if (opts.seed === false || isLocalHost(parseDatabaseUrl(url).host)) return;
+  const problem = remoteSeedPasswordProblem(opts, env);
+  if (problem) {
+    throw new Error(
+      `Refusing to seed a NON-LOCAL database: ${problem}. Set a strong staff password (>= 12 chars, not the default), e.g. ` +
+        'SEED_STAFF_PASSWORD="<strong password>" DATABASE_URL="<remote url>" npm run db:reset -- --yes',
+    );
   }
 }

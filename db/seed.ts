@@ -1,7 +1,9 @@
 /**
  * Seed data (PRD "Seed data", from the paper's Chapter 3 sample). Illustrative only.
  *
- * Staff login: staff@clinic.test / SEED_STAFF_PASSWORD (default 'ClinicDemo2026!'), bcrypt cost 12.
+ * Staff login: staff@clinic.test / SEED_STAFF_PASSWORD, bcrypt cost 12. The default 'ClinicDemo2026!' is for
+ * LOCAL databases only: db/reset.ts refuses to seed a non-local host unless SEED_STAFF_PASSWORD is set,
+ * is not the default and has at least 12 characters (SECURITY-REVIEW H2).
  *
  * October 2026 totals reproduce Table 3.22:
  *   Dr. Reyes 18 attended / 2 cancelled / 2 no-show  -> no-show rate 2/20 = 10.0%
@@ -200,13 +202,38 @@ export function assertSeedTotals(rows: SeedAppt[] = SEED_APPOINTMENTS): void {
 
 export type SeedOptions = { staffPassword?: string; log?: (msg: string) => void };
 
+export const MIN_REMOTE_STAFF_PASSWORD_LENGTH = 12;
+
+/** The password the seed will use: option, else SEED_STAFF_PASSWORD (blank = unset), else the local default. */
+export function resolveSeedStaffPassword(opts: Pick<SeedOptions, 'staffPassword'> = {}, env: NodeJS.ProcessEnv = process.env): string {
+  const fromEnv = env.SEED_STAFF_PASSWORD;
+  if (opts.staffPassword) return opts.staffPassword;
+  if (fromEnv && fromEnv.trim()) return fromEnv;
+  return DEFAULT_SEED_STAFF_PASSWORD;
+}
+
+/**
+ * H2 guard for seeding a NON-local database (the public demo): returns why the password is not
+ * acceptable, or null when it is. It must be explicitly set, differ from the published default and
+ * be at least MIN_REMOTE_STAFF_PASSWORD_LENGTH characters.
+ */
+export function remoteSeedPasswordProblem(opts: Pick<SeedOptions, 'staffPassword'> = {}, env: NodeJS.ProcessEnv = process.env): string | null {
+  const explicit = opts.staffPassword || (env.SEED_STAFF_PASSWORD?.trim() ? env.SEED_STAFF_PASSWORD : '');
+  if (!explicit) return 'SEED_STAFF_PASSWORD is not set';
+  if (explicit === DEFAULT_SEED_STAFF_PASSWORD) return 'SEED_STAFF_PASSWORD is the published default';
+  if (explicit.length < MIN_REMOTE_STAFF_PASSWORD_LENGTH) {
+    return `SEED_STAFF_PASSWORD is shorter than ${MIN_REMOTE_STAFF_PASSWORD_LENGTH} characters`;
+  }
+  return null;
+}
+
 /** Insert all seed rows. Expects empty tables (run db/schema.sql first). */
 export async function seedDatabase(conn: Connection, opts: SeedOptions = {}): Promise<void> {
   const log = opts.log ?? (() => {});
   assertNoSeedCollisions();
   assertSeedTotals();
 
-  const password = opts.staffPassword ?? process.env.SEED_STAFF_PASSWORD ?? DEFAULT_SEED_STAFF_PASSWORD;
+  const password = resolveSeedStaffPassword(opts);
   const hash = await bcrypt.hash(password, 12);
 
   await conn.beginTransaction();

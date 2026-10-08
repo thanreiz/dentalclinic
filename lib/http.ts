@@ -17,13 +17,54 @@ export async function parseJsonBody<S extends z.ZodType>(
   req: Request,
   schema: S,
 ): Promise<{ ok: true; data: z.infer<S>; raw: unknown } | { ok: false; response: NextResponse }> {
-  let raw: unknown;
+  const body = await readJsonBody(req);
+  if (!body.ok) return body;
+  return parseWith(schema, body.raw);
+}
+
+/** Largest JSON body any route accepts (the biggest real one, a dentist week, is < 2 KB). */
+export const MAX_JSON_BODY_BYTES = 64 * 1024;
+
+/**
+ * Read a JSON request body defensively (SECURITY-REVIEW I1, I3):
+ * - a non-empty body must be sent as `Content-Type: application/json` (else 415);
+ * - bodies over MAX_JSON_BODY_BYTES are refused (413) before parsing;
+ * - malformed JSON -> 400 invalid_json.
+ * `allowEmpty` returns `raw: undefined` for an empty body (POST routes with no input, e.g. logout).
+ */
+export async function readJsonBody(
+  req: Request,
+  opts: { allowEmpty?: boolean } = {},
+): Promise<{ ok: true; raw: unknown } | { ok: false; response: NextResponse }> {
+  const declared = Number(req.headers.get('content-length') ?? '');
+  if (Number.isFinite(declared) && declared > MAX_JSON_BODY_BYTES) {
+    return { ok: false, response: jsonError(413, 'payload_too_large', { message: 'Request body is too large' }) };
+  }
+  let text: string;
   try {
-    raw = await req.json();
+    text = await req.text();
   } catch {
     return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
   }
-  return parseWith(schema, raw);
+  if (new TextEncoder().encode(text).length > MAX_JSON_BODY_BYTES) {
+    return { ok: false, response: jsonError(413, 'payload_too_large', { message: 'Request body is too large' }) };
+  }
+  if (!text.trim()) {
+    if (opts.allowEmpty) return { ok: true, raw: undefined };
+    return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
+  }
+  const type = (req.headers.get('content-type') ?? '').toLowerCase();
+  if (!type.startsWith('application/json')) {
+    return {
+      ok: false,
+      response: jsonError(415, 'unsupported_media_type', { message: 'Send the request body as application/json' }),
+    };
+  }
+  try {
+    return { ok: true, raw: JSON.parse(text) };
+  } catch {
+    return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
+  }
 }
 
 /** Parse URLSearchParams (query string) with a Zod schema. */
@@ -113,13 +154,7 @@ export async function parseOptionalJsonBody<S extends z.ZodType>(
   req: Request,
   schema: S,
 ): Promise<{ ok: true; data: z.infer<S>; raw: unknown } | { ok: false; response: NextResponse }> {
-  const text = await req.text();
-  if (!text.trim()) return parseWith(schema, {});
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
-  }
-  return parseWith(schema, raw);
+  const body = await readJsonBody(req, { allowEmpty: true });
+  if (!body.ok) return body;
+  return parseWith(schema, body.raw === undefined ? {} : body.raw);
 }

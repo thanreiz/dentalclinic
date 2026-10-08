@@ -7,6 +7,10 @@ import { z } from 'zod';
 import { normalizeContact, STAFF_CHANNELS, STAFF_SET_STATUSES } from './rules';
 import { isValidDate, isValidTime, todayManila, toMinutes } from './time';
 
+// No `new Function` JIT: the CSP (next.config.ts) has no 'unsafe-eval' in production, and Zod's
+// eval probe would otherwise report a securitypolicyviolation in the browser. Parsing stays correct.
+z.config({ jitless: true });
+
 // ---------- primitives ----------
 
 export const dateSchema = z

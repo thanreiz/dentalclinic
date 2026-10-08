@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaffPage } from '@/lib/auth';
+import { splitMismatchFlag } from '@/lib/patient-note';
 import { getAppointmentDetail } from '@/lib/queries/appointments';
 import { listDentistsWithSchedules } from '@/lib/queries/setup';
 import { formatContact } from '@/lib/rules';
@@ -12,6 +13,7 @@ import { ageOn, formatDateTimeHuman } from '@/components/format';
 import { ChannelBadge, StatusBadge } from '@/components/ui/Badges';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { ArrowLeft, CheckIcon } from '@/components/ui/icons';
+import { DetailsDifferFlag } from '@/components/staff/DetailsDifferFlag';
 import AppointmentActions from './AppointmentActions';
 import DentistNoteForm from './DentistNoteForm';
 
@@ -30,6 +32,7 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const [a, dentists] = await Promise.all([getAppointmentDetail(parsed.data), listDentistsWithSchedules()]);
   if (!a) notFound();
   const today = todayManila();
+  const { flag: noteFlag, note: ownNote } = splitMismatchFlag(a.patientNote);
 
   return (
     <>
@@ -125,7 +128,8 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
             </dl>
             <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
               <p className="text-sm font-medium text-slate-500">Patient note</p>
-              <p className="mt-1 text-sm whitespace-pre-wrap text-slate-900">{a.patientNote || <span className="text-slate-500">No note</span>}</p>
+              {noteFlag && <DetailsDifferFlag flag={noteFlag} className="mt-2" />}
+              <p className="mt-1 text-sm whitespace-pre-wrap text-slate-900">{ownNote || <span className="text-slate-500">No note</span>}</p>
             </div>
           </Card>
 

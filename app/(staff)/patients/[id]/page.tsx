@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaffPage } from '@/lib/auth';
+import { MISMATCH_PREFIX } from '@/lib/patient-note';
 import { getPatient, getPatientHistory } from '@/lib/queries/patients';
 import { formatContact } from '@/lib/rules';
 import { formatDateHuman, formatTime12, todayManila } from '@/lib/time';
@@ -10,6 +11,7 @@ import { ageOn } from '@/components/format';
 import { ChannelBadge, StatusBadge } from '@/components/ui/Badges';
 import { ButtonLink } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
+import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ArrowLeft, CalendarIcon, PlusIcon } from '@/components/ui/icons';
 import PatientProfileForm from './PatientProfileForm';
@@ -99,7 +101,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                     </td>
                     <td className="max-w-72 px-4 py-3 whitespace-pre-wrap text-slate-700">
                       {h.dentistNote || <span className="text-slate-400">—</span>}
-                      {h.patientNote && <span className="mt-1 block text-xs text-slate-500">Patient: {h.patientNote}</span>}
+                      {h.patientNote && (
+                        <span className={cx('mt-1 block text-xs', h.patientNote.startsWith(MISMATCH_PREFIX) ? 'font-medium text-amber-800' : 'text-slate-500')}>
+                          Patient: {h.patientNote}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

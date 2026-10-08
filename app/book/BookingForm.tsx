@@ -182,7 +182,12 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       return;
     }
     if (r.status === 429) {
-      setFormError('Too many requests from this device. Please wait a few minutes and try again.');
+      // too_many_requests: the server explains which limit was hit (pending requests on this number,
+      // clinic busy, or this device) and how to reach the clinic.
+      setFormError(
+        (typeof r.data.message === 'string' && r.data.message) ||
+          'Too many requests right now. Please wait a few minutes and try again, or call the clinic.',
+      );
       return;
     }
     setFormError(
@@ -520,6 +525,11 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             label={CONSENT_TEXT}
             error={errors.consent}
           />
+          <p id="book-privacy" className="-mt-2 text-xs leading-relaxed text-slate-600">
+            The clinic uses these details only to schedule your visit and send its confirmation and reminder. This is a demo
+            system: all data is deleted after the project defense. To see, correct or delete your details,{' '}
+            {clinicPhone ? `call the clinic at ${clinicPhone}` : 'contact the clinic'}.
+          </p>
 
           <FormError>{formError}</FormError>
 

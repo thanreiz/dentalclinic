@@ -1,4 +1,4 @@
-/** POST /api/auth/login best-effort throttle: 10 failures per IP + email per 15 min -> 429. */
+/** POST /api/auth/login best-effort throttle: 10 failures per IP + email (and 50 per email) per 15 min -> 429. */
 import { afterAll, describe, expect, it } from 'vitest';
 import { POST as login } from '@/app/api/auth/login/route';
 import { loginRetryAfter, LOGIN_WINDOW_MS, recordLoginFailure, resetLoginThrottle } from '@/lib/services/rate-limit';
@@ -9,7 +9,8 @@ const attempt = (email: string, ip = '203.0.113.7') =>
   login(
     new Request('http://localhost/api/auth/login', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-forwarded-for': `${ip}, 10.0.0.1` },
+      // Off Vercel the LAST X-Forwarded-For hop is used (the address the nearest proxy saw).
+      headers: { 'content-type': 'application/json', 'x-forwarded-for': `6.6.6.6, ${ip}` },
       body: JSON.stringify({ email, password: 'wrong-password' }),
     }),
   );

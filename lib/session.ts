@@ -34,7 +34,13 @@ export async function signSession(user: StaffUser): Promise<string> {
 export async function verifySession(token: string | undefined | null): Promise<StaffUser | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secretKey(), { algorithms: ['HS256'] });
+    // exp/iat/sub must be present and the token no older than the session TTL, so a token minted
+    // without `exp` (or with a far-future one) is still refused (SECURITY-REVIEW L2).
+    const { payload } = await jwtVerify(token, secretKey(), {
+      algorithms: ['HS256'],
+      requiredClaims: ['exp', 'iat', 'sub'],
+      maxTokenAge: SESSION_TTL_SECONDS,
+    });
     const userId = Number(payload.sub);
     if (!Number.isInteger(userId) || userId <= 0) return null;
     return {
@@ -58,14 +64,30 @@ export function sessionCookieOptions(maxAge = SESSION_TTL_SECONDS) {
   };
 }
 
+/** Dummy origin used to normalize `next` values; never leaves this module. */
+const NEXT_BASE = 'http://next.invalid';
+
 /**
- * Only allow same-site relative paths as a post-login redirect (no open redirects).
- * Returns '/dashboard' for anything suspicious.
+ * Only allow same-site relative paths as a post-login redirect (no open redirects, SECURITY-REVIEW M1).
+ * The value is resolved against a dummy origin and the NORMALIZED result is checked and returned,
+ * so dot segments (`/.//evil.com`, `/..//evil.com`, `/%2e%2e//evil.com`) can't turn into a
+ * protocol-relative `//evil.com`. Returns `fallback` for anything suspicious.
  */
 export function safeNextPath(next: string | null | undefined, fallback = '/dashboard'): string {
   if (!next || typeof next !== 'string') return fallback;
-  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return fallback;
-  if (/[\u0000-\u001f]/.test(next) || next.includes('\\')) return fallback;
-  if (next === '/login' || next.startsWith('/login?') || next.startsWith('/api/')) return fallback;
-  return next;
+  // Must be a single-slash absolute path; no backslashes (browsers treat `\` as `/`) or control chars.
+  if (!next.startsWith('/') || next.startsWith('//') || next.includes('\\')) return fallback;
+  if (/[\u0000-\u001f\u007f]/.test(next)) return fallback;
+  let u: URL;
+  try {
+    u = new URL(next, NEXT_BASE);
+  } catch {
+    return fallback;
+  }
+  if (u.origin !== NEXT_BASE) return fallback;
+  const path = u.pathname;
+  // The normalized path must still start with exactly one '/' and carry no encoded slashes (%2f, %5c).
+  if (!path.startsWith('/') || path.startsWith('//') || /%2f|%5c/i.test(path)) return fallback;
+  if (path === '/login' || path.startsWith('/login/') || path === '/api' || path.startsWith('/api/')) return fallback;
+  return path + u.search + u.hash;
 }

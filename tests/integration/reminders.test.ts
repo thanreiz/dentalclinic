@@ -8,7 +8,7 @@ import { tomorrowManila } from '@/lib/time';
 import { fakeMail, insertAppt, LIM } from './api-helpers';
 import { resetTestDb } from './helpers';
 
-const SECRET = 'test-cron-secret-0123456789';
+const SECRET = 'test-cron-secret-0123456789abcdefghij'; // >= 32 chars (I7)
 let mail: ReturnType<typeof fakeMail>;
 const ids: Record<string, number> = {};
 
@@ -49,6 +49,9 @@ describe('cron auth', () => {
     const r = await call(auth(''));
     expect(r.status).toBe(500);
     expect((await r.json()).error).toBe('cron_not_configured');
+    // I7: a short secret counts as not configured, even with the matching token.
+    process.env.CRON_SECRET = 'short-secret-31-characters-long';
+    expect((await call(auth('short-secret-31-characters-long'))).status).toBe(500);
     process.env.CRON_SECRET = saved;
     expect(mail.sent).toHaveLength(0);
     expect(cronAuthorized(`Bearer ${SECRET}`, SECRET)).toBe(true);
