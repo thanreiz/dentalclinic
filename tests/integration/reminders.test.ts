@@ -5,7 +5,7 @@ import { execute, queryOne } from '@/lib/db';
 import { confirmationEmail, reminderEmail, sendMail, setMailTransport } from '@/lib/mail';
 import { cronAuthorized } from '@/lib/services/reminders';
 import { tomorrowManila } from '@/lib/time';
-import { fakeMail, insertAppt, LIM, req } from './api-helpers';
+import { fakeMail, insertAppt, LIM } from './api-helpers';
 import { resetTestDb } from './helpers';
 
 const SECRET = 'test-cron-secret-0123456789';
@@ -23,6 +23,10 @@ beforeAll(async () => {
   ids.pending = await insertAppt({ patientId: 3, date: t, start: '11:00', end: '11:30', status: 'pending', chairId: null });
   ids.already = await insertAppt({ patientId: 4, date: t, start: '12:00', end: '12:30', status: 'scheduled', reminderSentAt: '2026-10-01 09:00:00' });
   ids.cancelled = await insertAppt({ patientId: 5, date: t, start: '13:00', end: '13:30', status: 'cancelled' });
+});
+// Leave dental_test as seeded for suites that don't reset (e.g. seed-report).
+afterAll(async () => {
+  await resetTestDb();
 });
 afterAll(() => mail.restore());
 afterEach(() => {

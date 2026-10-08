@@ -1,5 +1,5 @@
 /** /api/setup/[entity] (FR5) and /api/patients (FR9/FR10 edits). */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PATCH as patchPatient } from '@/app/api/patients/[id]/route';
 import { GET as searchRoute } from '@/app/api/patients/route';
 import { DELETE as del, GET as list, PATCH as patch, POST as create } from '@/app/api/setup/[entity]/route';
@@ -12,6 +12,10 @@ let cookie = '';
 beforeAll(async () => {
   await resetTestDb();
   cookie = await staffCookie();
+});
+// Leave dental_test as seeded for suites that don't reset (e.g. seed-report).
+afterAll(async () => {
+  await resetTestDb();
 });
 
 const call = async (fn: typeof create, method: string, entity: string, body?: unknown, qs = '') => {

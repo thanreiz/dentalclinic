@@ -22,6 +22,10 @@ beforeAll(async () => {
   cookie = await staffCookie();
   mail.current = fakeMail();
 });
+// Leave dental_test as seeded for suites that don't reset (e.g. seed-report).
+afterAll(async () => {
+  await resetTestDb();
+});
 afterAll(() => mail.current?.restore());
 
 const statusOf = async (id: number) => (await queryOne<{ status: string }>('SELECT status FROM appointments WHERE appointment_id = ?', [id]))?.status;

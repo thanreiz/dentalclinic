@@ -1,5 +1,5 @@
 /** Read queries for the staff pages (lib/queries/*). Seed data only; no writes except setup. */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execute } from '@/lib/db';
 import { getAppointmentDetail } from '@/lib/queries/appointments';
 import { getDashboardSummary, getDaySchedule } from '@/lib/queries/dashboard';
@@ -13,6 +13,10 @@ import { resetTestDb } from './helpers';
 const NOW = { date: '2026-10-09', time: '08:00' };
 
 beforeAll(async () => {
+  await resetTestDb();
+});
+// Leave dental_test as seeded for suites that don't reset (e.g. seed-report).
+afterAll(async () => {
   await resetTestDb();
 });
 

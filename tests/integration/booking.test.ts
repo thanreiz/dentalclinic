@@ -1,5 +1,5 @@
 /** GET /api/slots, POST /api/requests (public) and POST /api/appointments (staff). */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as staffBook } from '@/app/api/appointments/route';
 import { POST as postRequest } from '@/app/api/requests/route';
 import { GET as getSlotsRoute } from '@/app/api/slots/route';
@@ -12,6 +12,10 @@ import { bookingBody, EXTRACTION, FILLING, insertAppt, LIM, newContact, PROPHY, 
 import { resetTestDb } from './helpers';
 
 beforeAll(async () => {
+  await resetTestDb();
+});
+// Leave dental_test as seeded for suites that don't reset (e.g. seed-report).
+afterAll(async () => {
   await resetTestDb();
 });
 
