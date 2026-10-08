@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '@/components/ui/icons';
+import { LinkPendingIcon } from '@/components/ui/LinkPending';
 
 function shift(month: string, delta: number) {
   let [y, m] = month.split('-').map(Number);
@@ -27,7 +28,9 @@ export default function ReportControls({ month, threshold }: { month: string; th
   return (
     <div className="flex items-center rounded-lg border border-slate-300 bg-white shadow-sm">
       <Link href={href(shift(month, -1), threshold)} className="grid size-10 place-items-center rounded-l-lg text-slate-700 hover:bg-slate-50" aria-label="Previous month">
-        <ChevronLeft className="size-5" />
+        <LinkPendingIcon>
+          <ChevronLeft className="size-5" />
+        </LinkPendingIcon>
       </Link>
       <label htmlFor="report-month" className="sr-only">
         Month
@@ -42,7 +45,9 @@ export default function ReportControls({ month, threshold }: { month: string; th
         className="h-10 border-x border-slate-200 px-2 text-sm text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
       />
       <Link href={href(shift(month, 1), threshold)} className="grid size-10 place-items-center rounded-r-lg text-slate-700 hover:bg-slate-50" aria-label="Next month">
-        <ChevronRight className="size-5" />
+        <LinkPendingIcon>
+          <ChevronRight className="size-5" />
+        </LinkPendingIcon>
       </Link>
     </div>
   );

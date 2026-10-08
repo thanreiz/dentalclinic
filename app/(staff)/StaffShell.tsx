@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
 import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, PlusIcon, ToothIcon, UsersIcon } from '@/components/ui/icons';
+import { LinkPendingIcon } from '@/components/ui/LinkPending';
 import LogoutButton from './LogoutButton';
 
 const NAV = [
@@ -89,7 +90,9 @@ export default function StaffShell({
                     active ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-600 hover:text-slate-900',
                   )}
                 >
-                  <Icon className="size-4" />
+                  <LinkPendingIcon className="size-4">
+                    <Icon className="size-4" />
+                  </LinkPendingIcon>
                   {label}
                   {'badge' in rest && badge(false)}
                 </Link>
@@ -111,7 +114,9 @@ export default function StaffShell({
                     active ? 'bg-brand-50 text-brand-800' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900',
                   )}
                 >
-                  <Icon className={cx('size-[18px]', active ? 'text-brand-700' : 'text-slate-500')} />
+                  <LinkPendingIcon className="size-[18px] text-brand-700">
+                    <Icon className={cx('size-[18px]', active ? 'text-brand-700' : 'text-slate-500')} />
+                  </LinkPendingIcon>
                   {label}
                   {'badge' in rest && badge(active)}
                 </Link>
