@@ -182,9 +182,8 @@ function DentistsPanel({ dentists }: { dentists: DentistWithSchedules[] }) {
                   Edit
                 </Button>
                 <Button
-                  variant="ghost"
+                  variant="dangerGhost"
                   size="sm"
-                  className="text-red-700 hover:bg-red-50"
                   onClick={() => {
                     setRowError(null);
                     setToDelete(d);
@@ -485,9 +484,8 @@ function SimpleEntityPanel({ entity, singular, items, withDuration = false }: { 
                         Edit
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="dangerGhost"
                         size="sm"
-                        className="text-red-700 hover:bg-red-50"
                         onClick={() => {
                           setRowError(null);
                           setToDelete(it);

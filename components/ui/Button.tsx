@@ -3,7 +3,7 @@ import type { ComponentProps } from 'react';
 import { cx } from './cx';
 import { Spinner } from './icons';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'success';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dangerGhost' | 'danger' | 'success';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
@@ -14,6 +14,7 @@ const variants: Record<ButtonVariant, string> = {
   primary: 'bg-brand-700 text-white shadow-sm hover:bg-brand-800 active:bg-brand-900',
   secondary: 'border border-slate-300 bg-white text-slate-800 shadow-sm hover:bg-slate-50 active:bg-slate-100',
   ghost: 'text-slate-700 hover:bg-slate-100 active:bg-slate-200',
+  dangerGhost: 'text-red-700 hover:bg-red-50 active:bg-red-100',
   danger: 'bg-red-700 text-white shadow-sm hover:bg-red-800 active:bg-red-900',
   success: 'bg-green-700 text-white shadow-sm hover:bg-green-800 active:bg-green-900',
 };

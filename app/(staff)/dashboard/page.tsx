@@ -137,7 +137,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <ScheduleGrid columns={columns} start={gridStart} end={gridEnd} nowMinutes={isToday ? toMinutes(now.time) : null} />
             <Legend />
           </Card>
-          <OpenSlotsPanel day={day} date={date} />
+          <OpenSlotsPanel day={day} date={date} past={date < today} />
         </div>
       )}
     </>
@@ -311,7 +311,7 @@ function Legend() {
   );
 }
 
-function OpenSlotsPanel({ day, date }: { day: Awaited<ReturnType<typeof getDaySchedule>>; date: string }) {
+function OpenSlotsPanel({ day, date, past }: { day: Awaited<ReturnType<typeof getDaySchedule>>; date: string; past: boolean }) {
   return (
     <Card as="div" className="h-fit">
       <div className="border-b border-slate-100 px-4 py-3">
@@ -323,10 +323,12 @@ function OpenSlotsPanel({ day, date }: { day: Awaited<ReturnType<typeof getDaySc
           <div key={d.dentistId} className="px-4 py-3">
             <p className="mb-2 flex items-baseline justify-between gap-2 text-sm font-medium text-slate-800">
               {d.dentistName}
-              <span className="text-xs font-normal text-slate-500">{d.hours ? `${d.openSlots.length} open` : ''}</span>
+              <span className="text-xs font-normal text-slate-500">{d.hours && !past ? `${d.openSlots.length} open` : ''}</span>
             </p>
             {!d.hours ? (
               <p className="text-sm text-slate-500">Not working</p>
+            ) : past ? (
+              <p className="text-sm text-slate-500">This day has passed</p>
             ) : d.openSlots.length === 0 ? (
               <p className="text-sm text-slate-500">No open times left</p>
             ) : (

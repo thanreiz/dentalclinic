@@ -48,7 +48,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <EmptyState icon={<ChartIcon />} title={`No completed visits in ${monthLabel(month)}`} description="Totals appear once appointments are marked attended, cancelled, or no-show." />
         </Card>
       ) : (
-        <div className="mb-5 grid gap-5 xl:grid-cols-2">
+        <div className="mb-5 grid gap-5 2xl:grid-cols-2">
           <BreakdownTable title="By dentist" rows={report.byDentist.map((r) => ({ key: r.dentistId, name: r.dentistName, ...r }))} totals={t} />
           <BreakdownTable title="By service" rows={report.byService.map((r) => ({ key: r.serviceId, name: r.serviceName, ...r }))} totals={t} />
         </div>
@@ -66,7 +66,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Patients with at least {threshold} no-shows</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
                 <tr>
                   <th scope="col" className="px-4 py-3">Patient</th>
                   <th scope="col" className="px-4 py-3">Contact number</th>
@@ -125,7 +125,7 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Attendance {title.toLowerCase()}</caption>
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
             <tr>
               <th scope="col" className="px-4 py-3">{title === 'By dentist' ? 'Dentist' : 'Service'}</th>
               <th scope="col" className="px-3 py-3 text-right">Attended</th>

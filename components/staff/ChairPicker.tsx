@@ -56,7 +56,7 @@ export function ChairPicker({
                   checked ? 'bg-brand-700 text-white shadow-sm' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50',
                 )}
               >
-                <input type="radio" name={name} className="sr-only" checked={checked} onChange={() => onChange(c.chairId)} />
+                <input type="radio" name={name} value={c.chairId} aria-label={c.chairName} className="sr-only" checked={checked} onChange={() => onChange(c.chairId)} />
                 {c.chairName}
               </label>
             );

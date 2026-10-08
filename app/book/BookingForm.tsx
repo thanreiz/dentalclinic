@@ -216,7 +216,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           <CheckIcon className="size-7" />
         </div>
         <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-xl font-semibold text-slate-900 outline-none">
-          Request received
+          Thank you
         </h2>
         <p className="mt-2 text-base text-slate-700">Request received. The clinic will email you once it is confirmed.</p>
         <dl className="mt-5 space-y-2 rounded-lg bg-slate-50 p-4 text-left text-sm">
@@ -423,7 +423,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                 {date && start ? `${formatDateHuman(date)}, ${formatTime12(start)}` : ''} · {dentistLabel}
               </p>
             </div>
-            <button type="button" onClick={() => setStep(2)} className="shrink-0 rounded px-1 py-0.5 text-sm font-semibold text-brand-800 underline">
+            <button type="button" onClick={() => setStep(2)} className="-my-2.5 -mr-1.5 inline-flex h-11 shrink-0 items-center rounded px-2 text-sm font-semibold text-brand-800 underline">
               Change
             </button>
           </div>

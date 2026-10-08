@@ -123,6 +123,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
     setErrors((e) => {
       const n = { ...e };
       keys.forEach((k) => delete n[k]);
+      if (Object.keys(n).length === 0) setFormError(null);
       return n;
     });
   }
@@ -167,7 +168,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
       toast.show({
         tone: 'success',
         title: 'Booking saved',
-        description: `${mode === 'search' ? patient!.fullName : newPatient.fullName}, ${formatDateHuman(date)} ${formatTime12(slot!.start)}`,
+        description: `${mode === 'search' ? patient!.fullName : newPatient.fullName}, ${formatDateHuman(date)}, ${formatTime12(slot!.start)}`,
       });
       router.push(`/appointments/${newId}`);
       return;
@@ -248,7 +249,8 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                 <div className="relative">
                   <Input
                     label="Find patient"
-                    type="search"
+                    type="text"
+                    role="searchbox"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Name or contact number, e.g. Maria or 0917 555"
@@ -364,7 +366,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
         <Card>
           <CardHeader title="2. Visit" description="Only open times and free chairs are shown." />
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr_1fr]">
               <Select
                 label="Service"
                 required

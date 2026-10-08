@@ -31,7 +31,7 @@ export function SlotPicker({
       <legend className="mb-1.5 text-sm font-medium text-slate-800">{label}</legend>
       <div aria-live="polite">
         {state === 'loading' && (
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6" aria-label="Loading open times">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1.5" aria-label="Loading open times">
             {Array.from({ length: 8 }, (_, i) => (
               <div key={i} className="h-10 animate-pulse rounded-md bg-slate-200/70" />
             ))}
@@ -53,7 +53,7 @@ export function SlotPicker({
         )}
       </div>
       {state === 'idle' && slots && slots.length > 0 && (
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(5.25rem,1fr))] gap-1.5">
           {slots.map((s) => {
             const checked = value === s.start;
             return (
@@ -65,7 +65,7 @@ export function SlotPicker({
                   checked ? 'bg-brand-700 text-white shadow-sm' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50 hover:ring-brand-400',
                 )}
               >
-                <input type="radio" name={name} className="sr-only" checked={checked} onChange={() => onChange(s)} />
+                <input type="radio" name={name} value={s.start} aria-label={formatTime12(s.start)} className="sr-only" checked={checked} onChange={() => onChange(s)} />
                 {formatTime12(s.start)}
               </label>
             );
