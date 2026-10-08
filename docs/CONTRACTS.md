@@ -12,8 +12,9 @@ npm run dev             # terminal 2: http://localhost:3000
 
 - First `db:local` downloads MySQL (~200 MB, once), creates `.mysql-data/data`, DBs `dental` + `dental_test`, writes `.env.local` (random `SESSION_SECRET`/`CRON_SECRET`, SMTP empty), and seeds `dental`. Later runs keep your data.
 - `npm run db:local -- --reset` reseeds on start; `-- --ephemeral` = throwaway DB (fallback).
-- `npm run db:reset` rebuilds + reseeds `DATABASE_URL` (non-local host needs `-- --yes`).
-- **Staff login:** `staff@clinic.test` / `ClinicDemo2026!` (or `SEED_STAFF_PASSWORD`).
+- `npm run db:reset` rebuilds + reseeds `DATABASE_URL` (non-local host needs `-- --yes` **and** a `SEED_STAFF_PASSWORD` that is not the default and has ≥ 12 chars, or it refuses).
+- **Staff login (local only):** `staff@clinic.test` / `ClinicDemo2026!` (or `SEED_STAFF_PASSWORD`). The hosted demo uses its own password, shared in person.
+- Never keep hosted values in `.env.production.local` / `.env.production`: `next start` loads them automatically. They live in `.env.hosted` (gitignored, never auto-loaded).
 - Tests: `npm test` (unit + integration; needs db:local running), `npm run test:unit`, `npm run test:integration`. Integration resets/seeds `dental_test`, never `dental`.
 
 ## Module map (NF06)
@@ -26,9 +27,10 @@ npm run dev             # terminal 2: http://localhost:3000
 | `lib/rules.ts` | Business Rules 1–12 (pure parts), ENUM constants, contact numbers, no-show rate | anywhere (pure) |
 | `lib/queries/overlap.ts` | Listing 3.1 overlap SQL, free chairs, locks, working hours, `checkBookable` | server only |
 | `lib/validation.ts` | Zod schemas for every API input + `fieldErrors`, `honeypotTripped` | anywhere |
-| `lib/http.ts` | `jsonError`, `parseJsonBody`, `parseSearchParams`, `parseWith` | route handlers |
+| `lib/http.ts` | `jsonError`, `parseJsonBody`, `readJsonBody` (415/413 checks), `parseSearchParams`, `parseWith` | route handlers |
 | `lib/auth.ts` | `getSession`, `requireStaff`, `requireStaffPage`, `createSession`, `destroySession`, `verifyCredentials`, `hashPassword` | server only |
-| `lib/session.ts` | JWT sign/verify, cookie options, `safeNextPath` | edge-safe |
+| `lib/session.ts` | JWT sign/verify (`exp`/`iat`/`sub` required), cookie options, `safeNextPath` (normalized, same-origin only) | edge-safe |
+| `lib/patient-note.ts` | M2 "details differ" flag: `mismatchFlag`, `withMismatchFlag`, `splitMismatchFlag`, `MISMATCH_PREFIX` | anywhere (pure) |
 | `lib/route-access.ts` | `isPublicRoute(path, method)` | edge-safe |
 | `lib/types.ts` | row + DTO types | types |
 | `db/schema.sql` | Listing 3.2 verbatim (+ DROPs) | — |
@@ -216,13 +218,13 @@ Semantics:
 
 ## API (Backend-B) — `app/api/**`
 
-All bodies/responses are JSON. **Every error** is `{ error: <code>, message: <human text>, ...extra }` — show `message` to users; branch on `error`. Validation errors: 400 `{ error: 'validation_error', message, issues: { field: msg } }`. Unexpected errors: 500 `{ error: 'server_error' }` (details only in server logs). Staff routes return 401 `{ error: 'unauthorized' }` without a session (middleware, and again in the handler via `requireStaffApi(req)`).
+All bodies/responses are JSON. Request bodies must be sent as `Content-Type: application/json` (else 415 `unsupported_media_type`) and be ≤ 64 KB (else 413 `payload_too_large`); routes without input accept an empty body. **Every error** is `{ error: <code>, message: <human text>, ...extra }` — show `message` to users; branch on `error`. Validation errors: 400 `{ error: 'validation_error', message, issues: { field: msg } }`. Unexpected errors: 500 `{ error: 'server_error' }` (details only in server logs). Staff routes return 401 `{ error: 'unauthorized' }` without a session (middleware, and again in the handler via `requireStaffApi(req)`).
 
 | Method + path | Access | Body / query | Success | Errors |
 | --- | --- | --- | --- | --- |
 | `GET /api/slots` | public | `?date&serviceId&dentistId=<id>\|any[&excludeAppointmentId]` | `{ slots: [{ start, end, dentistIds }] }` | 400 `date_in_past`, `date_out_of_range` (public: today..+60 days; staff session: ..+366), `unknown_service`, `unknown_dentist`; 401 if `excludeAppointmentId` without session |
-| `POST /api/requests` | public | `bookingRequestSchema` (+ `website` honeypot) | 201 `{ ok: true }` (also for honeypot hits; nothing saved) | 400; 409 `slot_taken` `{ message: 'That time was just taken. Please pick another slot.', slots }` |
-| `POST /api/auth/login` | public | `{ email, password }` | `{ ok, user }` + cookie | 401 `invalid_credentials`; 429 `too_many_attempts` (+ `Retry-After`) after 10 failures / 15 min per IP+email |
+| `POST /api/requests` | public | `bookingRequestSchema` (+ `website` honeypot) | 201 `{ ok: true }` (also for honeypot hits; nothing saved) | 400; 409 `slot_taken` `{ message: 'That time was just taken. Please pick another slot.', slots }`; **429 `too_many_requests` `{ message }`** (show `message`): ≥ `REQUEST_LIMIT_PER_CONTACT` (3) pending online requests on that number, clinic-wide `REQUEST_LIMIT_PER_HOUR` (60) / `REQUEST_LIMIT_PER_DAY` (300) reached, or `REQUEST_LIMIT_PER_IP` (5) accepted per 10 min from this IP (+ `Retry-After`). A matched number with different name/email/birthdate still gets 201; `patient_note` is prefixed with the "details differ" flag. |
+| `POST /api/auth/login` | public | `{ email, password }` | `{ ok, user }` + cookie | 401 `invalid_credentials`; 429 `too_many_attempts` (+ `Retry-After`) after 10 failures / 15 min per IP+email, or 50 / 15 min per email from any IP |
 | `POST /api/appointments` | staff | `staffBookingSchema` | 201 `{ ok, appointmentId, patientId }` | 409 `in_past` \| `outside_hours` \| `dentist_conflict` \| `chair_conflict` (+`conflictIds`) \| `duplicate_contact` (+`existingPatientId`); 400 `unknown_patient\|unknown_chair\|unknown_dentist\|unknown_service` |
 | `POST /api/appointments/[id]/confirm` | staff | `{ chairId }` | `{ ok: true, emailSent, emailError?: 'Confirmed, but the email could not be sent.', emailSkipped?: 'no_email' }` | 409 `slot_unavailable` `{ message: 'Slot no longer free', reason: in_past\|outside_hours\|dentist_conflict\|chair_conflict, slots, freeChairs: [{chairId, chairName}] }`; 409 `invalid_transition`; 404; 400 `unknown_chair` |
 | `POST /api/appointments/[id]/decline` | staff | none | `{ ok: true }` | 409 `invalid_transition`; 404 |
@@ -236,7 +238,7 @@ All bodies/responses are JSON. **Every error** is `{ error: <code>, message: <hu
 | `POST /api/setup/[entity]` | staff | dentists `{ dentistName, schedules? \| week? }`; schedules `{ dentistId, dayOfWeek, startTime, endTime }`; services `{ serviceName, durationMinutes }`; chairs `{ chairName }` | 201 `{ ok: true, id }` | 409 `duplicate_name` / `duplicate_day`; 400 `check_violation`, `unknown_dentist` |
 | `PATCH /api/setup/[entity]` | staff | dentists `{ id, dentistName?, schedules? \| week? }` (week given = replace whole week); schedules `{ id, startTime, endTime }` **or** replace a week `{ dentistId, week }` / `{ dentistId, schedules }`; services `{ id, serviceName?, durationMinutes? }`; chairs `{ id, chairName }` | `{ ok: true }` | 404; 409 duplicates |
 | `DELETE /api/setup/[entity]` | staff | `{ id }` or `?id=` | `{ ok: true }` | 409 `in_use` 'In use by existing appointments'; 404 |
-| `GET /api/cron/reminders` | `Authorization: Bearer $CRON_SECRET` | none | `{ sent, failed, date, skipped?: 'already_running' }` | 401 `unauthorized`; 500 `cron_not_configured` (CRON_SECRET unset) |
+| `GET /api/cron/reminders` | `Authorization: Bearer $CRON_SECRET` | none | `{ sent, failed, date, skipped?: 'already_running' }` | 401 `unauthorized`; 500 `cron_not_configured` (CRON_SECRET unset or < 32 chars) |
 
 Week shape (setup): `week` = exactly 7 entries, index 0 = Sunday, each `null` (off) or `{ startTime: 'HH:MM', endTime: 'HH:MM' }`. `schedules` = `[{ dayOfWeek, startTime, endTime }]`, omitted days off. If both are sent, `schedules` wins. Changing hours never moves existing appointments.
 
@@ -245,3 +247,11 @@ Confirm flow for the UI: call `GET /api/chairs/free?date&start&end&excludeId=<id
 Services (`lib/services/*`, server-only) if a Server Action or page needs them: `getSlots`, `createOnlineRequest`, `createStaffBooking`, `confirmAppointment`, `declineAppointment`, `rescheduleAppointment`, `setAppointmentStatus`, `setDentistNote`, `updatePatient`, setup CRUD, `runReminders`. They throw `ServiceError(status, code, message, extra)`; `errorResponse(err)` maps any error to the JSON above.
 
 Mail (`lib/mail.ts`): `sendConfirmation`, `sendReminder` never throw (`{ ok } | { ok: false, error }`). With `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` unset and `NODE_ENV !== 'production'`, emails are printed to the server console with a `[mail:dev]` prefix and count as sent. In production, unset SMTP = failure.
+
+## Security behaviour (see docs/SECURITY-REVIEW.md, DECISIONS S1–S14)
+
+- **Headers** on every response (`next.config.ts`): CSP (`default-src 'self'`, no third-party origins; dev also allows eval + `ws:`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, COOP, HSTS in production; no `X-Powered-By`. Don't add external scripts, fonts or fetch targets without updating the CSP. Client-side Zod runs `jitless` (no eval).
+- **Booking limits** (env, 0 = off): `REQUEST_LIMIT_PER_CONTACT=3`, `REQUEST_LIMIT_PER_HOUR=60`, `REQUEST_LIMIT_PER_DAY=300`, `REQUEST_LIMIT_PER_IP=5`, `REQUEST_LIMIT_IP_WINDOW_MINUTES=10`. E2E/load runs against a local server: start it with `REQUEST_LIMIT_PER_IP=0` (S14).
+- **Production DB**: `DATABASE_CA_CERT` is required for a non-local `DATABASE_URL` when `NODE_ENV=production` (the pool throws without it). See docs/DEPLOY.md.
+- **Sessions**: stateless 8 h JWT; tokens must carry `exp`, `iat`, `sub`. Logout clears the cookie only; rotate `SESSION_SECRET` to end every session.
+- **Staff note flag**: a `patient_note` starting with `[Details differ from patient record:` (first line) means the online form's name/email/birthdate didn't match the patient on file. Render it with `DetailsDifferFlag` / `splitMismatchFlag`.

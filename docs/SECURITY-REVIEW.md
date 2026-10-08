@@ -12,28 +12,55 @@ Method: code read plus live probes against a production build (`next build` + `n
 
 | ID | Severity | Title | Location | Status |
 | --- | --- | --- | --- | --- |
-| H1 | High | No abuse limits on public `POST /api/requests`: one script can hold every slot for 60 days | `app/api/requests/route.ts:16`, `lib/services/booking.ts:105` | Open |
-| H2 | High | Default staff password ships in the repo and nothing stops it reaching the public demo DB | `db/seed.ts:21,209`, `scripts/db-reset.ts:23`, `scripts/db-local.ts:103`, `.env.example:28` | Open |
-| M1 | Medium | Open redirect after login: `/login?next=/.//evil.com` | `lib/session.ts:65-71`, `middleware.ts:47-52`, `app/login/page.tsx:11` | Open |
-| M2 | Medium | Anyone with a patient's contact number can add requests to that patient's record | `lib/services/patients.ts:22-33`, `lib/services/booking.ts:137` | Open |
-| M3 | Medium | DB TLS in production skips certificate verification unless `DATABASE_CA_CERT` is set (and it isn't) | `lib/db-config.ts:62` | Open |
-| M4 | Medium | Running `next start` locally silently uses the hosted DB and the real Gmail credentials | `.env.production.local` (gitignored, local file) | Open |
-| L1 | Low | No security headers (CSP, frame-ancestors, nosniff, Referrer-Policy, HSTS); `X-Powered-By` exposed | `next.config.ts:3-6` | Open |
-| L2 | Low | Sessions can't be revoked (logout only clears the cookie) and `exp` isn't required | `lib/session.ts:37`, `app/api/auth/logout/route.ts:8` | Open |
-| L3 | Low | Login throttle: per-instance memory, keyed on a client-controlled IP, shared `unknown` bucket | `lib/services/rate-limit.ts:13-17` | Open |
-| L4 | Low | Unexpected-error logs print the full mysql2 error, including SQL with PII values inlined | `lib/services/errors.ts:51` | Open |
-| I1 | Info | API routes accept any Content-Type as JSON | `lib/http.ts:22`, `app/api/requests/route.ts:19` | Open |
-| I2 | Info | Middleware matcher skips dynamic paths that end in a static extension (pages still protected) | `middleware.ts:72` | Open |
-| I3 | Info | Request bodies up to 10 MB are parsed | Next default | Open |
-| I4 | Info | First unknown-email login is ~2x slower (dummy hash is built lazily) | `lib/auth.ts:70-75` | Open |
-| I5 | Info | Contact numbers in URL query strings (`/patients?q=`, `/api/patients?q=`) | `app/(staff)/patients/page.tsx`, `app/api/patients/route.ts` | Open |
-| I6 | Info | Consent checkbox is present but there's no privacy notice (controller, purpose, retention, rights) | `app/book/BookingForm.tsx:29-30` | Open |
-| I7 | Info | No minimum length/entropy check on `CRON_SECRET`; session cookie isn't `__Host-` prefixed | `app/api/cron/reminders/route.ts:16`, `lib/session.ts:8` | Open |
-| I8 | Info | `npm audit`: postcss (bundled in next, build-time only) and braces (eslint, dev-only) | `package-lock.json` | Open |
-| I9 | Info | mysql2 `query()` expands object values; add `stringifyObjects: true` as a safety net | `lib/db-config.ts:56-71` | Open |
-| I10 | Info | Dev-mode mail logger prints full email bodies (name, date, dentist) to the console | `lib/mail.ts:80` | Open |
+| H1 | High | No abuse limits on public `POST /api/requests`: one script can hold every slot for 60 days | `app/api/requests/route.ts:16`, `lib/services/booking.ts:105` | Fixed (acc79d6) |
+| H2 | High | Default staff password ships in the repo and nothing stops it reaching the public demo DB | `db/seed.ts:21,209`, `scripts/db-reset.ts:23`, `scripts/db-local.ts:103`, `.env.example:28` | Fixed (acc79d6) |
+| M1 | Medium | Open redirect after login: `/login?next=/.//evil.com` | `lib/session.ts:65-71`, `middleware.ts:47-52`, `app/login/page.tsx:11` | Fixed (acc79d6) |
+| M2 | Medium | Anyone with a patient's contact number can add requests to that patient's record | `lib/services/patients.ts:22-33`, `lib/services/booking.ts:137` | Fixed (acc79d6) |
+| M3 | Medium | DB TLS in production skips certificate verification unless `DATABASE_CA_CERT` is set (and it isn't) | `lib/db-config.ts:62` | Fixed (acc79d6); deployer must set `DATABASE_CA_CERT` |
+| M4 | Medium | Running `next start` locally silently uses the hosted DB and the real Gmail credentials | `.env.production.local` (gitignored, local file) | Fixed (file renamed to `.env.hosted`; warning in acc79d6) |
+| L1 | Low | No security headers (CSP, frame-ancestors, nosniff, Referrer-Policy, HSTS); `X-Powered-By` exposed | `next.config.ts:3-6` | Fixed (acc79d6) |
+| L2 | Low | Sessions can't be revoked (logout only clears the cookie) and `exp` isn't required | `lib/session.ts:37`, `app/api/auth/logout/route.ts:8` | Fixed (acc79d6); revocation Accepted |
+| L3 | Low | Login throttle: per-instance memory, keyed on a client-controlled IP, shared `unknown` bucket | `lib/services/rate-limit.ts:13-17` | Fixed (acc79d6); per-instance Accepted |
+| L4 | Low | Unexpected-error logs print the full mysql2 error, including SQL with PII values inlined | `lib/services/errors.ts:51` | Fixed (acc79d6) |
+| I1 | Info | API routes accept any Content-Type as JSON | `lib/http.ts:22`, `app/api/requests/route.ts:19` | Fixed (acc79d6) |
+| I2 | Info | Middleware matcher skips dynamic paths that end in a static extension (pages still protected) | `middleware.ts:72` | Accepted |
+| I3 | Info | Request bodies up to 10 MB are parsed | Next default | Fixed (acc79d6) |
+| I4 | Info | First unknown-email login is ~2x slower (dummy hash is built lazily) | `lib/auth.ts:70-75` | Fixed (acc79d6) |
+| I5 | Info | Contact numbers in URL query strings (`/patients?q=`, `/api/patients?q=`) | `app/(staff)/patients/page.tsx`, `app/api/patients/route.ts` | Accepted |
+| I6 | Info | Consent checkbox is present but there's no privacy notice (controller, purpose, retention, rights) | `app/book/BookingForm.tsx:29-30` | Fixed (acc79d6) |
+| I7 | Info | No minimum length/entropy check on `CRON_SECRET`; session cookie isn't `__Host-` prefixed | `app/api/cron/reminders/route.ts:16`, `lib/session.ts:8` | Fixed (acc79d6); `__Host-` Accepted |
+| I8 | Info | `npm audit`: postcss (bundled in next, build-time only) and braces (eslint, dev-only) | `package-lock.json` | Accepted |
+| I9 | Info | mysql2 `query()` expands object values; add `stringifyObjects: true` as a safety net | `lib/db-config.ts:56-71` | Fixed (acc79d6) |
+| I10 | Info | Dev-mode mail logger prints full email bodies (name, date, dentist) to the console | `lib/mail.ts:80` | Accepted |
 
 Counts: Critical 0 · High 2 · Medium 4 · Low 4 · Info 10.
+
+## Fix status (Security Fixer, Oct 9, 2026, commit `acc79d6`)
+
+All High, Medium and Low findings are fixed; the residual risks below are accepted for a student demo. Tests: `tests/unit/security.test.ts`, `tests/unit/session.test.ts`, `tests/unit/db-config.test.ts`, `tests/integration/request-limits.test.ts`, `tests/integration/login-throttle.test.ts`, `tests/integration/reminders.test.ts`. Smoke on a production build (`next start`, port 3005, local DB) plus dev mode: all headers present, no `X-Powered-By`, `/book` booking + 429 message + staff pages (login, requests, appointment, dashboard, new booking, patients, reports, setup) with **no CSP violations** in the browser console; the `/login?next=/.//evil.com` family now redirects to `/dashboard`. Decisions: DECISIONS.md S1–S14.
+
+| ID | What changed | Residual / accepted |
+| --- | --- | --- |
+| H1 | `lib/services/request-limits.ts`: inside the booking transaction, clinic-wide caps on online requests created in the last hour (60) and 24 h (300), then a per-contact cap of 3 **pending** online requests dated today or later. In-memory per-IP limiter (5 accepted / 10 min, `Retry-After`) in the route. All return 429 `too_many_requests` with a human `message` that `/book` shows. Env: `REQUEST_LIMIT_PER_CONTACT`, `REQUEST_LIMIT_PER_HOUR`, `REQUEST_LIMIT_PER_DAY`, `REQUEST_LIMIT_PER_IP`, `REQUEST_LIMIT_IP_WINDOW_MINUTES` (0 = off). Patient row locked `FOR UPDATE` so one number's requests serialize. Honeypot kept. | Clinic-wide caps are soft under heavy concurrency and a determined attacker can still fill ~60 slots/hour (staff decline in bulk is not built). A capped number gets 429 instead of 201, which reveals "this number already has 3 pending requests"; the message is the same for every number. No per-date cap: the overlap rule already bounds a day to its capacity. |
+| H2 | `db/reset.ts assertSeedAllowed` (also called first in `scripts/db-reset.ts`): seeding a non-local host requires `SEED_STAFF_PASSWORD` set, ≠ default, ≥ 12 chars. Remote resets never print the password. `.env.example` leaves it blank. `db:local` still writes the default into `.env.local` for local use (so a remote reset must pass its own password explicitly). | The default stays in `db/seed.ts` and `.env.local` for local development only. |
+| M1 | `safeNextPath` resolves against a dummy origin, checks the normalized path (single leading `/`, no `\`, control chars, `%2f`/`%5c`, `/login`, `/api`) and returns the normalized form. The review's bypasses plus variants (`/%2E//`, `/././/`, `/a/..//`, `/%5c`, `/./api/…`, `/a/../login`) are in `tests/unit/session.test.ts`. | — |
+| M2 | `matchOrCreatePatient` returns the matched record; when the typed name/email/birthdate differ, `patient_note` starts with `[Details differ from patient record: name "…", email "…", birthdate …. Verify before confirming.]` (typed values sanitized to one line). `/requests` and `/appointments/[id]` show it as an amber warning; the patient history highlights it. Record never overwritten; HTTP response unchanged. | Staff still have to act on the flag; the confirmation email still goes to the address on file. |
+| M3 | `lib/db-config.ts sslOptions`: `NODE_ENV=production` + non-local host → TLS with `DATABASE_CA_CERT` and `rejectUnauthorized: true`, else the pool throws (fail closed). `\n`-escaped and quoted PEM accepted. Scripts/tests outside production keep the old behaviour. See `docs/DEPLOY.md`. | **Deploy blocker by design:** set `DATABASE_CA_CERT` on Vercel before deploying, or every DB call returns 500. |
+| M4 | The hosted env file was renamed to `.env.hosted` (Next never auto-loads it); `.gitignore` `.env*` still covers it (`git check-ignore` confirmed). `npm run db:local` now warns if `.env.production(.local)` exists. | — |
+| L1 | `next.config.ts`: CSP (`default-src 'self'`, `script-src 'self' 'unsafe-inline'` (+`'unsafe-eval'` in dev), `frame-ancestors 'none'`, `object-src 'none'`, `base-uri`/`form-action 'self'`), `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy`, COOP, HSTS (production), `poweredByHeader: false`. Zod set to `jitless` so its `new Function` probe no longer trips the CSP. | `'unsafe-inline'` scripts (App Router inline bootstrap; nonces would force dynamic middleware on every page). |
+| L2 | `verifySession` requires `exp`, `iat`, `sub` and `maxTokenAge` = 8 h, so no-`exp` and far-future tokens are refused. | Stateless JWT kept (no table): logout clears the cookie only, and a stolen cookie works until it expires (≤ 8 h). To log everyone out, rotate `SESSION_SECRET` on Vercel and redeploy. |
+| L3 | `clientIp`: on Vercel `x-vercel-forwarded-for` → `x-real-ip` → first XFF hop (platform-set); elsewhere the **last** XFF hop, Vercel headers ignored. No-IP requests skip the IP limiter instead of sharing an `unknown` bucket. Second login bucket: 50 failures / 15 min per email from any IP. | Memory is per instance (cold starts reset). The per-email bucket lets someone lock the staff login for 15 min with 50 bad tries (accepted: bcrypt + strong password are the real brake). Without a proxy, a client can still choose its XFF value off Vercel. |
+| L4 | `safeErrorSummary`: mysql2 errors log only `code`/`errno`/`sqlState`/`sqlMessage` cut before the first quoted value; never `err.sql` or the error object. | — |
+| I1 | `readJsonBody` (lib/http): non-empty bodies must be `application/json` (415); used by every JSON route. Empty bodies still allowed where the route has no input (logout, decline). | — |
+| I2 | — | Accepted: every staff page calls `requireStaffPage()` (verified); keep that rule. |
+| I3 | Bodies over 64 KB → 413 before parsing. | — |
+| I4 | Dummy hash is a hard-coded cost-12 constant. | — |
+| I5 | — | Accepted: staff-only, `no-store`, and `Referrer-Policy` keeps `?q=` on our origin. Mention in the paper's privacy section. |
+| I6 | One-line notice under the consent box (use, demo deletion after the defense, how to see/correct/delete via the clinic phone). | Name the controller in the paper. |
+| I7 | `CRON_SECRET` shorter than 32 chars → 500 `cron_not_configured`. | `__Host-` cookie prefix not adopted: the cookie is already `HttpOnly; Secure; SameSite=Lax; Path=/` with no `Domain`, and `vercel.app` is on the Public Suffix List, so sibling sites can't plant it; renaming would also break existing sessions/tests. |
+| I8 | — | Accepted: postcss inside next runs at build time on our own CSS; braces is dev-only. Revisit with the next `next@15` patch. |
+| I9 | `stringifyObjects: true` on the pool and script connections. | — |
+| I10 | — | Accepted: dev-only logging; never run a dev server against the hosted DB (M4). |
 
 ---
 
