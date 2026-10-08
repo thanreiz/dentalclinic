@@ -213,3 +213,35 @@ Semantics:
 - **`replacedById`**: the row whose `rescheduled_from_id` = this id (link "Rescheduled to #…"); `rescheduledFromId` links back.
 - **Patient search**: `q` matches `full_name LIKE %q%` OR (if `q` has ≥ 3 digits) the normalized digits as a partial contact match (`+63 917-555` → `0917555`). Empty `q` lists everyone. Sorted by name.
 - **Reports**: only `attended`/`cancelled`/`no-show` rows in the month count; `cancelled` excludes reschedules. Groups with no such rows are omitted. Repeat no-shows are all-time (not month-scoped), `HAVING COUNT(*) >= :threshold`, most no-shows first. Default threshold: `defaultNoShowThreshold()` from `lib/rules`.
+
+## API (Backend-B) — `app/api/**`
+
+All bodies/responses are JSON. **Every error** is `{ error: <code>, message: <human text>, ...extra }` — show `message` to users; branch on `error`. Validation errors: 400 `{ error: 'validation_error', message, issues: { field: msg } }`. Unexpected errors: 500 `{ error: 'server_error' }` (details only in server logs). Staff routes return 401 `{ error: 'unauthorized' }` without a session (middleware, and again in the handler via `requireStaffApi(req)`).
+
+| Method + path | Access | Body / query | Success | Errors |
+| --- | --- | --- | --- | --- |
+| `GET /api/slots` | public | `?date&serviceId&dentistId=<id>\|any[&excludeAppointmentId]` | `{ slots: [{ start, end, dentistIds }] }` | 400 `date_in_past`, `date_out_of_range` (public: today..+60 days; staff session: ..+366), `unknown_service`, `unknown_dentist`; 401 if `excludeAppointmentId` without session |
+| `POST /api/requests` | public | `bookingRequestSchema` (+ `website` honeypot) | 201 `{ ok: true }` (also for honeypot hits; nothing saved) | 400; 409 `slot_taken` `{ message: 'That time was just taken. Please pick another slot.', slots }` |
+| `POST /api/auth/login` | public | `{ email, password }` | `{ ok, user }` + cookie | 401 `invalid_credentials`; 429 `too_many_attempts` (+ `Retry-After`) after 10 failures / 15 min per IP+email |
+| `POST /api/appointments` | staff | `staffBookingSchema` | 201 `{ ok, appointmentId, patientId }` | 409 `in_past` \| `outside_hours` \| `dentist_conflict` \| `chair_conflict` (+`conflictIds`) \| `duplicate_contact` (+`existingPatientId`); 400 `unknown_patient\|unknown_chair\|unknown_dentist\|unknown_service` |
+| `POST /api/appointments/[id]/confirm` | staff | `{ chairId }` | `{ ok: true, emailSent, emailError?: 'Confirmed, but the email could not be sent.', emailSkipped?: 'no_email' }` | 409 `slot_unavailable` `{ message: 'Slot no longer free', reason: in_past\|outside_hours\|dentist_conflict\|chair_conflict, slots, freeChairs: [{chairId, chairName}] }`; 409 `invalid_transition`; 404; 400 `unknown_chair` |
+| `POST /api/appointments/[id]/decline` | staff | none | `{ ok: true }` | 409 `invalid_transition`; 404 |
+| `POST /api/appointments/[id]/reschedule` | staff | `{ date, start, dentistId, chairId }` | `{ ok: true, newId }` | 409 `invalid_transition` (not scheduled) \| `in_past` \| `outside_hours` \| `dentist_conflict` \| `chair_conflict`; 404 |
+| `POST /api/appointments/[id]/status` | staff | `{ status: attended\|cancelled\|no-show }` | `{ ok: true, status }` | 409 `invalid_transition` `{ message, status: <current> }`; 404 |
+| `PATCH /api/appointments/[id]/note` | staff | `{ dentistNote }` (≤ 2000; `''`/null clears) | `{ ok: true, dentistNote }` | 404 |
+| `GET /api/chairs/free` | staff | `?date&start&(end\|serviceId)[&excludeId]` | `{ chairs: [{ chairId, chairName }] }` | 400 |
+| `GET /api/patients` | staff | `?q=&page=` | `{ rows: PatientListItem[], total, page, pageSize: 20 }` | |
+| `PATCH /api/patients/[id]` | staff | any of `{ fullName, contactNumber, email, birthdate }` | `{ ok: true, patient: PatientProfile }` | 409 `duplicate_contact` 'Contact number already used by another patient'; 404 |
+| `GET /api/setup/[entity]` | staff | `entity` ∈ dentists, schedules, services, chairs; schedules accept `?dentistId=` | `{ items }` (dentists: `DentistWithSchedules[]`; services: `ServiceItem[]`; chairs: `ChairItem[]`; schedules: `{scheduleId, dentistId, dayOfWeek, startTime, endTime}[]`) | 404 unknown entity |
+| `POST /api/setup/[entity]` | staff | dentists `{ dentistName, schedules? \| week? }`; schedules `{ dentistId, dayOfWeek, startTime, endTime }`; services `{ serviceName, durationMinutes }`; chairs `{ chairName }` | 201 `{ ok: true, id }` | 409 `duplicate_name` / `duplicate_day`; 400 `check_violation`, `unknown_dentist` |
+| `PATCH /api/setup/[entity]` | staff | dentists `{ id, dentistName?, schedules? \| week? }` (week given = replace whole week); schedules `{ id, startTime, endTime }` **or** replace a week `{ dentistId, week }` / `{ dentistId, schedules }`; services `{ id, serviceName?, durationMinutes? }`; chairs `{ id, chairName }` | `{ ok: true }` | 404; 409 duplicates |
+| `DELETE /api/setup/[entity]` | staff | `{ id }` or `?id=` | `{ ok: true }` | 409 `in_use` 'In use by existing appointments'; 404 |
+| `GET /api/cron/reminders` | `Authorization: Bearer $CRON_SECRET` | none | `{ sent, failed, date, skipped?: 'already_running' }` | 401 `unauthorized`; 500 `cron_not_configured` (CRON_SECRET unset) |
+
+Week shape (setup): `week` = exactly 7 entries, index 0 = Sunday, each `null` (off) or `{ startTime: 'HH:MM', endTime: 'HH:MM' }`. `schedules` = `[{ dayOfWeek, startTime, endTime }]`, omitted days off. If both are sent, `schedules` wins. Changing hours never moves existing appointments.
+
+Confirm flow for the UI: call `GET /api/chairs/free?date&start&end&excludeId=<id>` to fill the chair picker; on 409 `slot_unavailable` show "Slot no longer free" with `freeChairs` (pick another chair) or decline. Reschedule flow: `GET /api/slots?...&dentistId=<id>&excludeAppointmentId=<id>` (staff) then `GET /api/chairs/free?...&excludeId=<id>`.
+
+Services (`lib/services/*`, server-only) if a Server Action or page needs them: `getSlots`, `createOnlineRequest`, `createStaffBooking`, `confirmAppointment`, `declineAppointment`, `rescheduleAppointment`, `setAppointmentStatus`, `setDentistNote`, `updatePatient`, setup CRUD, `runReminders`. They throw `ServiceError(status, code, message, extra)`; `errorResponse(err)` maps any error to the JSON above.
+
+Mail (`lib/mail.ts`): `sendConfirmation`, `sendReminder` never throw (`{ ok } | { ok: false, error }`). With `SMTP_HOST`/`SMTP_USER`/`SMTP_PASS` unset and `NODE_ENV !== 'production'`, emails are printed to the server console with a `[mail:dev]` prefix and count as sent. In production, unset SMTP = failure.
