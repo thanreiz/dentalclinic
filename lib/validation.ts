@@ -136,11 +136,14 @@ export const bookingRequestSchema = z.object({
 export type BookingRequestInput = z.input<typeof bookingRequestSchema>;
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;
 
-/** True when the honeypot field `website` is filled: drop the request without saving. */
+/**
+ * True when the honeypot field `website` is filled: drop the request without saving.
+ * PRD: "any submission that fills it is dropped", so whitespace-only counts as filled (N5).
+ */
 export function honeypotTripped(body: unknown): boolean {
   if (!body || typeof body !== 'object') return false;
   const w = (body as Record<string, unknown>).website;
-  return typeof w === 'string' ? w.trim() !== '' : w !== undefined && w !== null;
+  return typeof w === 'string' ? w !== '' : w !== undefined && w !== null;
 }
 
 // ---------- patients ----------

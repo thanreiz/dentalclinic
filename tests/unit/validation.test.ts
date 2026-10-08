@@ -61,6 +61,9 @@ describe('bookingRequestSchema (POST /api/requests)', () => {
     expect(honeypotTripped({ ...validRequest, website: '' })).toBe(false);
     expect(honeypotTripped(validRequest)).toBe(false);
     expect(honeypotTripped({ ...validRequest, website: 'http://spam' })).toBe(true);
+    // PRD: any submission that fills it is dropped -> whitespace-only counts as filled (QA N5)
+    expect(honeypotTripped({ ...validRequest, website: ' ' })).toBe(true);
+    expect(honeypotTripped({ ...validRequest, website: '\t\n' })).toBe(true);
   });
 });
 
