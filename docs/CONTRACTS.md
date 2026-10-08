@@ -174,7 +174,7 @@ Server-only (they import `lib/db`). Call them from staff Server Components (`exp
 
 | Module | Function | Returns |
 | --- | --- | --- |
-| `dashboard.ts` | `getDaySchedule(date, now?)` | `DaySchedule` = `{ date, dayOfWeek, dentists: DentistDay[], chairs: ChairDay[], unassigned: ApptBlock[], gridStart, gridEnd, slotDurationMinutes }` |
+| `dashboard.ts` | `getDaySchedule(date, now?)` | `DaySchedule` = `{ date, dayOfWeek, dentists: DentistDay[], chairs: ChairDay[], unassigned: ApptBlock[], gridStart, gridEnd, slotDurationMinutes, slotServiceId }` (`slotServiceId` = the shortest service, whose duration is `slotDurationMinutes`; null when there are no services) |
 | | `getDashboardSummary(date = today)` | `{ todayTotal, pendingCount, tomorrowCount }` |
 | `requests.ts` | `listPendingRequests(now?)` | `PendingRequest[]`, oldest `requestedAt` first |
 | | `countPending()` | `number` (nav badge) |
