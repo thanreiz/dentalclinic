@@ -1,0 +1,2 @@
+Small dental clinics still book on paper. Not this one.
+Patients request a visit online with no account, staff confirm it onto a schedule that refuses double bookings, and the no-show report writes itself. Built for a small clinic, by a BSCS Information Management team at PLM.

@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>G4 Dental Clinic — brag</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="assets/amp.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #f6f8f9; }
+      body {
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        color: #0f172a;
+        -webkit-font-smoothing: antialiased;
+        font-feature-settings: "cv11", "ss01";
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #f6f8f9;
+        --amp: 0.2;
+      }
+
+      /* ---------- persistent background ---------- */
+      #bg { position: absolute; inset: 0; pointer-events: none; }
+      #bg-grid {
+        position: absolute; inset: 0; opacity: 0.55;
+        background-image:
+          linear-gradient(to right, rgba(15, 118, 110, 0.10) 1px, rgba(15, 118, 110, 0) 1px),
+          linear-gradient(to bottom, rgba(15, 118, 110, 0.10) 1px, rgba(15, 118, 110, 0) 1px);
+        background-size: 120px 120px;
+      }
+      #bg-glow {
+        position: absolute; left: -420px; top: -520px; width: 1500px; height: 1500px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(94, 234, 212, 0.55) 0%, rgba(94, 234, 212, 0.18) 38%, rgba(246, 248, 249, 0) 70%);
+        transform: scale(calc(0.92 + var(--amp) * 0.22));
+        opacity: calc(0.6 + var(--amp) * 0.4);
+      }
+      #bg-glow2 {
+        position: absolute; right: -520px; bottom: -640px; width: 1400px; height: 1400px; border-radius: 50%;
+        background: radial-gradient(circle, rgba(204, 251, 241, 0.9) 0%, rgba(204, 251, 241, 0.3) 40%, rgba(246, 248, 249, 0) 70%);
+      }
+      #bg-rule { position: absolute; left: 160px; right: 160px; top: 128px; height: 3px; background: #0f766e; opacity: 0.35; transform-origin: left center; }
+      .mark-corner { position: absolute; width: 36px; height: 36px; border: 3px solid #0f766e; opacity: 0.35; }
+      #mk1 { left: 88px; top: 88px; border-right: 0; border-bottom: 0; }
+      #mk2 { right: 88px; top: 88px; border-left: 0; border-bottom: 0; }
+      #mk3 { left: 88px; bottom: 88px; border-right: 0; border-top: 0; }
+      #mk4 { right: 88px; bottom: 88px; border-left: 0; border-top: 0; }
+
+      /* ---------- scenes ---------- */
+      .scene { position: absolute; inset: 0; overflow: hidden; }
+      .inner { position: absolute; inset: 0; }
+
+      /* brand lockup */
+      .lockup { position: absolute; display: flex; align-items: center; gap: 18px; }
+      .mark { width: 64px; height: 64px; border-radius: 16px; background: #0f766e; display: grid; place-items: center; color: #fff; flex: 0 0 auto; }
+      .mark svg { width: 38px; height: 38px; }
+      .lockup .name { font-size: 30px; font-weight: 700; letter-spacing: -0.01em; color: #0f172a; }
+      .lockup .sub { font-size: 22px; color: #475569; margin-top: 2px; }
+
+      /* ---------- S1 hook ---------- */
+      #s1-paper {
+        position: absolute; left: 1120px; top: 180px; width: 640px; height: 760px; border-radius: 18px;
+        background: #ffffff; border: 3px solid #e2e8f0;
+        background-image: repeating-linear-gradient(to bottom, rgba(226, 232, 240, 0) 0 54px, #e2e8f0 54px 57px);
+        box-shadow: 0 30px 60px rgba(15, 23, 42, 0.08);
+      }
+      #s1-paper-margin { position: absolute; left: 72px; top: 0; bottom: 0; width: 3px; background: #fecaca; }
+      .s1-scribble { position: absolute; left: 96px; height: 14px; border-radius: 7px; background: #cbd5e1; }
+      #s1-h1 { position: absolute; left: 160px; top: 380px; width: 900px; font-size: 92px; font-weight: 700; line-height: 1.05; letter-spacing: -0.035em; color: #0f172a; }
+      #s1-h2 { position: absolute; left: 160px; top: 700px; font-size: 92px; font-weight: 700; line-height: 1.05; letter-spacing: -0.035em; color: #0f766e; }
+      #s1-h2 .dot { display: inline-block; width: 22px; height: 22px; border-radius: 50%; background: #0f766e; margin-left: 8px; vertical-align: 8px; }
+
+      /* ---------- phone (S2) ---------- */
+      #phone {
+        position: absolute; left: 236px; top: 46px; width: 520px; height: 990px; border-radius: 48px;
+        background: #0f172a; padding: 16px; box-shadow: 0 40px 80px rgba(15, 23, 42, 0.22);
+      }
+      #phone-screen { position: relative; width: 100%; height: 100%; border-radius: 34px; background: #f6f8f9; overflow: hidden; }
+      .ph-head { background: #fff; border-bottom: 2px solid #e2e8f0; padding: 22px 24px 18px; display: flex; align-items: center; gap: 14px; }
+      .ph-head .mark { width: 50px; height: 50px; border-radius: 12px; }
+      .ph-head .mark svg { width: 30px; height: 30px; }
+      .ph-head .t { font-size: 22px; font-weight: 700; }
+      .ph-head .s { font-size: 17px; color: #475569; margin-top: 2px; }
+      .ph-body { padding: 18px 22px 0; }
+      .steps { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+      .step .bar { height: 6px; border-radius: 3px; background: #e2e8f0; }
+      .step.done .bar, .step.cur .bar { background: #0f766e; }
+      .step .lab { font-size: 15px; color: #5f6f85; margin-top: 8px; }
+      .step.cur .lab { color: #0f766e; font-weight: 700; }
+      .ph-title { font-size: 26px; font-weight: 700; margin-top: 22px; letter-spacing: -0.01em; }
+      .ph-sub { font-size: 18px; color: #475569; margin-top: 6px; }
+      .cal { margin-top: 16px; background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; padding: 14px 14px 12px; }
+      .cal-head { display: flex; justify-content: space-between; align-items: center; font-size: 18px; font-weight: 700; padding: 0 6px 10px; }
+      .cal-head .chev { color: #637389; font-size: 20px; }
+      .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+      .cal-grid .d { height: 44px; display: grid; place-items: center; font-size: 17px; border-radius: 10px; }
+      .cal-grid .dow { height: 22px; font-size: 14px; color: #5f6f85; }
+      .cal-grid .off { color: #687182; }
+      .cal-grid .on { background: #fff; border: 2px solid #e2e8f0; color: #0f172a; }
+      .cal-grid .sel { background: #0f766e; color: #fff; font-weight: 700; }
+      .ph-open { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 18px; font-weight: 700; }
+      .ph-open svg { width: 20px; height: 20px; }
+      .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+      .chip { height: 58px; display: grid; place-items: center; background: #fff; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 19px; font-weight: 700; color: #0f172a; }
+      #chip-1000 { background: #ffffff; color: #0f172a; border-color: #e2e8f0; }
+      .ph-btns { display: grid; grid-template-columns: 1fr 1.6fr; gap: 12px; margin-top: 18px; }
+      .btn { height: 58px; display: grid; place-items: center; border-radius: 12px; font-size: 20px; font-weight: 700; }
+      .btn.ghost { background: #fff; border: 2px solid #e2e8f0; color: #0f172a; }
+      .btn.primary { background: #0f766e; color: #fff; }
+      .ph-foot { text-align: center; font-size: 15px; color: #5f6f85; margin-top: 14px; line-height: 1.35; padding: 0 10px; }
+      .tap { position: absolute; width: 90px; height: 90px; border-radius: 50%; border: 5px solid #0f766e; background: rgba(15, 118, 110, 0.18); pointer-events: none; }
+      #tap-1 { left: 380px; top: 619px; }
+      #tap-2 { left: 391px; top: 859px; }
+
+      /* side labels (S2, S3, S4, S5) */
+      .labels { position: absolute; display: flex; flex-direction: column; gap: 26px; }
+      .label-title { font-size: 72px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.05; color: #0f172a; }
+      .label-line { display: flex; align-items: center; gap: 18px; font-size: 36px; color: #334155; line-height: 1.25; }
+      .label-line .tick { width: 14px; height: 14px; border-radius: 50%; background: #0f766e; flex: 0 0 auto; }
+      .label-line.teal { color: #0f766e; font-weight: 700; }
+      .label-eyebrow { font-size: 22px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #0f766e; }
+
+      /* ---------- app frame (S3, S4, S5) ---------- */
+      .app { position: absolute; background: #fff; border: 3px solid #e2e8f0; border-radius: 22px; overflow: hidden; box-shadow: 0 34px 70px rgba(15, 23, 42, 0.14); }
+      .app-top { height: 74px; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; border-bottom: 2px solid #e2e8f0; background: #fff; }
+      .app-top .brand { display: flex; align-items: center; gap: 12px; font-size: 21px; font-weight: 700; }
+      .app-top .brand .mark { width: 42px; height: 42px; border-radius: 11px; }
+      .app-top .brand .mark svg { width: 25px; height: 25px; }
+      .app-top .who { font-size: 18px; color: #475569; display: flex; gap: 16px; align-items: center; }
+      .app-top .who .out { border: 2px solid #e2e8f0; border-radius: 10px; padding: 8px 14px; color: #0f172a; font-weight: 700; }
+      .app-body { display: grid; grid-template-columns: 236px 1fr; height: calc(100% - 74px); background: #f6f8f9; }
+      .side { padding: 22px 16px; display: flex; flex-direction: column; gap: 6px; background: #fff; border-right: 2px solid #e2e8f0; }
+      .nav { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 10px; font-size: 19px; color: #334155; }
+      .nav.cur { background: #f0fdfa; color: #0f766e; font-weight: 700; }
+      .nav .cnt { background: #fef3c7; color: #78350f; font-size: 15px; font-weight: 700; border-radius: 999px; padding: 2px 10px; }
+      .nav.cur .cnt { background: #0f766e; color: #fff; }
+      .main { padding: 26px 30px; overflow: hidden; position: relative; }
+      .h1 { font-size: 34px; font-weight: 700; letter-spacing: -0.02em; display: flex; align-items: center; gap: 14px; }
+      .muted { color: #475569; font-size: 19px; margin-top: 6px; }
+      .crumb { font-size: 18px; color: #475569; margin-bottom: 10px; }
+      .badge { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 5px 14px; font-size: 17px; font-weight: 700; box-shadow: inset 0 0 0 2px transparent; }
+      .badge .dot { width: 9px; height: 9px; border-radius: 50%; }
+      .badge.pending { background: #fef3c7; color: #78350f; box-shadow: inset 0 0 0 2px #fcd34d; }
+      .badge.pending .dot { background: #f59e0b; }
+      .badge.scheduled { background: #dbeafe; color: #1e40af; box-shadow: inset 0 0 0 2px #93c5fd; }
+      .badge.scheduled .dot { background: #2563eb; }
+      .badge.gray { background: #f1f5f9; color: #334155; box-shadow: inset 0 0 0 2px #cbd5e1; }
+      .card { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; }
+      .card .ch { padding: 16px 22px; border-bottom: 2px solid #e2e8f0; font-size: 22px; font-weight: 700; }
+      .card .ch .sub { font-size: 17px; color: #475569; font-weight: 400; margin-top: 4px; }
+      .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 24px; padding: 18px 22px; }
+      .kv .k { font-size: 16px; color: #64748b; }
+      .kv .v { font-size: 20px; margin-top: 4px; color: #0f172a; }
+      .kv .v .dim { color: #6c7786; }
+      .kv .v.teal { color: #0f766e; font-weight: 700; }
+
+      /* S3 layout */
+      #s3-app { left: 540px; top: 56px; width: 1320px; height: 968px; }
+      #s3-grid { display: grid; grid-template-columns: 1fr 380px; gap: 22px; margin-top: 20px; align-items: start; }
+      .chairs { display: flex; gap: 10px; padding: 0 22px; }
+      .chairbtn { border: 2px solid #e2e8f0; border-radius: 12px; padding: 10px 18px; font-size: 19px; font-weight: 700; background: #fff; position: relative; }
+      #chair-1-on { position: absolute; inset: -2px; border-radius: 12px; border: 3px solid #0f766e; background: #f0fdfa; display: grid; place-items: center; font-size: 19px; font-weight: 700; color: #0f766e; opacity: 0; }
+      .confirm { margin: 18px 22px 0; height: 60px; border-radius: 12px; display: grid; place-items: center; font-size: 21px; font-weight: 700; color: #fff; background: #0f766e; position: relative; }
+      #confirm-dim { position: absolute; inset: 0; border-radius: 12px; background: #4f8f86; display: grid; place-items: center; color: #fff; opacity: 1; }
+      .decline { margin: 12px 22px 22px; height: 56px; border-radius: 12px; border: 2px solid #e2e8f0; display: grid; place-items: center; font-size: 20px; font-weight: 700; background: #fff; }
+      #badge-wrap { position: relative; display: inline-block; height: 34px; width: 128px; }
+      #badge-wrap .badge { position: absolute; left: 0; top: 0; white-space: nowrap; }
+      #badge-sched { opacity: 0; }
+      #chair-val { position: relative; height: 26px; }
+      #chair-val span { position: absolute; left: 0; top: 0; white-space: nowrap; }
+      #chair-val-set { color: #0f172a; opacity: 0; }
+      #mail-line {
+        position: absolute; left: 30px; right: 30px; bottom: 26px; height: 72px; border-radius: 14px;
+        background: #ecfdf5; border: 2px solid #6ee7b7; display: flex; align-items: center; gap: 16px; padding: 0 22px;
+        font-size: 22px; color: #065f46; opacity: 0;
+      }
+      #mail-line svg { width: 28px; height: 28px; flex: 0 0 auto; }
+      #mail-line b { font-weight: 700; }
+      #cursor { position: absolute; left: 0; top: 0; width: 34px; height: 44px; pointer-events: none; opacity: 0; }
+      #cursor svg { width: 34px; height: 44px; filter: drop-shadow(0 4px 8px rgba(15, 23, 42, 0.35)); }
+
+      /* S4 layout */
+      #s4-app { left: 60px; top: 56px; width: 1800px; height: 968px; }
+      .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 18px; }
+      .stat { background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 14px 20px; }
+      .stat.warn { border-color: #fcd34d; }
+      .stat .l { font-size: 17px; color: #475569; }
+      .stat .n { font-size: 36px; font-weight: 700; margin-top: 2px; }
+      .stat.warn .n { color: #b45309; }
+      .stat .m { font-size: 15px; color: #64748b; margin-top: 2px; }
+      .daybar { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
+      .datebox { display: flex; align-items: center; gap: 8px; }
+      .datebox .b { border: 2px solid #e2e8f0; background: #fff; border-radius: 10px; height: 44px; display: grid; place-items: center; padding: 0 14px; font-size: 18px; font-weight: 700; }
+      .datebox .b.w { width: 150px; }
+      .seg { display: flex; border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; }
+      .seg div { padding: 10px 18px; font-size: 18px; font-weight: 700; }
+      .seg .on { background: #0f766e; color: #fff; }
+      #s4-grid { display: grid; grid-template-columns: 1fr 300px; gap: 18px; margin-top: 16px; }
+      .grid { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; overflow: hidden; }
+      .grid-head { display: grid; grid-template-columns: 110px 1fr 1fr; border-bottom: 2px solid #e2e8f0; }
+      .grid-head .col { padding: 14px 18px; font-size: 19px; font-weight: 700; border-left: 2px solid #e2e8f0; }
+      .grid-head .col .hrs { font-size: 15px; color: #475569; font-weight: 400; margin-top: 2px; }
+      .grid-rows { position: relative; display: grid; grid-template-columns: 110px 1fr 1fr; }
+      .gcell { height: 78px; border-bottom: 1px solid #e2e8f0; border-left: 2px solid #e2e8f0; position: relative; }
+      .gtime { height: 78px; border-bottom: 1px solid #e2e8f0; font-size: 15px; color: #64748b; text-align: right; padding: 6px 10px 0 0; }
+      .gcell.half::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed #e2e8f0; }
+      #blk-new {
+        position: absolute; left: 118px; top: 81px; width: calc(50% - 120px); height: 150px;
+        background: #eff6ff; border: 2px solid #3b82f6; border-left: 6px solid #2563eb; border-radius: 10px; padding: 10px 14px; opacity: 0;
+      }
+      #blk-new .who { font-size: 19px; font-weight: 700; color: #1e3a8a; display: flex; justify-content: space-between; align-items: center; }
+      #blk-new .who .tag { background: #dbeafe; color: #1e40af; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; border-radius: 6px; padding: 3px 8px; }
+      #blk-new .what { font-size: 17px; color: #1e3a8a; margin-top: 4px; }
+      .legend { display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-top: 2px solid #e2e8f0; font-size: 15px; color: #475569; }
+      .legend .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-weight: 700; font-size: 14px; }
+      .legend .pill i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+      .open { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; padding: 16px 18px; }
+      .open .t { font-size: 19px; font-weight: 700; }
+      .open .s { font-size: 14px; color: #475569; margin-top: 2px; line-height: 1.3; }
+      .open .who { display: flex; justify-content: space-between; align-items: baseline; margin-top: 16px; font-size: 17px; font-weight: 700; }
+      .open .who span { font-size: 14px; color: #64748b; font-weight: 400; }
+      .ochips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+      .ochip { height: 36px; display: grid; place-items: center; background: #f0fdfa; border: 2px solid #99f6e4; border-radius: 8px; font-size: 14px; font-weight: 700; color: #0f766e; }
+      .ochip.gone { background: #f1f5f9; border-color: #e2e8f0; color: #677180; text-decoration: line-through; }
+
+      /* S5 layout */
+      #s5-app { left: 60px; top: 56px; width: 1800px; height: 968px; }
+      .rstats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 18px; }
+      .rstat { background: #fff; border: 2px solid #e2e8f0; border-radius: 14px; padding: 16px 22px; opacity: 0; }
+      .rstat .l { font-size: 18px; color: #475569; }
+      .rstat .n { font-size: 46px; font-weight: 700; margin-top: 2px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+      .rstat .n.g { color: #166534; }
+      .rstat .n.r { color: #b91c1c; }
+      .rstat .m { font-size: 15px; color: #64748b; margin-top: 2px; }
+      .rbar { height: 8px; border-radius: 4px; background: #e2e8f0; margin-top: 10px; position: relative; overflow: hidden; }
+      .rbar i { position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: #f59e0b; border-radius: 4px; transform-origin: left center; display: block; }
+      .tbl { background: #fff; border: 2px solid #e2e8f0; border-radius: 16px; margin-top: 18px; overflow: hidden; }
+      .tbl .ch { padding: 14px 22px; font-size: 21px; font-weight: 700; border-bottom: 2px solid #e2e8f0; }
+      .row { display: grid; grid-template-columns: 2.2fr 1fr 1fr 1fr 1.6fr; padding: 12px 22px; font-size: 19px; border-bottom: 1px solid #e2e8f0; align-items: center; }
+      .row.hd { font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; color: #475569; background: #f8fafc; font-weight: 700; }
+      .row .num { text-align: right; font-variant-numeric: tabular-nums; }
+      .row.tot { font-weight: 700; background: #f8fafc; border-bottom: 0; }
+      .rate { display: flex; align-items: center; justify-content: flex-end; gap: 12px; font-weight: 700; }
+      .rate .bar { width: 110px; height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; }
+      .rate .bar i { display: block; height: 100%; border-radius: 4px; }
+      .row.data { opacity: 0; }
+
+      /* S6 outro */
+      #s6-lock { position: absolute; left: 0; right: 0; top: 330px; display: flex; flex-direction: column; align-items: center; gap: 26px; }
+      #s6-mark { width: 148px; height: 148px; border-radius: 36px; background: #0f766e; display: grid; place-items: center; color: #fff;
+        box-shadow: 0 0 calc(24px + var(--amp) * 60px) rgba(13, 148, 136, calc(0.22 + var(--amp) * 0.4)); }
+      #s6-mark svg { width: 88px; height: 88px; }
+      #s6-name { font-size: 76px; font-weight: 700; letter-spacing: -0.03em; color: #0f172a; }
+      #s6-tag { font-size: 42px; color: #0f766e; font-weight: 700; letter-spacing: -0.01em; }
+      #s6-small { font-size: 28px; color: #475569; }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-wuwa" id="root" data-composition-id="main" data-start="0" data-duration="21.5" data-width="1920" data-height="1080">
+      <!-- persistent background -->
+      <div data-hf-studio-original-inline-translate="" style="translate: 0px -4.224px" data-hf-id="hf-5qeh" id="bg" data-layout-ignore="">
+        <div data-hf-id="hf-isbq" id="bg-glow"></div>
+        <div data-hf-id="hf-0fgo" id="bg-glow2"></div>
+        <div data-hf-id="hf-r3kh" id="bg-grid"></div>
+        <div data-hf-id="hf-g3wz" id="bg-rule"></div>
+        <div data-hf-id="hf-73b2" id="mk1" class="mark-corner"></div>
+        <div data-hf-id="hf-3571" id="mk2" class="mark-corner"></div>
+        <div data-hf-id="hf-2dj8" id="mk3" class="mark-corner"></div>
+        <div data-hf-id="hf-pv0r" id="mk4" class="mark-corner"></div>
+      </div>
+
+      <!-- ================= S1: hook ================= -->
+      <section data-hf-id="hf-a8ph" id="s1" class="clip scene" data-start="0" data-duration="4.73" data-track-index="1">
+        <div data-hf-id="hf-efo9" class="inner" id="s1-inner">
+          <div data-hf-id="hf-jrg7" class="lockup" id="s1-lock" style="left: 160px; top: 160px">
+            <div data-hf-id="hf-9gvv" class="mark"><svg data-hf-id="hf-c53f" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-0kr5" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div>
+            <div data-hf-id="hf-yeow"><div data-hf-id="hf-2ri7" class="name">G4 Dental Clinic</div><div data-hf-id="hf-yhxe" class="sub">Appointment scheduling and attendance tracking</div></div>
+          </div>
+          <div data-hf-id="hf-1fw9" id="s1-paper" data-layout-ignore="">
+            <div data-hf-id="hf-ztvf" id="s1-paper-margin"></div>
+            <div data-hf-id="hf-xlet" class="s1-scribble" style="top: 76px; width: 300px"></div>
+            <div data-hf-id="hf-zur4" class="s1-scribble" style="top: 133px; width: 420px"></div>
+            <div data-hf-id="hf-p5c6" class="s1-scribble" style="top: 190px; width: 250px"></div>
+            <div data-hf-id="hf-355r" class="s1-scribble" style="top: 247px; width: 380px"></div>
+            <div data-hf-id="hf-uty8" class="s1-scribble" style="top: 304px; width: 330px"></div>
+            <div data-hf-id="hf-hs0p" class="s1-scribble" style="top: 361px; width: 440px"></div>
+            <div data-hf-id="hf-8aon" class="s1-scribble" style="top: 418px; width: 210px"></div>
+            <div data-hf-id="hf-v6ys" class="s1-scribble" style="top: 475px; width: 360px"></div>
+          </div>
+          <h1 data-hf-id="hf-p3tv" id="s1-h1">Small dental clinics still book on paper.</h1>
+          <h2 data-hf-id="hf-wsca" id="s1-h2">Not this one.</h2>
+        </div>
+      </section>
+
+      <!-- ================= S2: patient books on a phone ================= -->
+      <section data-hf-id="hf-7k5c" id="s2" class="clip scene" data-start="4.23" data-duration="5.27" data-track-index="2">
+        <div data-hf-id="hf-0mm6" class="inner" id="s2-inner">
+          <div data-hf-id="hf-5iuv" id="phone">
+            <div data-hf-id="hf-ojuc" id="phone-screen">
+              <div data-hf-id="hf-hzzb" class="ph-head">
+                <div data-hf-id="hf-73az" class="mark"><svg data-hf-id="hf-f417" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-798l" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div>
+                <div data-hf-id="hf-y7yw"><div data-hf-id="hf-dq1a" class="t">G4 Dental Clinic</div><div data-hf-id="hf-pbft" class="s">Request an appointment online</div></div>
+              </div>
+              <div data-hf-id="hf-pb59" class="ph-body">
+                <div data-hf-id="hf-70xd" class="steps">
+                  <div data-hf-id="hf-8tqy" class="step done"><div data-hf-id="hf-ufsv" class="bar"></div><div data-hf-id="hf-5lec" class="lab">Visit</div></div>
+                  <div data-hf-id="hf-ei2k" class="step cur"><div data-hf-id="hf-c51b" class="bar"></div><div data-hf-id="hf-8vdo" class="lab">Date &amp; time</div></div>
+                  <div data-hf-id="hf-uqbq" class="step"><div data-hf-id="hf-bqqa" class="bar"></div><div data-hf-id="hf-via4" class="lab">Your details</div></div>
+                </div>
+                <div data-hf-id="hf-0ni1" class="ph-title">Pick a date and time</div>
+                <div data-hf-id="hf-22a3" class="ph-sub">Tooth filling · Dr. Reyes</div>
+                <div data-hf-id="hf-0b98" class="cal">
+                  <div data-hf-id="hf-8a63" class="cal-head"><span data-hf-id="hf-tv10" class="chev">‹</span><span data-hf-id="hf-pyyv">October 2026</span><span data-hf-id="hf-so3x" class="chev">›</span></div>
+                  <div data-hf-id="hf-kd7h" class="cal-grid">
+                    <div data-hf-id="hf-u6fb" class="dow">S</div><div data-hf-id="hf-4ie1" class="dow">M</div><div data-hf-id="hf-vdce" class="dow">T</div><div data-hf-id="hf-vrnf" class="dow">W</div><div data-hf-id="hf-xumq" class="dow">T</div><div data-hf-id="hf-2iuw" class="dow">F</div><div data-hf-id="hf-q9ev" class="dow">S</div>
+                    <div data-hf-id="hf-ypth" class="d off">4</div><div data-hf-id="hf-z44i" class="d off">5</div><div data-hf-id="hf-zifj" class="d off">6</div><div data-hf-id="hf-zwqk" class="d off">7</div><div data-hf-id="hf-x4ld" class="d off">8</div><div data-hf-id="hf-wi96" class="d on">9</div><div data-hf-id="hf-wrly" class="d on">10</div>
+                    <div data-hf-id="hf-a78l" class="d off">11</div><div data-hf-id="hf-xk80" class="d on">12</div><div data-hf-id="hf-x5wz" class="d on">13</div><div data-hf-id="hf-76z5" class="d sel">14</div><div data-hf-id="hf-us2t" class="d on">15</div><div data-hf-id="hf-vyzw" class="d on">16</div><div data-hf-id="hf-vkov" class="d on">17</div>
+                    <div data-hf-id="hf-7f3e" class="d off">18</div><div data-hf-id="hf-t6up" class="d on">19</div><div data-hf-id="hf-27bx" class="d on">20</div><div data-hf-id="hf-2lmy" class="d on">21</div><div data-hf-id="hf-2zxz" class="d on">22</div><div data-hf-id="hf-3e90" class="d on">23</div><div data-hf-id="hf-3sk1" class="d on">24</div>
+                  </div>
+                </div>
+                <div data-hf-id="hf-6fxd" class="ph-open"><svg data-hf-id="hf-7zsq" viewBox="0 0 24 24" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"><circle data-hf-id="hf-1iwn" cx="12" cy="12" r="9" /><path data-hf-id="hf-zcgb" d="M12 7v5l3 2" /></svg><span data-hf-id="hf-kusx">Open times on Oct 14, 2026</span></div>
+                <div data-hf-id="hf-exrd" class="chips">
+                  <div data-hf-id="hf-0y9h" class="chip">9:00 AM</div><div data-hf-id="hf-gzuc" class="chip">9:30 AM</div><div data-hf-id="hf-gf15" class="chip" id="chip-1000">10:00 AM</div>
+                  <div data-hf-id="hf-p3f2" class="chip">10:30 AM</div><div data-hf-id="hf-yvgw" class="chip">11:00 AM</div><div data-hf-id="hf-gtv5" class="chip">11:30 AM</div>
+                  <div data-hf-id="hf-idrc" class="chip">12:00 PM</div><div data-hf-id="hf-wfu9" class="chip">12:30 PM</div><div data-hf-id="hf-hb48" class="chip">1:00 PM</div>
+                </div>
+                <div data-hf-id="hf-m846" class="ph-btns"><div data-hf-id="hf-hwwq" class="btn ghost">Back</div><div data-hf-id="hf-dgr7" class="btn primary" id="btn-continue">Continue</div></div>
+                <div data-hf-id="hf-9skn" class="ph-foot">No account needed. Your request is reviewed by clinic staff before it is confirmed.</div>
+              </div>
+            </div>
+            <div data-hf-id="hf-o86q" class="tap" id="tap-1"></div>
+            <div data-hf-id="hf-ka2p" class="tap" id="tap-2"></div>
+          </div>
+          <div data-hf-id="hf-e2xn" class="labels" id="s2-labels" style="left: 900px; top: 300px; width: 900px">
+            <div data-hf-id="hf-y1r1" class="label-eyebrow" id="s2-eyebrow">Patients</div>
+            <div data-hf-id="hf-mu6p" class="label-title" id="s2-title">Online request form</div>
+            <div data-hf-id="hf-b2rg" class="label-line" id="s2-l1"><span data-hf-id="hf-coyi" class="tick"></span><span data-hf-id="hf-5yek">No account needed.</span></div>
+            <div data-hf-id="hf-jqnb" class="label-line" id="s2-l2"><span data-hf-id="hf-ptha" class="tick"></span><span data-hf-id="hf-fcse">Only open times are shown.</span></div>
+            <div data-hf-id="hf-10dq" class="label-line teal" id="s2-l3"><span data-hf-id="hf-q7sb" class="tick"></span><span data-hf-id="hf-4m3n">Works on a phone, 360 px wide.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= S3: staff confirm it ================= -->
+      <section data-hf-id="hf-71vz" id="s3" class="clip scene" data-start="9" data-duration="4.5" data-track-index="1">
+        <div data-hf-id="hf-k7gj" class="inner" id="s3-inner">
+          <div data-hf-id="hf-jmef" class="labels" id="s3-labels" style="left: 100px; top: 300px; width: 420px">
+            <div data-hf-id="hf-38zs" class="label-eyebrow" id="s3-eyebrow">Clinic staff</div>
+            <div data-hf-id="hf-od15" class="label-title" id="s3-title">Staff confirm it</div>
+            <div data-hf-id="hf-wzhj" class="label-line" id="s3-l1"><span data-hf-id="hf-qm3c" class="tick"></span><span data-hf-id="hf-r0m5">Pick a free chair, then confirm.</span></div>
+            <div data-hf-id="hf-74k4" class="label-line teal" id="s3-l2"><span data-hf-id="hf-nty5" class="tick"></span><span data-hf-id="hf-1vaa">Confirming emails the patient.</span></div>
+          </div>
+          <div data-hf-id="hf-h3sv" class="app" id="s3-app">
+            <div data-hf-id="hf-epfb" class="app-top">
+              <div data-hf-id="hf-oojr" class="brand"><div data-hf-id="hf-6ozy" class="mark"><svg data-hf-id="hf-epq6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-8g5o" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div><span data-hf-id="hf-27gf">G4 Dental Clinic</span></div>
+              <div data-hf-id="hf-xhzk" class="who"><span data-hf-id="hf-s21b">Clinic Staff</span><span data-hf-id="hf-3osj" class="out">Log out</span></div>
+            </div>
+            <div data-hf-id="hf-fgvm" class="app-body">
+              <div data-hf-id="hf-cww1" class="side">
+                <div data-hf-id="hf-dw9l" class="nav">Dashboard</div>
+                <div data-hf-id="hf-2e7t" class="nav cur"><span data-hf-id="hf-t8db">Requests</span><span data-hf-id="hf-5ayg" class="cnt">2</span></div>
+                <div data-hf-id="hf-oudk" class="nav">New booking</div>
+                <div data-hf-id="hf-q65t" class="nav">Patients</div>
+                <div data-hf-id="hf-5sme" class="nav">Reports</div>
+                <div data-hf-id="hf-7n9s" class="nav">Setup</div>
+              </div>
+              <div data-hf-id="hf-k15r" class="main">
+                <div data-hf-id="hf-62cn" class="crumb">← Requests</div>
+                <div data-hf-id="hf-t9z5" class="h1"><span data-hf-id="hf-4i5b">Appointment #40</span>
+                  <span data-hf-id="hf-0csw" id="badge-wrap"><span data-hf-id="hf-yj1b" class="badge pending" id="badge-pend"><span data-hf-id="hf-9gry" class="dot"></span>Pending</span><span data-hf-id="hf-dzsb" class="badge scheduled" id="badge-sched" data-layout-allow-overlap=""><span data-hf-id="hf-zcc2" class="dot"></span>Scheduled</span></span>
+                  <span data-hf-id="hf-1qws" class="badge gray">Online</span>
+                </div>
+                <div data-hf-id="hf-27sg" id="s3-grid">
+                  <div data-hf-id="hf-vn2y" class="card">
+                    <div data-hf-id="hf-4oaw" class="ch">Visit</div>
+                    <div data-hf-id="hf-l24v" class="kv">
+                      <div data-hf-id="hf-x11t"><div data-hf-id="hf-r1yn" class="k">Date</div><div data-hf-id="hf-3g6z" class="v">Wednesday, Oct 14, 2026</div></div>
+                      <div data-hf-id="hf-xfcu"><div data-hf-id="hf-qlwy" class="k">Time</div><div data-hf-id="hf-z0l0" class="v">10:00 AM – 11:00 AM</div></div>
+                      <div data-hf-id="hf-w8fr"><div data-hf-id="hf-kgbi" class="k">Service</div><div data-hf-id="hf-jgbj" class="v">Tooth filling <span data-hf-id="hf-gyx0" class="dim">(60 min)</span></div></div>
+                      <div data-hf-id="hf-wmqs"><div data-hf-id="hf-zqwm" class="k">Dentist</div><div data-hf-id="hf-r6r6" class="v">Dr. Reyes</div></div>
+                      <div data-hf-id="hf-vftp"><div data-hf-id="hf-fovo" class="k">Chair</div><div data-hf-id="hf-4mg1" class="v" id="chair-val"><span data-hf-id="hf-vuve" class="dim" id="chair-val-none">Not assigned yet</span><span data-hf-id="hf-4pri" id="chair-val-set">Chair 1</span></div></div>
+                      <div data-hf-id="hf-vu4q"><div data-hf-id="hf-7mb6" class="k">Channel</div><div data-hf-id="hf-mxpy" class="v"><span data-hf-id="hf-evw4" class="badge gray">Online</span></div></div>
+                      <div data-hf-id="hf-1043"><div data-hf-id="hf-89xx" class="k">Requested</div><div data-hf-id="hf-47ib" class="v">Oct 9, 2026, 9:07 AM</div></div>
+                      <div data-hf-id="hf-1ef4"><div data-hf-id="hf-9ly1" class="k">Reminder</div><div data-hf-id="hf-ik62" class="v"><span data-hf-id="hf-e7bn" class="dim">None</span></div></div>
+                    </div>
+                    <div data-hf-id="hf-v82o" class="ch" style="border-top: 2px solid #e2e8f0">Patient</div>
+                    <div data-hf-id="hf-jprj" class="kv">
+                      <div data-hf-id="hf-c4s8"><div data-hf-id="hf-ir1c" class="k">Name</div><div data-hf-id="hf-kya8" class="v teal">Ana Cruz</div></div>
+                      <div data-hf-id="hf-bqh7"><div data-hf-id="hf-1lgm" class="k">Contact number</div><div data-hf-id="hf-0ypb" class="v">0917 123 4567</div></div>
+                      <div data-hf-id="hf-bc66"><div data-hf-id="hf-ohcp" class="k">Email</div><div data-hf-id="hf-eu8t" class="v">ana.cruz@example.com</div></div>
+                      <div data-hf-id="hf-axv5"><div data-hf-id="hf-hsyc" class="k">Birthdate</div><div data-hf-id="hf-aqkw" class="v">May 5, 1995 <span data-hf-id="hf-mame" class="dim">(31 yrs)</span></div></div>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-i08u" class="card">
+                    <div data-hf-id="hf-kdcg" class="ch">Review request<div data-hf-id="hf-f2kt" class="sub">Pick a free chair, then confirm. Confirming emails the patient.</div></div>
+                    <div data-hf-id="hf-gzax" style="padding: 18px 22px 10px; font-size: 17px; font-weight: 700">Chair (free at that time)</div>
+                    <div data-hf-id="hf-tbbi" class="chairs">
+                      <div data-hf-id="hf-ozfi" class="chairbtn" id="chair-1">Chair 1<div data-hf-id="hf-2mte" id="chair-1-on">Chair 1</div></div>
+                      <div data-hf-id="hf-5iac" class="chairbtn">Chair 2</div>
+                    </div>
+                    <div data-hf-id="hf-qnke" class="confirm" id="btn-confirm">Confirm request<div data-hf-id="hf-4c67" id="confirm-dim">Confirm request</div></div>
+                    <div data-hf-id="hf-xxet" class="decline">Decline request</div>
+                  </div>
+                </div>
+                <div data-hf-id="hf-yxy7" id="mail-line">
+                  <svg data-hf-id="hf-8p6i" viewBox="0 0 24 24" fill="none" stroke="#047857" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect data-hf-id="hf-uwav" x="3" y="5" width="18" height="14" rx="2" /><path data-hf-id="hf-cwl6" d="m3 7 9 6 9-6" /></svg>
+                  <span data-hf-id="hf-rxau">Email sent to the patient — <b data-hf-id="hf-t7z1">Appointment confirmed: Oct 14, 2026, 10:00 AM</b></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div data-hf-id="hf-smvy" id="cursor" data-layout-ignore=""><svg data-hf-id="hf-rt2u" viewBox="0 0 34 44"><path data-hf-id="hf-mg7y" d="M4 3 L30 24 L18 26 L25 40 L19 42 L12 28 L4 36 Z" fill="#0f172a" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" /></svg></div>
+        </div>
+      </section>
+
+      <!-- ================= S4: it lands on the schedule ================= -->
+      <section data-hf-id="hf-rrub" id="s4" class="clip scene" data-start="13" data-duration="4" data-track-index="2">
+        <div data-hf-id="hf-0u5s" class="inner" id="s4-inner">
+          <div data-hf-id="hf-f0qg" class="app" id="s4-app">
+            <div data-hf-id="hf-v29j" class="app-top">
+              <div data-hf-id="hf-jbzb" class="brand"><div data-hf-id="hf-6aox" class="mark"><svg data-hf-id="hf-ebf5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-81un" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div><span data-hf-id="hf-ntbz">G4 Dental Clinic</span></div>
+              <div data-hf-id="hf-e2p4" class="who"><span data-hf-id="hf-e1db">Clinic Staff</span><span data-hf-id="hf-pb5v" class="out">Log out</span></div>
+            </div>
+            <div data-hf-id="hf-d33q" class="app-body">
+              <div data-hf-id="hf-w7th" class="side">
+                <div data-hf-id="hf-877z" class="nav cur">Dashboard</div>
+                <div data-hf-id="hf-e5hr" class="nav"><span data-hf-id="hf-jw9r">Requests</span><span data-hf-id="hf-441d" class="cnt">1</span></div>
+                <div data-hf-id="hf-341s" class="nav">New booking</div>
+                <div data-hf-id="hf-orl1" class="nav">Patients</div>
+                <div data-hf-id="hf-egfe" class="nav">Reports</div>
+                <div data-hf-id="hf-quzs" class="nav">Setup</div>
+              </div>
+              <div data-hf-id="hf-lwm7" class="main">
+                <div data-hf-id="hf-c7hj" style="display: flex; justify-content: space-between; align-items: flex-start">
+                  <div data-hf-id="hf-ajk4"><div data-hf-id="hf-0034" class="h1">Schedule</div><div data-hf-id="hf-ne76" class="muted">Wednesday, Oct 14, 2026</div></div>
+                  <div data-hf-id="hf-jxfx" class="labels" id="s4-labels" style="position: static; width: 760px; align-items: flex-end; text-align: right; gap: 10px">
+                    <div data-hf-id="hf-t1cq" class="label-line" id="s4-l1" style="font-size: 30px"><span data-hf-id="hf-7706">One schedule, every channel.</span><span data-hf-id="hf-o896" class="tick"></span></div>
+                    <div data-hf-id="hf-p8kd" class="label-line teal" id="s4-l2" style="font-size: 30px"><span data-hf-id="hf-tdkw">Overlapping bookings are rejected on save.</span><span data-hf-id="hf-omk7" class="tick"></span></div>
+                  </div>
+                </div>
+                <div data-hf-id="hf-rhep" class="stats">
+                  <div data-hf-id="hf-xa0m" class="stat"><div data-hf-id="hf-45hf" class="l">Today's appointments</div><div data-hf-id="hf-mtne" class="n">0</div><div data-hf-id="hf-h15s" class="m">Oct 9, 2026</div></div>
+                  <div data-hf-id="hf-cun6" class="stat warn"><div data-hf-id="hf-ppi3" class="l">Pending requests</div><div data-hf-id="hf-mfcd" class="n">1</div><div data-hf-id="hf-601q" class="m">Waiting for confirm or decline</div></div>
+                  <div data-hf-id="hf-tx7e" class="stat"><div data-hf-id="hf-2871" class="l">Tomorrow (reminders)</div><div data-hf-id="hf-vpoe" class="n">0</div><div data-hf-id="hf-zkxs" class="m">Scheduled visits that get a reminder email</div></div>
+                </div>
+                <div data-hf-id="hf-y049" class="daybar">
+                  <div data-hf-id="hf-cddz" class="datebox"><div data-hf-id="hf-96kh" class="b">‹</div><div data-hf-id="hf-6u7z" class="b w">10/14/2026</div><div data-hf-id="hf-adhk" class="b">›</div><div data-hf-id="hf-434h" class="b" style="margin-left: 8px">Today</div></div>
+                  <div data-hf-id="hf-ta0z" class="seg"><div data-hf-id="hf-duyt" class="on">By dentist</div><div data-hf-id="hf-4y20">By chair</div></div>
+                </div>
+                <div data-hf-id="hf-a5j5" id="s4-grid">
+                  <div data-hf-id="hf-kxq8" class="grid">
+                    <div data-hf-id="hf-q1wf" class="grid-head"><div data-hf-id="hf-a593"></div><div data-hf-id="hf-8hv6" class="col">Dr. Reyes<div data-hf-id="hf-krfr" class="hrs">9:00 AM – 5:00 PM</div></div><div data-hf-id="hf-sbpo" class="col">Dr. Lim<div data-hf-id="hf-6tfr" class="hrs">9:00 AM – 5:00 PM</div></div></div>
+                    <div data-hf-id="hf-ca3a" class="grid-rows">
+                      <div data-hf-id="hf-tyir" class="gtime">9:00 AM</div><div data-hf-id="hf-bap2" class="gcell half"></div><div data-hf-id="hf-80ve" class="gcell half"></div>
+                      <div data-hf-id="hf-vomd" class="gtime">10:00 AM</div><div data-hf-id="hf-8f6f" class="gcell half"></div><div data-hf-id="hf-8thg" class="gcell half"></div>
+                      <div data-hf-id="hf-i9qq" class="gtime">11:00 AM</div><div data-hf-id="hf-97sh" class="gcell half"></div><div data-hf-id="hf-9m3i" class="gcell half"></div>
+                      <div data-hf-id="hf-jg1i" class="gtime">12:00 PM</div><div data-hf-id="hf-a0ej" class="gcell half"></div><div data-hf-id="hf-aepk" class="gcell half"></div>
+                      <div data-hf-id="hf-qcmm" class="gtime">1:00 PM</div><div data-hf-id="hf-at0l" class="gcell half"></div><div data-hf-id="hf-b7bm" class="gcell half"></div>
+                      <div data-hf-id="hf-sfnj" id="blk-new"><div data-hf-id="hf-cvs1" class="who"><span data-hf-id="hf-tsop">Ana Cruz</span><span data-hf-id="hf-0qj2" class="tag">SCHEDULED</span></div><div data-hf-id="hf-28vn" class="what">10:00 AM – 11:00 AM · Tooth filling · Chair 1</div></div>
+                    </div>
+                    <div data-hf-id="hf-ovnn" class="legend"><span data-hf-id="hf-87ej">Status:</span>
+                      <span data-hf-id="hf-2i50" class="pill" style="background: #fef3c7; color: #78350f"><i data-hf-id="hf-lc5l" style="background: #f59e0b"></i>Pending</span>
+                      <span data-hf-id="hf-wht9" class="pill" style="background: #dbeafe; color: #1e40af"><i data-hf-id="hf-sxl9" style="background: #2563eb"></i>Scheduled</span>
+                      <span data-hf-id="hf-vaka" class="pill" style="background: #dcfce7; color: #166534"><i data-hf-id="hf-53ey" style="background: #16a34a"></i>Attended</span>
+                      <span data-hf-id="hf-hqr0" class="pill" style="background: #dc2626; color: #fff"><i data-hf-id="hf-9pvc" style="background: #fff"></i>No-show</span>
+                    </div>
+                  </div>
+                  <div data-hf-id="hf-7spc" class="open">
+                    <div data-hf-id="hf-aiia" class="t">Open times</div>
+                    <div data-hf-id="hf-6e8m" class="s">Starts where a 60-minute visit fits. Click to book.</div>
+                    <div data-hf-id="hf-l8c0" class="who">Dr. Reyes <span data-hf-id="hf-ywzr" id="reyes-open">15 open</span></div>
+                    <div data-hf-id="hf-pkck" class="ochips">
+                      <div data-hf-id="hf-22yg" class="ochip">9:00 AM</div><div data-hf-id="hf-lkiw" class="ochip gone" id="ochip-1000">10:00 AM</div><div data-hf-id="hf-ojur" class="ochip">11:00 AM</div>
+                      <div data-hf-id="hf-dbeu" class="ochip">11:30 AM</div><div data-hf-id="hf-w8rj" class="ochip">12:00 PM</div><div data-hf-id="hf-e77m" class="ochip">12:30 PM</div>
+                      <div data-hf-id="hf-ol9x" class="ochip">1:00 PM</div><div data-hf-id="hf-st4c" class="ochip">1:30 PM</div><div data-hf-id="hf-4jhk" class="ochip">2:00 PM</div>
+                    </div>
+                    <div data-hf-id="hf-8cq2" class="who">Dr. Lim <span data-hf-id="hf-gg8m">16 open</span></div>
+                    <div data-hf-id="hf-k41o" class="ochips">
+                      <div data-hf-id="hf-mbf4" class="ochip">9:00 AM</div><div data-hf-id="hf-1h2x" class="ochip">9:30 AM</div><div data-hf-id="hf-oo08" class="ochip">10:00 AM</div>
+                      <div data-hf-id="hf-0f0p" class="ochip">10:30 AM</div><div data-hf-id="hf-lypv" class="ochip">11:00 AM</div><div data-hf-id="hf-t5vu" class="ochip">11:30 AM</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= S5: the report writes itself ================= -->
+      <section data-hf-id="hf-unhe" id="s5" class="clip scene" data-start="16.5" data-duration="3.6" data-track-index="1">
+        <div data-hf-id="hf-qgd9" class="inner" id="s5-inner">
+          <div data-hf-id="hf-r85p" class="app" id="s5-app">
+            <div data-hf-id="hf-unyi" class="app-top">
+              <div data-hf-id="hf-ixoa" class="brand"><div data-hf-id="hf-5wdw" class="mark"><svg data-hf-id="hf-dx44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-98rq" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div><span data-hf-id="hf-nf0y">G4 Dental Clinic</span></div>
+              <div data-hf-id="hf-da32" class="who"><span data-hf-id="hf-dn2a">Clinic Staff</span><span data-hf-id="hf-owuu" class="out">Log out</span></div>
+            </div>
+            <div data-hf-id="hf-dher" class="app-body">
+              <div data-hf-id="hf-xeqk" class="side">
+                <div data-hf-id="hf-hbvx" class="nav">Dashboard</div>
+                <div data-hf-id="hf-8fhr" class="nav"><span data-hf-id="hf-jhyq">Requests</span><span data-hf-id="hf-5izp" class="cnt">1</span></div>
+                <div data-hf-id="hf-1x4p" class="nav">New booking</div>
+                <div data-hf-id="hf-pyi4" class="nav">Patients</div>
+                <div data-hf-id="hf-rkbw" class="nav cur">Reports</div>
+                <div data-hf-id="hf-po2p" class="nav">Setup</div>
+              </div>
+              <div data-hf-id="hf-lib6" class="main">
+                <div data-hf-id="hf-72iv" style="display: flex; justify-content: space-between; align-items: flex-start">
+                  <div data-hf-id="hf-9qy2"><div data-hf-id="hf-z044" class="h1">Reports</div><div data-hf-id="hf-psm2" class="muted" id="s5-l1">Computed from recorded appointments each time you open this page.</div></div>
+                  <div data-hf-id="hf-0mw7" class="datebox"><div data-hf-id="hf-ccd1" class="b">‹</div><div data-hf-id="hf-q8lx" class="b w" style="width: 190px">October 2026</div><div data-hf-id="hf-uqtc" class="b">›</div></div>
+                </div>
+                <div data-hf-id="hf-a1wf" class="rstats">
+                  <div data-hf-id="hf-i51l" class="rstat" id="rs-1"><div data-hf-id="hf-k9u5" class="l">Attended</div><div data-hf-id="hf-alrv" class="n g" id="n-att">0</div><div data-hf-id="hf-6h7h" class="m">&#160;</div></div>
+                  <div data-hf-id="hf-m35m" class="rstat" id="rs-2"><div data-hf-id="hf-litr" class="l">Cancelled</div><div data-hf-id="hf-nzbl" class="n" id="n-can">0</div><div data-hf-id="hf-cw5z" class="m">Excludes reschedules</div></div>
+                  <div data-hf-id="hf-q19n" class="rstat" id="rs-3"><div data-hf-id="hf-jne7" class="l">No-show</div><div data-hf-id="hf-ngol" class="n r" id="n-nos">0</div><div data-hf-id="hf-dj8x" class="m">&#160;</div></div>
+                  <div data-hf-id="hf-2js4" class="rstat" id="rs-4"><div data-hf-id="hf-w40v" class="l">No-show rate</div><div data-hf-id="hf-zww0" class="n" id="n-rate">0.0%</div><div data-hf-id="hf-f3qd" class="rbar"><i data-hf-id="hf-vq72" id="rbar-fill"></i></div><div data-hf-id="hf-q16d" class="m">No-show ÷ (attended + no-show)</div></div>
+                </div>
+                <div data-hf-id="hf-61su" class="tbl">
+                  <div data-hf-id="hf-r3t3" class="ch">By dentist</div>
+                  <div data-hf-id="hf-7jk0" class="row hd"><div data-hf-id="hf-vl8v">Dentist</div><div data-hf-id="hf-rkip" class="num">Attended</div><div data-hf-id="hf-k9ab" class="num">Cancelled</div><div data-hf-id="hf-tw2z" class="num">No-show</div><div data-hf-id="hf-f2lf" class="num">No-show rate</div></div>
+                  <div data-hf-id="hf-6zo4" class="row data" id="row-1"><div data-hf-id="hf-810g">Dr. Reyes</div><div data-hf-id="hf-po35" class="num">18</div><div data-hf-id="hf-0z6u" class="num">2</div><div data-hf-id="hf-lju2" class="num">2</div><div data-hf-id="hf-5bnq" class="rate"><span data-hf-id="hf-x4nl">10.0%</span><span data-hf-id="hf-flu0" class="bar"><i data-hf-id="hf-wwk4" style="width: 25%; background: #f59e0b"></i></span></div></div>
+                  <div data-hf-id="hf-hv5r" class="row data" id="row-2"><div data-hf-id="hf-eid6">Dr. Lim</div><div data-hf-id="hf-tn5f" class="num">12</div><div data-hf-id="hf-1dhv" class="num">1</div><div data-hf-id="hf-0kvt" class="num">3</div><div data-hf-id="hf-m3wq" class="rate"><span data-hf-id="hf-zi0o">20.0%</span><span data-hf-id="hf-78ow" class="bar"><i data-hf-id="hf-w3ow" style="width: 50%; background: #dc2626"></i></span></div></div>
+                  <div data-hf-id="hf-bvd1" class="row data tot" id="row-3"><div data-hf-id="hf-wdzu">Total</div><div data-hf-id="hf-uduz" class="num">30</div><div data-hf-id="hf-kgi5" class="num">3</div><div data-hf-id="hf-zs9r" class="num">5</div><div data-hf-id="hf-mi7r" class="rate"><span data-hf-id="hf-iegu">14.3%</span><span data-hf-id="hf-61rt" class="bar"><i data-hf-id="hf-mbok" style="width: 36%; background: #f59e0b"></i></span></div></div>
+                </div>
+                <div data-hf-id="hf-9ey9" class="tbl" style="margin-top: 16px">
+                  <div data-hf-id="hf-7n8g" class="ch" style="display: flex; justify-content: space-between; align-items: center"><span data-hf-id="hf-885u">Repeat no-shows <span data-hf-id="hf-vs06" style="font-weight: 400; font-size: 17px; color: #475569">Patients with 2 or more no-shows (all time). Follow up with them.</span></span><span data-hf-id="hf-f3mi" style="font-size: 17px; color: #475569; font-weight: 400">Threshold <span data-hf-id="hf-mqqr" style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 4px 14px; color: #0f172a; font-weight: 700">2</span></span></div>
+                  <div data-hf-id="hf-ys0m" class="row data" id="row-4" style="grid-template-columns: 2.2fr 2fr 1fr 1.6fr"><div data-hf-id="hf-wq88" style="color: #0f766e; font-weight: 700">Jose Ramos</div><div data-hf-id="hf-rjm0">0918 555 0102</div><div data-hf-id="hf-km5s" class="num"><span data-hf-id="hf-ci7u" class="badge" style="background: #fee2e2; color: #991b1b; padding: 2px 10px; font-size: 15px">2</span></div><div data-hf-id="hf-7nn3" class="num">Oct 12, 2026</div></div>
+                  <div data-hf-id="hf-rzfs" class="row data" id="row-5" style="grid-template-columns: 2.2fr 2fr 1fr 1.6fr; border-bottom: 0"><div data-hf-id="hf-ahc7" style="color: #0f766e; font-weight: 700">Miguel Fernandez</div><div data-hf-id="hf-egyh">0930 555 0110</div><div data-hf-id="hf-uq6g" class="num"><span data-hf-id="hf-g44e" class="badge" style="background: #fee2e2; color: #991b1b; padding: 2px 10px; font-size: 15px">2</span></div><div data-hf-id="hf-r3mx" class="num">Oct 7, 2026</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= S6: outro ================= -->
+      <section data-hf-id="hf-gxqd" id="s6" class="clip scene" data-start="19.6" data-duration="1.9" data-track-index="2">
+        <div data-hf-id="hf-0spe" class="inner" id="s6-inner">
+          <div data-hf-id="hf-pfg2" id="s6-lock">
+            <div data-hf-id="hf-nbwc" id="s6-mark"><svg data-hf-id="hf-dit3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path data-hf-id="hf-8ugp" d="M7.5 3.5c-2.2 0-4 1.8-4 4.3 0 2.3 1 3.6 1.6 5.6.7 2.5.8 7.1 2.6 7.1 1.7 0 1.6-4.6 3.1-4.6h2.4c1.5 0 1.4 4.6 3.1 4.6 1.8 0 1.9-4.6 2.6-7.1.6-2 1.6-3.3 1.6-5.6 0-2.5-1.8-4.3-4-4.3-1.8 0-2.6 1-4.5 1s-2.7-1-4.5-1Z" /></svg></div>
+            <div data-hf-id="hf-ynhw" id="s6-name">G4 Dental Clinic</div>
+            <div data-hf-id="hf-t3wf" id="s6-tag">Request an appointment online.</div>
+            <div data-hf-id="hf-l0je" id="s6-small">Confirmation and reminder emails, sent automatically.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= audio ================= -->
+      <audio data-hf-id="hf-1sjh" id="music" src="assets/music/happy-beats-business-moves-vol-11-by-ende-dot-app.mp3" data-start="0" data-duration="21.5" data-track-index="10" data-automation="{&quot;version&quot;:1,&quot;lanes&quot;:[{&quot;target&quot;:&quot;volume&quot;,&quot;points&quot;:[{&quot;t&quot;:0,&quot;v&quot;:0.32},{&quot;t&quot;:19.8,&quot;v&quot;:0.32},{&quot;t&quot;:21.4,&quot;v&quot;:0}]}]}"></audio>
+      <audio data-hf-id="hf-6dcp" id="sfx-01" src="assets/sfx/interface/drop_001.ogg" data-start="2.62" data-duration="0.6" data-track-index="11" data-volume="0.7"></audio>
+      <audio data-hf-id="hf-q967" id="sfx-02" src="assets/sfx/interface/drop_002.ogg" data-start="4.78" data-duration="0.6" data-track-index="12" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-hln8" id="sfx-03" src="assets/sfx/interface/click_003.ogg" data-start="5.78" data-duration="0.3" data-track-index="13" data-volume="0.8"></audio>
+      <audio data-hf-id="hf-90ap" id="sfx-04" src="assets/sfx/interface/click_002.ogg" data-start="6.84" data-duration="0.3" data-track-index="14" data-volume="0.8"></audio>
+      <audio data-hf-id="hf-ji3u" id="sfx-05" src="assets/sfx/interface/drop_002.ogg" data-start="7.38" data-duration="0.6" data-track-index="15" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-6knf" id="sfx-06" src="assets/sfx/interface/click_003.ogg" data-start="9.48" data-duration="0.3" data-track-index="16" data-volume="0.8"></audio>
+      <audio data-hf-id="hf-w09e" id="sfx-07" src="assets/sfx/impact/impactBell_heavy_000.ogg" data-start="10.52" data-duration="1.4" data-track-index="17" data-volume="0.65"></audio>
+      <audio data-hf-id="hf-f8xw" id="sfx-08" src="assets/sfx/interface/drop_001.ogg" data-start="11.04" data-duration="0.6" data-track-index="18" data-volume="0.6"></audio>
+      <audio data-hf-id="hf-stib" id="sfx-09" src="assets/sfx/impact/impactSoft_medium_001.ogg" data-start="13.16" data-duration="0.6" data-track-index="19" data-volume="0.75"></audio>
+      <audio data-hf-id="hf-w50n" id="sfx-10" src="assets/sfx/interface/drop_002.ogg" data-start="16.84" data-duration="0.6" data-track-index="20" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-07ki" id="sfx-11" src="assets/sfx/interface/drop_002.ogg" data-start="17.37" data-duration="0.6" data-track-index="21" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-mhc5" id="sfx-12" src="assets/sfx/interface/drop_002.ogg" data-start="17.89" data-duration="0.6" data-track-index="22" data-volume="0.5"></audio>
+      <audio data-hf-id="hf-ihxv" id="sfx-13" src="assets/sfx/casino/chip-lay-1.ogg" data-start="18.42" data-duration="0.6" data-track-index="23" data-volume="0.6"></audio>
+      <audio data-hf-id="hf-ifpa" id="sfx-14" src="assets/sfx/impact/impactSoft_medium_004.ogg" data-start="20.0" data-duration="0.6" data-track-index="24" data-volume="0.7"></audio>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true, defaults: { ease: "power3.out" } });
+      const SCENE_W = 1920;
+
+      /* ---------- audio-reactive breath: per-frame RMS → --amp on #root ---------- */
+      // Pre-baked from assets/audio-data.json (hyperframes-creative extract script), smoothed. Deterministic per frame.
+      const AMP = window.__AMP || [];
+      const FPS = 30;
+      for (let f = 0; f < AMP.length; f++) {
+        tl.to("#root", { "--amp": AMP[f], duration: 1 / FPS, ease: "none" }, f / FPS);
+      }
+
+      /* ---------- persistent background: slow ambient drift ---------- */
+      tl.fromTo("#bg-glow2", { x: 0, y: 0 }, { x: -70, y: -40, duration: 21.5, ease: "sine.inOut" }, 0);
+      tl.fromTo("#bg-grid", { x: 0, y: 0 }, { x: -60, y: -60, duration: 21.5, ease: "none" }, 0);
+      tl.fromTo("#bg-rule", { scaleX: 0 }, { scaleX: 1, duration: 1.2, ease: "power2.inOut" }, 0.2);
+      tl.fromTo(".mark-corner", { opacity: 0 }, { opacity: 0.35, duration: 0.8, stagger: 0.08 }, 0.3);
+
+      /* ================= S1: hook (0 → 4.23) ================= */
+      tl.fromTo("#s1-lock", { y: -18, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 0.25);
+      tl.fromTo("#s1-paper", { x: 120, rotation: 4, opacity: 0 }, { x: 0, rotation: 2, opacity: 1, duration: 0.9, ease: "power2.out" }, 0.3);
+      tl.fromTo(".s1-scribble", { scaleX: 0, transformOrigin: "left center" }, { scaleX: 1, duration: 0.45, stagger: 0.07, ease: "power2.out" }, 0.7);
+      tl.fromTo("#s1-h1", { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 }, 0.5);
+      // "Not this one." lands on the 2.65 s beat // beat-grid: 2.65
+      tl.fromTo("#s1-h2", { y: 40, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.45, ease: "back.out(1.6)" }, 2.65);
+      tl.to("#s1-paper", { x: 90, rotation: 10, opacity: 0.35, duration: 0.9, ease: "power2.inOut" }, 2.65);
+      tl.to(".s1-scribble", { scaleX: 0.15, duration: 0.6, stagger: 0.04, ease: "power2.in" }, 2.7);
+
+      /* transition S1 → S2: vertical push on the 4.23 s beat // beat-grid: 4.23 */
+      const T1 = 4.23;
+      tl.to("#s1-inner", { y: -1080, duration: 0.5, ease: "power3.inOut" }, T1);
+      tl.fromTo("#s2-inner", { y: 1080 }, { y: 0, duration: 0.5, ease: "power3.inOut" }, T1);
+
+      /* ================= S2: patient books on a phone (4.23 → 9.0) ================= */
+      tl.fromTo("#s2-eyebrow", { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 4.7);
+      tl.fromTo("#s2-title", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 4.78);
+      tl.fromTo("#s2-l1", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 5.3);
+      // tap on 10:00 AM — beat-locked: 5.80 (strong cue)
+      tl.fromTo("#tap-1", { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.18, ease: "power2.out" }, 5.78);
+      tl.to("#tap-1", { scale: 1.5, opacity: 0, duration: 0.45, ease: "power2.out" }, 5.96);
+      tl.to("#chip-1000", { backgroundColor: "#0f766e", color: "#ffffff", borderColor: "#0f766e", duration: 0.18 }, 5.82);
+      tl.fromTo("#s2-l2", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 6.3);
+      // tap on Continue // beat-grid: 6.86
+      tl.fromTo("#tap-2", { scale: 0.3, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.18, ease: "power2.out" }, 6.84);
+      tl.to("#tap-2", { scale: 1.5, opacity: 0, duration: 0.45, ease: "power2.out" }, 7.02);
+      tl.fromTo("#btn-continue", { scale: 1 }, { scale: 0.95, duration: 0.1, yoyo: true, repeat: 1, ease: "power1.inOut" }, 6.86);
+      tl.fromTo("#s2-l3", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 7.4);
+      tl.fromTo("#phone", { y: 0 }, { y: -10, duration: 4.5, ease: "sine.inOut" }, 4.75);
+
+      /* transition S2 → S3: push slide at 9.0 */
+      const T2 = 9.0;
+      tl.to("#s2-inner", { x: -SCENE_W, duration: 0.5, ease: "power3.inOut" }, T2);
+      tl.fromTo("#s3-inner", { x: SCENE_W }, { x: 0, duration: 0.5, ease: "power3.inOut" }, T2);
+
+      /* ================= S3: staff confirm it (9.0 → 13.0) ================= */
+      tl.fromTo("#s3-eyebrow", { x: -20, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 9.4);
+      tl.fromTo("#s3-title", { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, 9.48);
+      tl.fromTo("#s3-l1", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 9.9);
+      // cursor: appear, travel to Chair 1, click on 9.50 (strong cue), travel to Confirm, click on 10.54 (beat)
+      // Chair 1 button centre ≈ (1512, 522); Confirm button centre ≈ (1640, 598) in canvas px (frame left 540, main padding).
+      tl.fromTo("#cursor", { x: 1700, y: 760, opacity: 0 }, { opacity: 1, duration: 0.15 }, 9.05);
+      tl.to("#cursor", { x: 1505, y: 418, duration: 0.3, ease: "power2.inOut" }, 9.2);
+      tl.to("#cursor", { scale: 0.85, duration: 0.07, yoyo: true, repeat: 1, ease: "power1.inOut" }, 9.5); // beat-locked: 9.50
+      tl.to("#chair-1-on", { opacity: 1, duration: 0.12 }, 9.52);
+      tl.to("#confirm-dim", { opacity: 0, duration: 0.25 }, 9.56);
+      tl.to("#cursor", { x: 1600, y: 488, duration: 0.45, ease: "power2.inOut" }, 9.95);
+      tl.to("#cursor", { scale: 0.85, duration: 0.07, yoyo: true, repeat: 1, ease: "power1.inOut" }, 10.54); // beat-grid: 10.54
+      tl.fromTo("#btn-confirm", { scale: 1 }, { scale: 0.97, duration: 0.1, yoyo: true, repeat: 1, ease: "power1.inOut" }, 10.54);
+      tl.to("#badge-pend", { opacity: 0, y: -8, duration: 0.25 }, 10.68);
+      tl.fromTo("#badge-sched", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.3, ease: "back.out(1.5)" }, 10.7);
+      tl.to("#chair-val-none", { opacity: 0, duration: 0.2 }, 10.68);
+      tl.to("#chair-val-set", { opacity: 1, duration: 0.25 }, 10.72);
+      tl.to("#cursor", { x: 1700, y: 760, opacity: 0, duration: 0.5, ease: "power2.inOut" }, 10.8);
+      // email line // beat-grid: 11.06
+      tl.fromTo("#mail-line", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 11.06);
+      tl.fromTo("#s3-l2", { x: -30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 11.3);
+
+      /* transition S3 → S4: push slide at 13.0 */
+      const T3 = 13.0;
+      tl.to("#s3-inner", { x: -SCENE_W, duration: 0.5, ease: "power3.inOut" }, T3);
+      tl.fromTo("#s4-inner", { x: SCENE_W }, { x: 0, duration: 0.5, ease: "power3.inOut" }, T3);
+
+      /* ================= S4: it lands on the schedule (13.0 → 16.5) ================= */
+      // block drops into Dr. Reyes 10:00 // beat-grid: 13.18 (near the 12.65 strong cue, shifted after the slide settles)
+      tl.fromTo("#blk-new", { y: -60, opacity: 0, scale: 0.98 }, { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "back.out(1.3)" }, 13.5);
+      tl.fromTo("#ochip-1000", { backgroundColor: "#f0fdfa", color: "#0f766e", borderColor: "#99f6e4" }, { backgroundColor: "#f1f5f9", color: "#677180", borderColor: "#e2e8f0", duration: 0.35 }, 13.7);
+      tl.fromTo("#s4-l1", { x: 30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 13.7);
+      tl.fromTo("#s4-l2", { x: 30, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5 }, 14.76); // beat-grid: 14.76
+      tl.fromTo(".stats .stat", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45, stagger: 0.08 }, 13.3);
+
+      /* transition S4 → S5: push slide at 16.5 */
+      const T4 = 16.5;
+      tl.to("#s4-inner", { x: -SCENE_W, duration: 0.5, ease: "power3.inOut" }, T4);
+      tl.fromTo("#s5-inner", { x: SCENE_W }, { x: 0, duration: 0.5, ease: "power3.inOut" }, T4);
+
+      /* ================= S5: the report writes itself (16.5 → 19.6) ================= */
+      const cards = [["#rs-1", 16.86], ["#rs-2", 17.39], ["#rs-3", 17.91], ["#rs-4", 18.44]]; // beat-grid: 16.86, 17.39, 17.91 (strong), 18.44
+      cards.forEach(([sel, t]) => tl.fromTo(sel, { y: 26, opacity: 0 }, { y: 0, opacity: 1, duration: 0.45 }, t));
+      const counter = (sel, target, t, dur) => tl.to(sel, { innerText: target, snap: { innerText: 1 }, duration: dur, ease: "power2.out" }, t);
+      counter("#n-att", 30, 16.9, 0.7);
+      counter("#n-can", 3, 17.43, 0.5);
+      counter("#n-nos", 5, 17.95, 0.5);
+      const rate = { v: 0 };
+      const rateEl = document.getElementById("n-rate");
+      tl.to(rate, { v: 14.3, duration: 0.7, ease: "power2.out", onUpdate: () => { rateEl.textContent = rate.v.toFixed(1) + "%"; } }, 18.48);
+      tl.fromTo("#rbar-fill", { scaleX: 0 }, { scaleX: 0.143 * 2.5, duration: 0.7, ease: "power2.out" }, 18.48);
+      tl.fromTo(".row.data", { opacity: 0, x: -12 }, { opacity: 1, x: 0, duration: 0.35, stagger: 0.08 }, 18.7);
+      tl.fromTo("#s5-l1", { opacity: 0 }, { opacity: 1, duration: 0.5 }, 16.86);
+
+      /* transition S5 → S6: crossfade at 19.6 (wind-down) */
+      const T5 = 19.6;
+      tl.to("#s5-inner", { opacity: 0, duration: 0.5, ease: "sine.inOut" }, T5);
+      tl.fromTo("#s6-inner", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "sine.inOut" }, T5);
+
+      /* ================= S6: outro (19.6 → 21.5) ================= */
+      tl.fromTo("#s6-mark", { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.55, ease: "back.out(1.7)" }, 20.02); // beat-grid: 20.02
+      tl.fromTo("#s6-name", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 20.1);
+      tl.fromTo("#s6-tag", { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 20.28);
+      tl.fromTo("#s6-small", { y: 16, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5 }, 20.45);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
