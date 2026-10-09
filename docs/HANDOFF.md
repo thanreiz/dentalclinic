@@ -13,7 +13,7 @@
 | Security review | 0 Critical; 2 High, 4 Medium, 4 Low all **fixed**: [SECURITY-REVIEW.md](SECURITY-REVIEW.md) |
 | Appendix B screenshots | `docs/screenshots/appendix-b/` |
 | **Deployed** | **No.** The permission system blocked seeding Aiven and deploying to Vercel while you slept. You run the steps below (≈10 min) |
-| GitHub | **Not pushed.** Old commits still carry `Co-Authored-By: Claude` lines, and rewriting history was blocked. Step 2 below strips them |
+| GitHub | **Pushed** to https://github.com/thanreiz/dentalclinic (public). Claude attribution lines removed from all commit messages. Vercel region set to Singapore (`sin1`) |
 
 Aiven connection, Gmail SMTP login, and the Aiven CA certificate were all verified working (read-only). Vercel CLI is logged in as `thanreiz`.
 
@@ -30,15 +30,7 @@ npm run dev
 ```
 Open http://localhost:3000/book and http://localhost:3000/login (`staff@clinic.test` / `ClinicDemo2026!`, local only).
 
-**2. Remove the Claude lines from commit messages** (history is unpushed, so this is safe):
-```bash
-FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed -E "/^[Cc]o-[Aa]uthored-[Bb]y:.*$/d" | git stripspace' -- main && rm -rf .git/refs/original
-```
-
-**3. Push to a private GitHub repo:**
-```bash
-gh repo create dental-clinic-appointments --private --source . --push
-```
+**2–3. Done:** commit messages cleaned and pushed to `thanreiz/dentalclinic`.
 
 **4. Create tables + sample data on Aiven** (reads `.env.hosted` and `.aiven-ca.pem`; prints no secrets):
 ```bash
@@ -47,7 +39,7 @@ node scripts/hosted/seed.mjs
 
 **5. Create the Vercel project and push all env vars** (values come from `.env.hosted`, never printed; sets `REQUEST_LIMIT_PER_IP=30` for the defense):
 ```bash
-vercel link --yes --project dental-clinic-appointments
+vercel link --yes --project dentalclinic
 ```
 ```bash
 node scripts/hosted/vercel-env.mjs
@@ -57,7 +49,7 @@ node scripts/hosted/vercel-env.mjs
 ```bash
 vercel deploy --prod
 ```
-Optional: in Vercel → Project → Settings → Git, connect the GitHub repo for auto-deploys. Recommended: add `"regions": ["sin1"]` to `vercel.json` (Singapore, next to Aiven) before deploying. Every page makes several DB queries, so a US region adds noticeable latency (NF10).
+Optional: in Vercel → Project → Settings → Git, connect `thanreiz/dentalclinic` for auto-deploys on push.
 
 **7. Smoke test on the live URL:** `/book` on your phone over mobile data → submit → `/login` as `staff@clinic.test` with the **hosted** password (it's `SEED_STAFF_PASSWORD` in `.env.hosted`, not the local one) → `/requests` → confirm with a chair → email arrives in the demo Gmail's recipient (use your own email on the form; check spam once, mark "Not spam"). Then trigger the reminder job once:
 ```bash

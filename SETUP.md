@@ -22,7 +22,7 @@ First = `SESSION_SECRET`, second = `CRON_SECRET`.
 
 ## 4. GitHub repo
 ```bash
-gh repo create dental-clinic-appointments --private --source . --push
+Done: https://github.com/thanreiz/dentalclinic
 ```
 (You're logged into gh as `thanreiz`. Run from the project folder.)
 
