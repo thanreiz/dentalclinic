@@ -16,7 +16,7 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import mysql from 'mysql2/promise';
@@ -42,19 +42,31 @@ function binaryDir(): string {
   return path.join(os.tmpdir(), 'mysqlmsn', 'binaries', MYSQL_VERSION, 'mysql');
 }
 
+// Kept inside the project (gitignored) so db:local works offline, e.g. at a venue with no internet.
+// macOS purges $TMPDIR copies after a few days of disuse, which would force a re-download.
+function projectBinaryDir(): string {
+  return path.join(PROJECT_ROOT, '.mysql', MYSQL_VERSION, 'mysql');
+}
+
 async function ensureBinary(): Promise<string> {
-  const mysqld = path.join(binaryDir(), 'bin', 'mysqld');
-  if (existsSync(mysqld)) return mysqld;
-  log(`Downloading MySQL ${MYSQL_VERSION} (one time, ~200 MB) via mysql-memory-server ...`);
-  const db = await createDB({
-    version: MYSQL_VERSION,
-    downloadBinaryOnce: true,
-    xEnabled: 'OFF',
-    logLevel: 'ERROR',
-  });
-  await db.stop();
-  if (!existsSync(mysqld)) throw new Error(`MySQL binary not found at ${mysqld} after download`);
-  return mysqld;
+  const local = path.join(projectBinaryDir(), 'bin', 'mysqld');
+  if (existsSync(local)) return local;
+  const tmp = path.join(binaryDir(), 'bin', 'mysqld');
+  if (!existsSync(tmp)) {
+    log(`Downloading MySQL ${MYSQL_VERSION} (one time, ~200 MB) via mysql-memory-server ...`);
+    const db = await createDB({
+      version: MYSQL_VERSION,
+      downloadBinaryOnce: true,
+      xEnabled: 'OFF',
+      logLevel: 'ERROR',
+    });
+    await db.stop();
+    if (!existsSync(tmp)) throw new Error(`MySQL binary not found at ${tmp} after download`);
+  }
+  log('Copying the MySQL binary into ./.mysql so it works offline next time ...');
+  mkdirSync(path.dirname(projectBinaryDir()), { recursive: true });
+  cpSync(binaryDir(), projectBinaryDir(), { recursive: true, verbatimSymlinks: true });
+  return local;
 }
 
 function run(cmd: string, args: string[]): Promise<void> {

@@ -63,6 +63,32 @@ Vercel → Settings → Cron Jobs should list `/api/cron/reminders` (daily 01:00
 - `.aiven-ca.pem`: Aiven project CA (public, but no need to track).
 - `.env.local`: local dev values (written by `npm run db:local`).
 
+## No internet at the venue (offline demo)
+
+Everything runs on the Mac with no network: MySQL 8 is kept in `./.mysql` (gitignored, 639 MB), the app loads no external fonts or scripts, and with SMTP unset the emails print in the terminal as `[mail:dev]` instead of sending.
+
+Do this **once while you still have internet** (in the project folder): `npm install` (if `node_modules` is missing) and `npm run db:local` once, so `./.mysql` exists. Then at the venue:
+
+1. Reset to the clean sample data:
+   ```bash
+   npm run db:reset
+   ```
+2. Start the database and leave it running:
+   ```bash
+   npm run db:local
+   ```
+3. In a second terminal, start the app so phones on the same Wi-Fi/hotspot can reach it:
+   ```bash
+   npm run dev -- -H 0.0.0.0
+   ```
+4. On the Mac open http://localhost:3000/login (`staff@clinic.test` / `ClinicDemo2026!`). For panelists' phones: turn on your phone's hotspot (no data needed), connect the Mac and their phones to it, find the Mac's address with `ipconfig getifaddr en0`, and have them open `http://<that-address>:3000/book`.
+5. Show the confirmation and reminder emails from the terminal (`[mail:dev]` lines). Trigger the reminder job by hand (the local `CRON_SECRET` is in `.env.local`):
+   ```bash
+   curl -H "Authorization: Bearer $(grep ^CRON_SECRET= .env.local | cut -d= -f2-)" http://localhost:3000/api/cron/reminders
+   ```
+
+If panelists do get online, the live Vercel URL is the better demo; this is the fallback.
+
 ## Demo day (from PRD Phase 11 + reports)
 
 - Day before and right after the defense: `node scripts/hosted/seed.mjs` (clears panelist entries).
