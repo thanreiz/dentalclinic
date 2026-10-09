@@ -1,0 +1,12 @@
+# Never upload local secrets, local MySQL, or build/test output with `vercel deploy`.
+.env*
+!.env.example
+*.pem
+.mysql/
+.mysql-data/
+.next/
+.next-*/
+node_modules/
+test-results/
+playwright-report/
+.claude/
