@@ -12,7 +12,7 @@
 | October 2026 report | Dr. Reyes 10.0%, Dr. Lim 20.0%, total 14.3% (Table 3.22) |
 | Security review | 0 Critical; 2 High, 4 Medium, 4 Low all **fixed**: [SECURITY-REVIEW.md](SECURITY-REVIEW.md) |
 | Appendix B screenshots | `docs/screenshots/appendix-b/` |
-| **Deployed** | **No.** The permission system blocked seeding Aiven and deploying to Vercel while you slept. You run the steps below (≈10 min) |
+| **Deployed** | **Yes:** https://dentalclinic-sooty.vercel.app (Vercel, Singapore `sin1`, Aiven MySQL seeded, auto-deploys on push to `main`). Verified live: auth redirects, 401 on APIs, security headers, open slots from Aiven, cron rejects missing secret. Run `node scripts/hosted/smoke.mjs` for the email/reminder check, then `node scripts/hosted/seed.mjs` |
 | GitHub | **Pushed** to https://github.com/thanreiz/dentalclinic (public). Claude attribution lines removed from all commit messages. Vercel region set to Singapore (`sin1`) |
 
 Aiven connection, Gmail SMTP login, and the Aiven CA certificate were all verified working (read-only). Vercel CLI is logged in as `thanreiz`.
