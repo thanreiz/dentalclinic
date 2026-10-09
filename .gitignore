@@ -40,3 +40,9 @@ next-env.d.ts
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# brag video build output (render + Hyperframes scratch)
+brag-output/composition/snapshots/
+brag-output/composition/.hyperframes/
+brag-output/composition/renders/
+brag-output/composition/node_modules/

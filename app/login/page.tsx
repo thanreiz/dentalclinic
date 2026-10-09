@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: 'Staff login' };
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   const { next } = await searchParams;
   const nextPath = safeNextPath(Array.isArray(next) ? next[0] : next);
-  const clinicName = process.env.CLINIC_NAME || 'Sample Dental Clinic';
+  const clinicName = process.env.CLINIC_NAME || 'G4 Dental Clinic';
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">

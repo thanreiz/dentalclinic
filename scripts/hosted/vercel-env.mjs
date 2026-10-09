@@ -16,7 +16,7 @@ const vars = {
   SMTP_USER: hosted.SMTP_USER,
   SMTP_PASS: hosted.SMTP_PASS,
   MAIL_FROM: hosted.MAIL_FROM,
-  CLINIC_NAME: hosted.CLINIC_NAME || "Sample Dental Clinic",
+  CLINIC_NAME: hosted.CLINIC_NAME || "G4 Dental Clinic",
   CLINIC_PHONE: hosted.CLINIC_PHONE || "0917 000 0000",
   SLOT_INTERVAL_MINUTES: hosted.SLOT_INTERVAL_MINUTES || "30",
   NO_SHOW_THRESHOLD: hosted.NO_SHOW_THRESHOLD || "2",

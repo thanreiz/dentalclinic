@@ -12,7 +12,7 @@ Nothing here blocks the overnight build — it runs on a local MySQL 8. These ar
 1. New Gmail, e.g. `yourclinic.demo@gmail.com` (not personal).
 2. myaccount.google.com → Security → turn on **2-Step Verification**.
 3. myaccount.google.com/apppasswords → create → copy 16-char password.
-4. `SMTP_USER` = that address, `SMTP_PASS` = app password, `MAIL_FROM="Sample Dental Clinic <that address>"`.
+4. `SMTP_USER` = that address, `SMTP_PASS` = app password, `MAIL_FROM="G4 Dental Clinic <that address>"`.
 
 ## 3. Secrets (run twice, one each)
 ```bash

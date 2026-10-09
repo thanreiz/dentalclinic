@@ -13,7 +13,7 @@ const DEMO_BANNER = 'Demo system: please use sample details, not your real infor
 
 /** Public online request form (FR1). Mobile-first; must work at 360 px (NF01). */
 export default async function BookPage() {
-  const clinicName = process.env.CLINIC_NAME || 'Sample Dental Clinic';
+  const clinicName = process.env.CLINIC_NAME || 'G4 Dental Clinic';
   const clinicPhone = process.env.CLINIC_PHONE || undefined;
   const [services, dentists] = await Promise.all([listServices(), listDentistsWithSchedules()]);
   const today = todayManila();
