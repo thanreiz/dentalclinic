@@ -228,6 +228,21 @@ export function normalizeContact(raw: string): string | null {
   return null;
 }
 
+/**
+ * Patient contact rule (input validation): a PH MOBILE only, i.e. +63 then 10 digits starting with 9.
+ * Accepts '9175550101', '09175550101', '+63 917 555 0101', '639175550101' (spaces/dashes allowed)
+ * and returns the stored form '09175550101'. Landlines are rejected here (normalizeContact still
+ * accepts them so old data and the search box keep working).
+ */
+export function normalizeMobile(raw: string): string | null {
+  if (typeof raw !== 'string') return null;
+  let s = raw.trim().replace(/[\s\-().]/g, '');
+  if (s.startsWith('+63')) s = s.slice(3);
+  else if (s.startsWith('63') && s.length === 12) s = s.slice(2);
+  else if (s.startsWith('0')) s = s.slice(1);
+  return /^9\d{9}$/.test(s) ? `0${s}` : null;
+}
+
 export function isValidContact(raw: string): boolean {
   return normalizeContact(raw) !== null;
 }

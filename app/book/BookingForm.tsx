@@ -6,10 +6,11 @@ import { DateCalendar } from '@/components/booking/DateCalendar';
 import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { Checkbox, FormError, Input, Textarea } from '@/components/ui/Field';
+import { PhoneInput } from '@/components/ui/PhoneInput';
 import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, ToothIcon } from '@/components/ui/icons';
 import { dayOfWeek, formatDateHuman, formatTime12 } from '@/lib/time';
 import type { Slot } from '@/lib/types';
-import { bookingRequestSchema, fieldErrors } from '@/lib/validation';
+import { bookingRequestSchema, fieldErrors, stripNameChars } from '@/lib/validation';
 
 export type BookService = { id: number; name: string; durationMinutes: number };
 export type BookDentist = { id: number; name: string; workingDays: number[] };
@@ -440,25 +441,20 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             autoComplete="name"
             required
             value={details.fullName}
-            onChange={(e) => setDetail('fullName', e.target.value)}
+            onChange={(e) => setDetail('fullName', stripNameChars(e.target.value))}
             onBlur={() => validateField('fullName')}
             error={errors.fullName}
             maxLength={150}
           />
-          <Input
+          <PhoneInput
             id="book-contactNumber"
             label="Contact number"
             name="contactNumber"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="0917 555 0101"
             required
             value={details.contactNumber}
-            onChange={(e) => setDetail('contactNumber', e.target.value)}
+            onValueChange={(d) => setDetail('contactNumber', d)}
             onBlur={() => validateField('contactNumber')}
             error={errors.contactNumber}
-            maxLength={30}
           />
           <Input
             id="book-email"

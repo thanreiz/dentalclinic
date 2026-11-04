@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { formatContact, normalizeContact } from '@/lib/rules';
+import { PhoneInput, toMobileDigits } from '@/components/ui/PhoneInput';
 import type { PatientProfile } from '@/lib/types';
-import { fieldErrors, patientPatchSchema } from '@/lib/validation';
+import { fieldErrors, patientPatchSchema, stripNameChars } from '@/lib/validation';
 import { api, errorMessage } from '@/components/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -19,7 +19,7 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
   const toast = useToast();
   const initial: Values = {
     fullName: patient.fullName,
-    contactNumber: formatContact(patient.contactNumber),
+    contactNumber: toMobileDigits(patient.contactNumber),
     email: patient.email ?? '',
     birthdate: patient.birthdate,
   };
@@ -29,9 +29,7 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const changed = (Object.keys(values) as (keyof Values)[]).filter((k) =>
-    k === 'contactNumber' ? normalizeContact(values[k]) !== normalizeContact(baseline[k]) || (!normalizeContact(values[k]) && values[k] !== baseline[k]) : values[k].trim() !== baseline[k].trim(),
-  );
+  const changed = (Object.keys(values) as (keyof Values)[]).filter((k) => values[k].trim() !== baseline[k].trim());
   const dirty = changed.length > 0;
 
   function set(k: keyof Values, v: string) {
@@ -56,9 +54,7 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
     const r = await api(`/api/patients/${patient.patientId}`, { method: 'PATCH', body: patch });
     setSaving(false);
     if (r.ok) {
-      const next = { ...values, contactNumber: normalizeContact(values.contactNumber) ? formatContact(normalizeContact(values.contactNumber)!) : values.contactNumber };
-      setValues(next);
-      setBaseline(next);
+      setBaseline(values);
       toast.show({ tone: 'success', title: 'Patient details saved' });
       router.refresh();
       return;
@@ -79,16 +75,14 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
       <CardHeader title="Profile" description="Edit the patient's details. The contact number must be unique." />
       <form onSubmit={save} noValidate className="px-4 py-4 sm:px-5">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input label="Full name" required value={values.fullName} onChange={(e) => set('fullName', e.target.value)} error={errors.fullName} maxLength={150} />
-          <Input
+          <Input label="Full name" required value={values.fullName} onChange={(e) => set('fullName', stripNameChars(e.target.value))} error={errors.fullName} maxLength={150} />
+          <PhoneInput
             label="Contact number"
-            required
-            type="tel"
-            inputMode="tel"
+            required={baseline.contactNumber !== ''}
+            hint={baseline.contactNumber === '' ? 'Saved number is not a PH mobile. Enter a mobile (10 digits starting with 9) to replace it.' : undefined}
             value={values.contactNumber}
-            onChange={(e) => set('contactNumber', e.target.value)}
+            onValueChange={(d) => set('contactNumber', d)}
             error={errors.contactNumber}
-            maxLength={30}
           />
           <Input
             label="Email"

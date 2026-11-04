@@ -67,6 +67,23 @@ describe('bookingRequestSchema (POST /api/requests)', () => {
   });
 });
 
+describe('input restrictions: phone and name', () => {
+  const ok = (over: object) => bookingRequestSchema.safeParse({ ...validRequest, ...over }).success;
+
+  it('phone: PH mobile only', () => {
+    expect(ok({ contactNumber: '9175550199' })).toBe(true);
+    expect(ok({ contactNumber: '917555019' })).toBe(false); // 9 digits
+    expect(ok({ contactNumber: '81755501999' })).toBe(false);
+    expect(ok({ contactNumber: '(02) 8123 4567' })).toBe(false); // landline
+    expect(ok({ contactNumber: '917abc0199' })).toBe(false);
+  });
+
+  it('name: letters, spaces . - \' only', () => {
+    for (const n of ['Ma. Luisa Dela Cruz', 'Peña', "O'Brien", 'Anne-Marie']) expect(ok({ fullName: n })).toBe(true);
+    for (const n of ['Maria123', '<b>Bob</b>', '1234', 'A_B']) expect(ok({ fullName: n })).toBe(false);
+  });
+});
+
 describe('staffBookingSchema (POST /api/appointments)', () => {
   const base = { serviceId: 1, dentistId: 1, date: '2026-10-20', start: '09:00', chairId: 1, channel: 'phone' };
   it('exactly one of patientId / newPatient', () => {

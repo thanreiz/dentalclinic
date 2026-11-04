@@ -4,7 +4,7 @@
  * Output field names are camelCase; map to snake_case columns in lib/queries.
  */
 import { z } from 'zod';
-import { normalizeContact, STAFF_CHANNELS, STAFF_SET_STATUSES } from './rules';
+import { normalizeMobile, STAFF_CHANNELS, STAFF_SET_STATUSES } from './rules';
 import { isValidDate, isValidTime, todayManila, toMinutes } from './time';
 
 // No `new Function` JIT: the CSP (next.config.ts) has no 'unsafe-eval' in production, and Zod's
@@ -39,11 +39,17 @@ export const idSchema = z.coerce
 /** 'any' or a dentist id (online form, GET /api/slots). */
 export const dentistChoiceSchema = z.union([z.literal('any'), idSchema]);
 
+/** Letters (incl. ñ and accents), then letters/marks/space/period/hyphen/apostrophe. No digits. */
+export const NAME_RE = /^\p{L}[\p{L}\p{M} .'\u2019-]*$/u;
+/** Live input filter: drops every character a name may not contain. */
+export const stripNameChars = (v: string) => v.replace(/\u2019/g, "'").replace(/[^\p{L}\p{M} .'-]/gu, '');
+
 export const fullNameSchema = z
   .string()
   .trim()
   .min(2, { error: 'Enter the full name' })
-  .max(150, { error: 'Name is too long (150 characters max)' });
+  .max(150, { error: 'Name is too long (150 characters max)' })
+  .regex(NAME_RE, { error: 'Use letters only (spaces, . - \' allowed)' });
 
 export const emailSchema = z
   .string()
@@ -58,17 +64,17 @@ export const optionalEmailSchema = z
   .optional()
   .transform((v) => (v ? v : null));
 
-/** FR9: normalized to digits only ('+63 917-555-0101' -> '09175550101'). */
+/** FR9: PH mobile only, stored as 11 digits ('+63 917-555-0101' -> '09175550101'). */
 export const contactNumberSchema = z
   .string()
   .trim()
   .max(30, { error: 'Contact number is too long' })
   .transform((v, ctx) => {
-    const n = normalizeContact(v);
+    const n = normalizeMobile(v);
     if (!n) {
       ctx.addIssue({
         code: 'custom',
-        message: 'Enter a valid PH mobile (e.g. 0917 555 0101) or landline number',
+        message: 'Enter a 10-digit PH mobile number starting with 9 (e.g. 917 555 0101)',
       });
       return z.NEVER;
     }

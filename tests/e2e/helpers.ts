@@ -38,7 +38,9 @@ export function uniqueContact(): string {
   const n = String(Math.floor(Math.random() * 1e8) + seq++).padStart(9, '0').slice(-9);
   return `09${n}`;
 }
-export const uniqueName = (prefix: string) => `${prefix} ${Date.now().toString(36)}${Math.floor(Math.random() * 99)}`;
+/** Patient names are letters only now, so digits (in the prefix or the suffix) are mapped to letters. */
+export const uniqueName = (prefix: string) =>
+  `${prefix} ${Date.now().toString(36)}${Math.floor(Math.random() * 99)}`.replace(/\d/g, (d) => String.fromCharCode(97 + Number(d)));
 
 // ---------- db (test setup only) ----------
 export async function sql<T = unknown>(query: string, params: unknown[] = []): Promise<T[]> {
