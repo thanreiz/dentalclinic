@@ -67,7 +67,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">Appointment history for {patient.fullName}</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+              <thead className="border-b border-[var(--color-rule)] text-[13px] font-medium text-slate-500">
                 <tr>
                   <th scope="col" className="px-4 py-3">Date</th>
                   <th scope="col" className="px-4 py-3">Service</th>
@@ -120,7 +120,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'red' }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-xs">
+    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
       <p className="text-xs font-medium text-slate-600">{label}</p>
       <p className={`mt-0.5 text-2xl font-semibold tabular-nums ${tone === 'red' ? 'text-red-700' : 'text-slate-900'}`}>{value}</p>
     </div>

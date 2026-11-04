@@ -72,7 +72,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         description={
           <>
             {DAYS_OF_WEEK[day.dayOfWeek]}, {formatDateHuman(date)}
-            {isToday && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">Today</span>}
+            {isToday && <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-900">Today</span>}
+            {summary.pendingCount > 0 && (
+              <>
+                {' · '}
+                <Link href="/requests" className="font-semibold text-amber-800 underline-offset-2 hover:underline">
+                  {summary.pendingCount} online request{summary.pendingCount === 1 ? '' : 's'} waiting
+                </Link>
+              </>
+            )}
           </>
         }
         actions={
@@ -82,26 +90,26 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         }
       />
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <SummaryCard label="Today's appointments" value={summary.todayTotal} hint={formatDateHuman(today)} href={`/dashboard?date=${today}&view=${view}`} />
+      <div className="mb-6 grid grid-cols-3 divide-x divide-[var(--color-rule)] rounded-xl border border-[var(--color-rule)] bg-white">
+        <SummaryCard label="Visits today" value={summary.todayTotal} hint={`${formatDateHuman(today)}, all dentists`} href={`/dashboard?date=${today}&view=${view}`} />
         <SummaryCard
-          label="Pending requests"
+          label="Requests waiting"
           value={summary.pendingCount}
-          hint={summary.pendingCount ? 'Waiting for confirm or decline' : 'All caught up'}
+          hint={summary.pendingCount ? 'Online requests to confirm or decline' : 'Nothing waiting on you'}
           href="/requests"
           tone={summary.pendingCount ? 'amber' : undefined}
         />
         <SummaryCard
-          label="Tomorrow (reminders)"
+          label="Tomorrow"
           value={summary.tomorrowCount}
-          hint="Scheduled visits that get a reminder email"
+          hint="Visits that get a reminder email"
           href={`/dashboard?date=${addDays(today, 1)}&view=${view}`}
         />
       </div>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <DateNav date={date} today={today} basePath="/dashboard" params={{ view }} />
-        <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm" role="group" aria-label="Group schedule by">
+        <div className="inline-flex rounded-[10px] border border-slate-300 bg-white p-0.5" role="group" aria-label="Group schedule by">
           {(['dentist', 'chair'] as const).map((v) => (
             <Link
               key={v}
@@ -109,7 +117,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               aria-current={view === v ? 'true' : undefined}
               className={cx(
                 'flex h-9 items-center rounded-md px-3.5 text-sm font-medium',
-                view === v ? 'bg-brand-700 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100',
+                view === v ? 'bg-brand-100 font-semibold text-brand-900' : 'text-slate-700 hover:bg-slate-100',
               )}
             >
               By {v}
@@ -156,16 +164,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
 function SummaryCard({ label, value, hint, href, tone }: { label: string; value: number; hint: string; href: string; tone?: 'amber' }) {
   return (
-    <Link
-      href={href}
-      className={cx(
-        'group rounded-lg border bg-white px-4 py-3.5 shadow-xs transition-colors hover:border-brand-300',
-        tone === 'amber' ? 'border-amber-300' : 'border-slate-200',
-      )}
-    >
-      <p className="text-sm font-medium text-slate-600">{label}</p>
-      <p className={cx('mt-1 text-3xl font-semibold tabular-nums', tone === 'amber' ? 'text-amber-800' : 'text-slate-900')}>{value}</p>
-      <p className="mt-0.5 truncate text-xs text-slate-500">{hint}</p>
+    <Link href={href} className="group px-3 py-3.5 transition-colors first:rounded-l-xl last:rounded-r-xl hover:bg-brand-50/60 sm:px-5 sm:py-4">
+      <p className="text-xs leading-snug text-slate-600 sm:text-sm">{label}</p>
+      <p className={cx('mt-1 text-2xl font-semibold tabular-nums sm:text-[28px] sm:leading-9', tone === 'amber' ? 'text-amber-800' : 'text-slate-900')}>
+        {value}
+      </p>
+      <p className="mt-0.5 hidden truncate text-xs text-slate-500 sm:block">{hint}</p>
     </Link>
   );
 }
@@ -200,6 +204,13 @@ function layoutLanes(appts: ApptBlock[]): { block: ApptBlock; lane: number; lane
   return out;
 }
 
+/** Stable pale tints so each dentist or chair keeps one identity across the grid (identity, not data). */
+const PERSON_TINTS = ['bg-brand-100 text-brand-900', 'bg-sky-100 text-sky-900', 'bg-lime-100 text-lime-900', 'bg-orange-100 text-orange-900'];
+const personInitials = (name: string) => {
+  const parts = name.replace(/^Dr\.?\s+/i, '').split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? '') + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase() || '·';
+};
+
 function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; start: number; end: number; nowMinutes: number | null }) {
   const rows: number[] = [];
   for (let m = start; m < end; m += ROW_MINUTES) rows.push(m);
@@ -213,12 +224,20 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
       <div className="grid min-w-[560px]" style={{ gridTemplateColumns: `4.5rem repeat(${columns.length}, minmax(9rem, 1fr))` }}>
         {/* header row */}
         <div className="sticky left-0 z-10 border-b border-slate-200 bg-white" />
-        {columns.map((c) => (
-          <div key={c.key} className="border-b border-l border-slate-200 bg-white px-3 py-2.5">
-            <p className={cx('truncate text-sm font-semibold', c.muted ? 'text-slate-600' : 'text-slate-900')}>{c.title}</p>
-            {c.subtitle && (
-              <p className={cx('truncate text-xs', c.hours === null ? 'font-medium text-slate-500' : 'text-slate-500')}>{c.subtitle}</p>
-            )}
+        {columns.map((c, i) => (
+          <div key={c.key} className="flex items-center gap-2.5 border-b border-l border-slate-200 bg-white px-3 py-2.5">
+            <span
+              className={cx('grid size-8 shrink-0 place-items-center rounded-full text-xs font-bold', c.muted ? 'bg-slate-100 text-slate-600' : PERSON_TINTS[i % PERSON_TINTS.length])}
+              aria-hidden="true"
+            >
+              {personInitials(c.title)}
+            </span>
+            <div className="min-w-0">
+              <p className={cx('truncate text-sm font-semibold', c.muted ? 'text-slate-600' : 'text-slate-900')}>{c.title}</p>
+              {c.subtitle && (
+                <p className={cx('truncate text-xs', c.hours === null ? 'font-medium text-slate-500' : 'text-slate-500')}>{c.subtitle}</p>
+              )}
+            </div>
           </div>
         ))}
 
@@ -249,7 +268,7 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
               ))}
               {/* outside working hours / not working */}
               {c.hours === null && (
-                <div className="absolute inset-0 grid place-items-center bg-[repeating-linear-gradient(135deg,#f1f5f9_0_8px,#f8fafc_8px_16px)]">
+                <div className="absolute inset-0 grid place-items-center bg-slate-100">
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600 ring-1 ring-slate-200">Not working</span>
                 </div>
               )}
@@ -274,7 +293,7 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
                     href={`/appointments/${a.appointmentId}`}
                     aria-label={`${formatTime12(a.start)} to ${formatTime12(a.end)}, ${a.patientName}, ${a.serviceName}, ${a.status}`}
                     className={cx(
-                      'absolute overflow-hidden rounded-md border-l-4 px-2 py-1 text-xs shadow-xs ring-1 ring-black/5 transition-colors',
+                      'absolute overflow-hidden rounded-md border px-2 py-1 text-xs transition-colors',
                       style.block,
                       a.status === 'cancelled' && 'opacity-70',
                     )}

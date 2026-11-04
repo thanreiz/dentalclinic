@@ -38,7 +38,7 @@ export default function PatientSearchBox({ initial }: { initial: string }) {
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by name or contact number"
+        placeholder="Search name or number"
         autoComplete="off"
         className={cx(controlBase, 'h-11 border-slate-300 pr-10 pl-10')}
       />

@@ -8,7 +8,7 @@ export const STATUS_STYLES: Record<AppointmentStatus, { badge: string; dot: stri
     label: 'Pending',
     badge: 'bg-amber-100 text-amber-900 ring-amber-300',
     dot: 'bg-amber-500',
-    block: 'bg-amber-50 border-amber-400 text-amber-950 hover:bg-amber-100',
+    block: 'bg-amber-50/70 border-dashed border-amber-500 text-amber-950 hover:bg-amber-100',
   },
   scheduled: {
     label: 'Scheduled',

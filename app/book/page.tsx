@@ -35,11 +35,11 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       </div>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-700 text-white">
+          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-700 text-white">
             <ToothIcon className="size-6" />
           </span>
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-slate-900">{clinicName}</p>
+            <p className="truncate text-[17px] font-bold tracking-tight text-slate-900">{clinicName}</p>
             <p className="text-sm text-slate-600">Request an appointment online</p>
           </div>
         </div>

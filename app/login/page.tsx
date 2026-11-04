@@ -14,13 +14,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
-          <span className="grid size-12 place-items-center rounded-xl bg-brand-700 text-white shadow-sm">
+          <span className="grid size-12 place-items-center rounded-xl bg-brand-700 text-white">
             <ToothIcon className="size-7" />
           </span>
           <p className="mt-3 text-sm font-medium text-slate-600">{clinicName}</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Staff login</h1>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-slate-200 bg-white p-6">
           <LoginForm nextPath={nextPath} />
         </div>
         <p className="mt-6 text-center text-sm text-slate-600">

@@ -254,7 +254,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     role="searchbox"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Name or contact number, e.g. Maria or 0917 555"
+                    placeholder="Name or number"
                     autoComplete="off"
                     className="pl-10"
                     error={errors.patient ?? errors.patientId}
@@ -364,8 +364,9 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
         <Card>
           <CardHeader title="2. Visit" description="Only open times and free chairs are shown." />
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
-            <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr_1fr]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Select
+                wrapperClassName="sm:col-span-2"
                 label="Service"
                 required
                 value={serviceId ?? ''}
