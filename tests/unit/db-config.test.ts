@@ -48,19 +48,4 @@ describe('TLS verification (M3) and query safety (I9)', () => {
   it('pool never expands objects into SQL (stringifyObjects)', () => {
     expect(buildPoolOptions('mysql://root@127.0.0.1:3307/dental').stringifyObjects).toBe(true);
   });
-
-  it('skips only the host name check when DATABASE_SKIP_HOSTNAME_CHECK=1 (chain still verified)', () => {
-    const ssl = sslOptions(parseDatabaseUrl(remote), env({ NODE_ENV: 'production', DATABASE_CA_CERT: PEM, DATABASE_SKIP_HOSTNAME_CHECK: '1' })) as {
-      ca: string;
-      rejectUnauthorized: boolean;
-      checkServerIdentity: () => unknown;
-    };
-    expect(ssl.ca).toBe(PEM);
-    expect(ssl.rejectUnauthorized).toBe(true);
-    expect(ssl.checkServerIdentity()).toBeUndefined();
-  });
-
-  it('still requires a CA in production even with the skip flag', () => {
-    expect(() => sslOptions(parseDatabaseUrl(remote), env({ NODE_ENV: 'production', DATABASE_CA_CERT: '', DATABASE_SKIP_HOSTNAME_CHECK: '1' }))).toThrow(/DATABASE_CA_CERT is required/);
-  });
 });

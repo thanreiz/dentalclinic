@@ -58,19 +58,6 @@ export function caCertFromEnv(env: NodeJS.ProcessEnv = process.env): string | un
   return raw ? raw : undefined;
 }
 
-/**
- * Verified TLS options: chain checked against the pinned CA. When DATABASE_SKIP_HOSTNAME_CHECK=1
- * the host name / IP check is skipped (needed when connecting through a load balancer IP whose
- * address is not in the DB certificate, e.g. OCI HeatWave behind an NLB). Chain check stays on.
- */
-function verifiedSsl(ca: string, env: NodeJS.ProcessEnv): NonNullable<PoolOptions['ssl']> {
-  const base = { ca, rejectUnauthorized: true };
-  // mysql2 hands this object to tls.connect(); its SslOptions type just does not list checkServerIdentity.
-  return env.DATABASE_SKIP_HOSTNAME_CHECK === '1'
-    ? ({ ...base, checkServerIdentity: () => undefined } as NonNullable<PoolOptions['ssl']>)
-    : base;
-}
-
 /** TLS options for the URL (throws in production for a remote host without a verified CA). */
 export function sslOptions(p: ParsedDbUrl, env: NodeJS.ProcessEnv = process.env): PoolOptions['ssl'] {
   const ca = caCertFromEnv(env);
@@ -81,10 +68,10 @@ export function sslOptions(p: ParsedDbUrl, env: NodeJS.ProcessEnv = process.env)
           "provider's CA certificate (Aiven: service page -> Connection information -> CA certificate). See docs/DEPLOY.md.",
       );
     }
-    return verifiedSsl(ca, env);
+    return { ca, rejectUnauthorized: true };
   }
   if (!p.ssl && (isLocalHost(p.host) || !ca)) return undefined;
-  return ca ? verifiedSsl(ca, env) : { rejectUnauthorized: false };
+  return ca ? { ca, rejectUnauthorized: true } : { rejectUnauthorized: false };
 }
 
 export function buildPoolOptions(url: string, extra: Partial<PoolOptions> = {}): PoolOptions {
