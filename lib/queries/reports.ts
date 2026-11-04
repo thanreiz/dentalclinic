@@ -6,9 +6,9 @@
  * No-show rate = no-show / (attended + no-show); null when the denominator is 0.
  */
 import { query } from '../db';
-import { noShowRate } from '../rules';
+import { CHANNELS, noShowRate } from '../rules';
 import { monthRange } from '../time';
-import type { MonthlyReport, RepeatNoShow, ReportCounts } from '../types';
+import type { ChannelReport, MonthlyReport, RepeatNoShow, ReportCounts } from '../types';
 
 const COUNT_COLUMNS = `
        SUM(a.status = 'attended') AS attended,
@@ -43,6 +43,21 @@ JOIN services s ON s.service_id = a.service_id
 ${MONTH_FILTER}
 GROUP BY s.service_id, s.service_name
 ORDER BY s.service_id`;
+
+/**
+ * Bookings per channel in the month (SOP 1). Declined requests and cancellations that were
+ * reschedules are left out (a reschedule would count twice); everything else counts once.
+ */
+export const REPORT_BY_CHANNEL_SQL = `
+SELECT a.channel, COUNT(*) AS bookings,
+       SUM(a.status = 'attended') AS attended,
+       SUM(a.status = 'no-show') AS no_show
+FROM appointments a
+WHERE a.appointment_date BETWEEN :first_day AND :last_day
+  AND a.status <> 'declined'
+  AND NOT (a.status = 'cancelled' AND EXISTS (
+        SELECT 1 FROM appointments r WHERE r.rescheduled_from_id = a.appointment_id))
+GROUP BY a.channel`;
 
 /** FR16: patients whose no-show count reaches the threshold (all time). */
 export const REPEAT_NO_SHOWS_SQL = `
@@ -96,4 +111,20 @@ export async function getRepeatNoShows(threshold: number): Promise<RepeatNoShow[
     noShowCount: Number(r.no_show_count),
     lastNoShowDate: r.last_no_show_date,
   }));
+}
+
+/** Bookings by channel for a month; all four channels always appear (zero when unused). */
+export async function getChannelReport(month: string): Promise<ChannelReport> {
+  const { first, last } = monthRange(month);
+  const rows = await query<{ channel: (typeof CHANNELS)[number]; bookings: number | string; attended: number | string | null; no_show: number | string | null }>(
+    REPORT_BY_CHANNEL_SQL,
+    { first_day: first, last_day: last },
+  );
+  const byChannel = new Map(rows.map((r) => [r.channel, r]));
+  const base = CHANNELS.map((channel) => {
+    const r = byChannel.get(channel);
+    return { channel, bookings: Number(r?.bookings ?? 0), attended: Number(r?.attended ?? 0), noShow: Number(r?.no_show ?? 0) };
+  });
+  const total = base.reduce((n, r) => n + r.bookings, 0);
+  return { month, total, rows: base.map((r) => ({ ...r, share: total === 0 ? null : r.bookings / total })) };
 }

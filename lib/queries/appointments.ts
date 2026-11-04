@@ -1,8 +1,9 @@
 /** Appointment detail page read (/appointments/[id]). */
-import { queryOne } from '../db';
+import { query, queryOne } from '../db';
 import { allowedTransitions, hasStarted } from '../rules';
 import { nowManila, toHHMM } from '../time';
-import type { AppointmentDetailView, AppointmentRow } from '../types';
+import type { AppointmentDetailView, AppointmentListItem, AppointmentRow, AppointmentStatus, Channel } from '../types';
+import { contactSearchDigits, likeEscape } from './patients';
 
 type Row = AppointmentRow & {
   full_name: string;
@@ -53,5 +54,105 @@ export async function getAppointmentDetail(
     replacedById: r.replaced_by_id === null ? null : Number(r.replaced_by_id),
     allowedTransitions: allowedTransitions(r.status, { startPassed }),
     startPassed,
+  };
+}
+
+export type AppointmentFilters = {
+  channel?: Channel;
+  status?: AppointmentStatus;
+  from?: string; // 'YYYY-MM-DD', appointment date >= from
+  to?: string; // 'YYYY-MM-DD', appointment date <= to
+  q?: string; // patient name, or part of the contact number
+};
+
+type ListRow = {
+  appointment_id: number;
+  appointment_date: string;
+  start_time: string;
+  end_time: string;
+  status: AppointmentStatus;
+  channel: Channel;
+  patient_id: number;
+  full_name: string;
+  contact_number: string;
+  dentist_name: string;
+  service_name: string;
+  requested_at: string;
+};
+
+/**
+ * Every appointment from every channel in one list (SOP 1: centralized bookings), newest date
+ * first. All filters are optional and bound as parameters; `page` is 1-based.
+ */
+export async function listAppointments(
+  filters: AppointmentFilters = {},
+  page = 1,
+  pageSize = 50,
+): Promise<{ rows: AppointmentListItem[]; total: number }> {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (filters.channel) {
+    where.push('a.channel = ?');
+    params.push(filters.channel);
+  }
+  if (filters.status) {
+    where.push('a.status = ?');
+    params.push(filters.status);
+  }
+  if (filters.from) {
+    where.push('a.appointment_date >= ?');
+    params.push(filters.from);
+  }
+  if (filters.to) {
+    where.push('a.appointment_date <= ?');
+    params.push(filters.to);
+  }
+  const text = (filters.q ?? '').trim();
+  if (text) {
+    const digits = contactSearchDigits(text);
+    const parts = ["p.full_name LIKE ? ESCAPE '\\\\'"];
+    params.push(`%${likeEscape(text)}%`);
+    if (digits) {
+      parts.push("p.contact_number LIKE ? ESCAPE '\\\\'");
+      params.push(`%${likeEscape(digits)}%`);
+    }
+    where.push(`(${parts.join(' OR ')})`);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const size = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const offset = (Math.max(1, Math.floor(page)) - 1) * size;
+  const from = `FROM appointments a
+     JOIN patients p ON p.patient_id = a.patient_id
+     JOIN dentists d ON d.dentist_id = a.dentist_id
+     JOIN services s ON s.service_id = a.service_id
+     ${whereSql}`;
+
+  const [countRow, rows] = await Promise.all([
+    queryOne<{ n: number | string }>(`SELECT COUNT(*) AS n ${from}`, params),
+    query<ListRow>(
+      `SELECT a.appointment_id, a.appointment_date, a.start_time, a.end_time, a.status, a.channel, a.requested_at,
+              p.patient_id, p.full_name, p.contact_number, d.dentist_name, s.service_name
+       ${from}
+       ORDER BY a.appointment_date DESC, a.start_time DESC, a.appointment_id DESC
+       LIMIT ${size} OFFSET ${offset}`,
+      params,
+    ),
+  ]);
+  return {
+    total: Number(countRow?.n ?? 0),
+    rows: rows.map((r) => ({
+      appointmentId: r.appointment_id,
+      date: r.appointment_date,
+      start: toHHMM(r.start_time),
+      end: toHHMM(r.end_time),
+      status: r.status,
+      channel: r.channel,
+      patientId: r.patient_id,
+      patientName: r.full_name,
+      contactNumber: r.contact_number,
+      dentistName: r.dentist_name,
+      serviceName: r.service_name,
+      requestedAt: r.requested_at,
+    })),
   };
 }

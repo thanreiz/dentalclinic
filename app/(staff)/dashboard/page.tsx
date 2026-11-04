@@ -6,7 +6,7 @@ import { APPOINTMENT_STATUSES, DAYS_OF_WEEK } from '@/lib/rules';
 import { addDays, formatDateHuman, formatTime12, nowManila, todayManila, toMinutes } from '@/lib/time';
 import type { ApptBlock, TimeRange } from '@/lib/types';
 import { dashboardQuerySchema } from '@/lib/validation';
-import { StatusBadge, STATUS_STYLES } from '@/components/ui/Badges';
+import { CHANNEL_LABEL, StatusBadge, STATUS_STYLES } from '@/components/ui/Badges';
 import { ButtonLink } from '@/components/ui/Button';
 import { Card, PageHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
@@ -272,7 +272,7 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
                   <Link
                     key={a.appointmentId}
                     href={`/appointments/${a.appointmentId}`}
-                    aria-label={`${formatTime12(a.start)} to ${formatTime12(a.end)}, ${a.patientName}, ${a.serviceName}, ${a.status}`}
+                    aria-label={`${formatTime12(a.start)} to ${formatTime12(a.end)}, ${a.patientName}, ${a.serviceName}, ${a.status}, booked by ${CHANNEL_LABEL[a.channel].toLowerCase()}`}
                     className={cx(
                       'absolute overflow-hidden rounded-md border-l-4 px-2 py-1 text-xs shadow-xs ring-1 ring-black/5 transition-colors',
                       style.block,
@@ -296,6 +296,7 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
                       {compact ? ` · ${a.serviceName}` : ` – ${formatTime12(a.end)}`}
                     </span>
                     {!compact && <span className="block truncate opacity-90">{a.serviceName}</span>}
+                    {!compact && h >= 80 && <span className="block truncate text-[10px] font-medium opacity-75">via {CHANNEL_LABEL[a.channel]}</span>}
                   </Link>
                 );
               })}

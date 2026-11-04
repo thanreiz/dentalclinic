@@ -1,10 +1,10 @@
 /** Read queries for the staff pages (lib/queries/*). Seed data only; no writes except setup. */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { execute } from '@/lib/db';
-import { getAppointmentDetail } from '@/lib/queries/appointments';
+import { getAppointmentDetail, listAppointments } from '@/lib/queries/appointments';
 import { getDashboardSummary, getDaySchedule } from '@/lib/queries/dashboard';
 import { getPatient, getPatientHistory, searchPatients } from '@/lib/queries/patients';
-import { getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
+import { getChannelReport, getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
 import { countPending, listPendingRequests } from '@/lib/queries/requests';
 import { listChairs, listDentistsWithSchedules, listServices } from '@/lib/queries/setup';
 import { formatRate } from '@/lib/rules';
@@ -48,6 +48,62 @@ describe('reports (FR15, FR16, Table 3.22)', () => {
     const three = await getRepeatNoShows(3);
     expect(three.length).toBeLessThan(two.length);
     expect((await getRepeatNoShows(1)).length).toBeGreaterThan(two.length);
+  });
+});
+
+describe('all appointments list and channel report (SOP 1)', () => {
+  it('lists every channel together, newest date first', async () => {
+    const { rows, total } = await listAppointments({}, 1, 100);
+    expect(total).toBe(rows.length);
+    expect(new Set(rows.map((r) => r.channel)).size).toBeGreaterThanOrEqual(3);
+    const dates = rows.map((r) => r.date);
+    expect(dates).toEqual([...dates].sort().reverse());
+  });
+
+  it('filters by channel, status, date range and patient text; paginates', async () => {
+    const all = await listAppointments({}, 1, 100);
+    const walkIn = await listAppointments({ channel: 'walk-in' }, 1, 100);
+    expect(walkIn.total).toBeGreaterThan(0);
+    expect(walkIn.rows.every((r) => r.channel === 'walk-in')).toBe(true);
+    expect(walkIn.total).toBeLessThan(all.total);
+
+    const noShow = await listAppointments({ status: 'no-show' }, 1, 100);
+    expect(noShow.rows.every((r) => r.status === 'no-show')).toBe(true);
+
+    const oct12 = await listAppointments({ from: '2026-10-12', to: '2026-10-12' }, 1, 100);
+    expect(oct12.rows.length).toBeGreaterThan(0);
+    expect(oct12.rows.every((r) => r.date === '2026-10-12')).toBe(true);
+
+    const maria = await listAppointments({ q: 'maria' }, 1, 100);
+    expect(maria.rows.length).toBe(2);
+    expect(maria.rows.every((r) => r.patientName === 'Maria Santos')).toBe(true);
+    const byNumber = await listAppointments({ q: '917 555 0101' }, 1, 100);
+    expect(byNumber.total).toBe(2);
+
+    const page1 = await listAppointments({}, 1, 5);
+    const page2 = await listAppointments({}, 2, 5);
+    expect(page1.rows).toHaveLength(5);
+    expect(page1.total).toBe(all.total);
+    expect(page2.rows.map((r) => r.appointmentId)).not.toEqual(page1.rows.map((r) => r.appointmentId));
+  });
+
+  it('LIKE wildcards in the search text match literally', async () => {
+    expect((await listAppointments({ q: '%' }, 1, 100)).total).toBe(0);
+    expect((await listAppointments({ q: '_' }, 1, 100)).total).toBe(0);
+  });
+
+  it('channel report: all four channels, counts add up, shares sum to 1', async () => {
+    const r = await getChannelReport('2026-10');
+    expect(r.rows.map((x) => x.channel)).toEqual(['online', 'phone', 'chat', 'walk-in']);
+    expect(r.rows.reduce((n, x) => n + x.bookings, 0)).toBe(r.total);
+    expect(r.total).toBeGreaterThan(0);
+    expect(r.rows.reduce((n, x) => n + (x.share ?? 0), 0)).toBeCloseTo(1, 5);
+  });
+
+  it('channel report: empty month -> zeros and null shares', async () => {
+    const r = await getChannelReport('2027-03');
+    expect(r.total).toBe(0);
+    expect(r.rows.every((x) => x.bookings === 0 && x.share === null)).toBe(true);
   });
 });
 

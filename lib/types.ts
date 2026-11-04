@@ -264,3 +264,23 @@ export type RepeatNoShow = {
   noShowCount: number;
   lastNoShowDate: string;
 };
+
+/** One row of the staff "all appointments" list (every channel together). */
+export type AppointmentListItem = {
+  appointmentId: number;
+  date: string;
+  start: string;
+  end: string;
+  status: AppointmentStatus;
+  channel: Channel;
+  patientId: number;
+  patientName: string;
+  contactNumber: string;
+  dentistName: string;
+  serviceName: string;
+  requestedAt: string;
+};
+
+/** Bookings for a month by the channel they came in through (SOP 1). */
+export type ChannelReportRow = { channel: Channel; bookings: number; attended: number; noShow: number; share: number | null };
+export type ChannelReport = { month: string; total: number; rows: ChannelReportRow[] };

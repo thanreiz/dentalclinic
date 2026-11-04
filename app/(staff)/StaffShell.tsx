@@ -4,13 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
-import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, PlusIcon, ToothIcon, UsersIcon } from '@/components/ui/icons';
+import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, ListIcon, PlusIcon, ToothIcon, UsersIcon } from '@/components/ui/icons';
 import { LinkPendingIcon } from '@/components/ui/LinkPending';
 import LogoutButton from './LogoutButton';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: CalendarIcon },
   { href: '/requests', label: 'Requests', icon: InboxIcon, badge: true },
+  { href: '/appointments', label: 'All appointments', icon: ListIcon },
   { href: '/appointments/new', label: 'New booking', icon: PlusIcon },
   { href: '/patients', label: 'Patients', icon: UsersIcon },
   { href: '/reports', label: 'Reports', icon: ChartIcon },
@@ -19,6 +20,7 @@ const NAV = [
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/appointments/new') return pathname === href;
+  if (href === '/appointments') return pathname === href || /^\/appointments\/\d+/.test(pathname);
   if (href === '/requests') return pathname.startsWith('/requests');
   return pathname === href || pathname.startsWith(`${href}/`);
 }
