@@ -156,3 +156,31 @@ describe('POST /api/requests with a Messenger token', () => {
     expect(fourth.status).toBe(429);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Messenger notifications (confirmation, day-before reminder) and storing the Messenger id
+// ---------------------------------------------------------------------------
+describe('Messenger id and notifications', () => {
+  const psidOf = async (contact: string) =>
+    (await queryOne<{ messenger_psid: string | null }>('SELECT messenger_psid FROM patients WHERE contact_number = ?', [contact]))?.messenger_psid ?? null;
+
+  it('a chat request stores the Messenger id; an online one does not; the latest chat booking wins', async () => {
+    const a = bookingBody({ start: '13:00', chatRef: signChatRef('9001') });
+    expect((await postRequest(req('POST', '/api/requests', a))).status).toBe(201);
+    expect(await psidOf(a.contactNumber)).toBe('9001');
+
+    const online = bookingBody({ start: '13:30' });
+    expect((await postRequest(req('POST', '/api/requests', online))).status).toBe(201);
+    expect(await psidOf(online.contactNumber)).toBeNull();
+
+    const again = bookingBody({ contactNumber: a.contactNumber, date: workday(2), start: '13:00', chatRef: signChatRef('9002') });
+    expect((await postRequest(req('POST', '/api/requests', again))).status).toBe(201);
+    expect(await psidOf(a.contactNumber)).toBe('9002');
+  });
+
+  it('a bad token stores no id', async () => {
+    const b = bookingBody({ start: '14:00', chatRef: '9003.1.BAD' });
+    await postRequest(req('POST', '/api/requests', b));
+    expect(await psidOf(b.contactNumber)).toBeNull();
+  });
+});

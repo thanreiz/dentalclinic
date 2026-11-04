@@ -10,11 +10,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { execute, getPool, query, type PoolConnection } from '../db';
 import { sendReminder } from '../mail';
+import { sendMessengerReminder } from './messenger-notify';
 import { nowManila, toHHMM, addDays } from '../time';
 
 export const REMINDER_SELECTION_SQL = `
 SELECT a.appointment_id, a.appointment_date, a.start_time,
-       p.full_name, p.email, d.dentist_name, s.service_name
+       p.full_name, p.email, p.messenger_psid, d.dentist_name, s.service_name
 FROM appointments a
 JOIN patients p ON p.patient_id = a.patient_id
 JOIN dentists d ON d.dentist_id = a.dentist_id
@@ -22,7 +23,7 @@ JOIN services s ON s.service_id = a.service_id
 WHERE a.appointment_date = :tomorrow
   AND a.status = 'scheduled'
   AND a.reminder_sent_at IS NULL
-  AND p.email IS NOT NULL AND p.email <> ''
+  AND ((p.email IS NOT NULL AND p.email <> '') OR p.messenger_psid IS NOT NULL)
 ORDER BY a.start_time, a.appointment_id`;
 
 const LOCK_NAME = 'dental_reminders_cron';
@@ -44,7 +45,8 @@ export async function runReminders(opts: { now?: { date: string; time: string } 
       appointment_date: string;
       start_time: string;
       full_name: string;
-      email: string;
+      email: string | null;
+      messenger_psid: string | null;
       dentist_name: string;
       service_name: string;
     }>(REMINDER_SELECTION_SQL, { tomorrow });
@@ -58,17 +60,34 @@ export async function runReminders(opts: { now?: { date: string; time: string } 
         [a.appointment_id],
       );
       if (still.length === 0) continue;
-      const res = await sendReminder({
-        to: a.email,
+      const appt = {
         patientName: a.full_name,
         date: a.appointment_date,
         startTime: toHHMM(a.start_time),
         dentist: a.dentist_name,
         service: a.service_name,
-      });
-      if (!res.ok) {
+      };
+      // Email first (the reliable channel), then the Messenger copy for chat patients. The reminder
+      // counts as sent when at least one channel delivered; a Messenger refusal (for example outside
+      // Meta's 24-hour window) is only logged.
+      let delivered = false;
+      let lastError = '';
+      if (a.email) {
+        const res = await sendReminder({ to: a.email, ...appt });
+        if (res.ok) delivered = true;
+        else lastError = res.error;
+      }
+      if (a.messenger_psid) {
+        const m = await sendMessengerReminder(a.messenger_psid, appt);
+        if (m.ok) delivered = true;
+        else {
+          lastError ||= m.error;
+          console.error(`[cron:reminders] appointment ${a.appointment_id}: Messenger: ${m.error}`);
+        }
+      }
+      if (!delivered) {
         failed++;
-        console.error(`[cron:reminders] appointment ${a.appointment_id}: ${res.error}`);
+        console.error(`[cron:reminders] appointment ${a.appointment_id}: ${lastError}`);
         continue;
       }
       await execute(

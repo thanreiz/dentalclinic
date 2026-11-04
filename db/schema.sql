@@ -1,6 +1,7 @@
 -- Dental Clinic Appointment System schema.
 -- Below the DROP block is Listing 3.2 from the paper (docs/PRD.md "Data Model"), copied exactly.
 -- Do not edit the CREATE TABLE statements: the paper is the contract (NF02).
+-- One approved addition to Listing 3.2: patients.messenger_psid (Messenger notifications). Update the paper's ERD/data dictionary to match.
 -- The DROP block only exists so `npm run db:reset` can rebuild from scratch (reverse FK order).
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -28,6 +29,7 @@ CREATE TABLE patients (
   contact_number  VARCHAR(20)  NOT NULL,
   email           VARCHAR(150) NULL,
   birthdate       DATE         NOT NULL,
+  messenger_psid  VARCHAR(40)  NULL,
   CONSTRAINT pk_patients PRIMARY KEY (patient_id),
   CONSTRAINT uq_patients_contact UNIQUE (contact_number)
 );

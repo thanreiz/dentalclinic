@@ -41,8 +41,8 @@ export async function POST(req: Request) {
     assertDateInWindow(parsed.data.date, PUBLIC_BOOKING_WINDOW_DAYS);
     // A valid Messenger link token marks the request as channel 'chat'; a bad or expired one still
     // books the request, as a normal online request (never lose the patient's booking).
-    const channel = verifyChatRef(parsed.data.chatRef) ? 'chat' : 'online';
-    await createOnlineRequest(parsed.data, { channel });
+    const psid = verifyChatRef(parsed.data.chatRef);
+    await createOnlineRequest(parsed.data, psid ? { channel: 'chat', messengerPsid: psid } : { channel: 'online' });
     recordRequest(ip);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

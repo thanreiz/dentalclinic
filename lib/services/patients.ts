@@ -106,3 +106,12 @@ export async function updatePatient(id: number, patch: PatientPatch): Promise<vo
     }
   });
 }
+
+/**
+ * Remember the Messenger user (page-scoped id) a patient booked through, so confirmations and
+ * reminders can also go to Messenger. Not unique: one Messenger user may book for relatives.
+ * The latest chat booking wins.
+ */
+export async function setMessengerPsid(conn: Queryable, patientId: number, psid: string): Promise<void> {
+  await execute('UPDATE patients SET messenger_psid = ? WHERE patient_id = ? AND (messenger_psid IS NULL OR messenger_psid <> ?)', [psid, patientId, psid], conn);
+}
