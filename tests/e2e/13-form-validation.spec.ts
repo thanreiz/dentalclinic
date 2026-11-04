@@ -49,6 +49,18 @@ test.describe('FR1/FR3: form validation and navigation details', () => {
     void uniqueContact;
   });
 
+  test('public form: phone takes digits only (max 10) and names take no digits', async ({ page }) => {
+    await page.goto('/book');
+    const phone = page.getByLabel('Contact number');
+    await phone.fill('abc917-555 0101999');
+    await expect(phone).toHaveValue('9175550101');
+    await phone.fill('+63 917 555 0101');
+    await expect(phone).toHaveValue('9175550101');
+    const name = page.getByLabel('Full name');
+    await name.fill('Juan3 Dela Cruz!');
+    await expect(name).toHaveValue('Juan Dela Cruz');
+  });
+
   test('reports: previous/next month links point across the year boundary', async ({ page }) => {
     await loginUi(page);
     await gotoReady(page, '/reports?month=2027-01');

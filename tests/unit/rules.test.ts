@@ -11,6 +11,7 @@ import {
   isInPast,
   isWithinHours,
   normalizeContact,
+  normalizeMobile,
   noShowRate,
   openSlots,
   overlaps,
@@ -221,6 +222,33 @@ describe('Rule 7: canTransition (Table 3.21) full matrix', () => {
     expect(allowedTransitions('scheduled', { startPassed: false })).toEqual(['cancelled']);
     expect(allowedTransitions('scheduled', { startPassed: true })).toEqual(['attended', 'cancelled', 'no-show']);
     expect(allowedTransitions('declined', { startPassed: true })).toEqual([]);
+  });
+});
+
+describe('normalizeMobile (+63 then 10 digits starting with 9)', () => {
+  it.each([
+    ['9175550101', '09175550101'],
+    ['09175550101', '09175550101'],
+    ['+63 917 555 0101', '09175550101'],
+    ['+639175550101', '09175550101'],
+    ['639175550101', '09175550101'],
+    ['0917-555-0101', '09175550101'],
+  ])('%s -> %s', (raw, expected) => {
+    expect(normalizeMobile(raw)).toBe(expected);
+  });
+
+  it.each([
+    [''],
+    ['abc'],
+    ['917555010'], // 9 digits
+    ['91755501011'], // 11 digits after the prefix
+    ['8175550101'], // does not start with 9
+    ['(02) 8123 4567'], // landline
+    ['81234567'],
+    ['+1 917 555 0101'],
+    ['917-555-01O1'], // letter O
+  ])('rejects %j', (raw) => {
+    expect(normalizeMobile(raw)).toBeNull();
   });
 });
 

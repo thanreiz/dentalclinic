@@ -54,7 +54,7 @@ test.describe('FR1/NF01/NF03: public booking form at 360x740', () => {
     await loginApi(request);
     // an existing patient with a known number (created through the staff API)
     const day = await findSlot(request, { dentistId: LIM, serviceId: SVC.prophylaxis, fromDays: 14, index: 4 });
-    const seedPatient = await createStaffBooking(request, { date: day.date, start: day.slot.start, dentistId: LIM, serviceId: SVC.prophylaxis, name: 'Existing E2E Patient' });
+    const seedPatient = await createStaffBooking(request, { date: day.date, start: day.slot.start, dentistId: LIM, serviceId: SVC.prophylaxis, name: 'Existing Ee Patient' });
     const [{ contact_number }] = await sql<{ contact_number: string }>(`SELECT contact_number FROM patients WHERE patient_id = ?`, [seedPatient.patientId]);
     const intl = `+63 ${contact_number.slice(1, 4)}-${contact_number.slice(4, 7)}-${contact_number.slice(7)}`; // 09171234567 -> +63 917-123-4567
     const next = await findSlot(request, { dentistId: LIM, serviceId: SVC.prophylaxis, fromDays: 14, index: -1 });
@@ -67,7 +67,7 @@ test.describe('FR1/NF01/NF03: public booking form at 360x740', () => {
     );
     expect(rows).toHaveLength(1);
     expect(rows[0].patient_id).toBe(seedPatient.patientId);
-    expect(rows[0].full_name).toBe('Existing E2E Patient'); // public form does not overwrite the record (Decision B6)
+    expect(rows[0].full_name).toBe('Existing Ee Patient'); // public form does not overwrite the record (Decision B6)
     expect(await sql(`SELECT 1 FROM patients WHERE contact_number = ?`, [contact_number])).toHaveLength(1);
   });
 });

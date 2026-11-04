@@ -2,10 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { formatContact, STAFF_CHANNELS, type StaffChannel } from '@/lib/rules';
+import { formatContact, normalizeMobile, STAFF_CHANNELS, type StaffChannel } from '@/lib/rules';
 import { dayOfWeek, formatDateHuman, formatTime12 } from '@/lib/time';
 import type { Slot } from '@/lib/types';
-import { fieldErrors, newPatientSchema } from '@/lib/validation';
+import { fieldErrors, newPatientSchema, stripNameChars } from '@/lib/validation';
 import { api, errorMessage } from '@/components/api';
 import { ChairPicker } from '@/components/staff/ChairPicker';
 import { useFreeChairs, useOpenSlots } from '@/components/staff/hooks';
@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
 import { FormError, Input, Select, Textarea } from '@/components/ui/Field';
+import { PhoneInput, cleanMobileDigits } from '@/components/ui/PhoneInput';
 import { PlusIcon, SearchIcon, Spinner, XIcon } from '@/components/ui/icons';
 import { useToast } from '@/components/ui/Toast';
 
@@ -271,8 +272,9 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                         className="font-semibold text-brand-800 underline"
                         onClick={() => {
                           setMode('new');
-                          const digits = query.replace(/[^\d+]/g, '');
-                          setNewPatient((p) => (digits.length >= 7 ? { ...p, contactNumber: query.trim() } : { ...p, fullName: query.trim() }));
+                          const mobile = normalizeMobile(query);
+                          if (mobile) setNewPatient((p) => ({ ...p, contactNumber: cleanMobileDigits(mobile) }));
+                          else if (!/\d/.test(query)) setNewPatient((p) => ({ ...p, fullName: stripNameChars(query.trim()) }));
                         }}
                       >
                         Add as new patient
@@ -313,24 +315,20 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                   label="Full name"
                   required
                   value={newPatient.fullName}
-                  onChange={(e) => setNewPatient((p) => ({ ...p, fullName: e.target.value }))}
+                  onChange={(e) => setNewPatient((p) => ({ ...p, fullName: stripNameChars(e.target.value) }))}
                   error={errors['newPatient.fullName']}
                   autoComplete="off"
                 />
                 <div>
-                  <Input
+                  <PhoneInput
                     label="Contact number"
                     required
-                    type="tel"
-                    inputMode="tel"
-                    placeholder="0917 555 0101"
                     value={newPatient.contactNumber}
-                    onChange={(e) => {
-                      setNewPatient((p) => ({ ...p, contactNumber: e.target.value }));
+                    onValueChange={(d) => {
+                      setNewPatient((p) => ({ ...p, contactNumber: d }));
                       clearError('newPatient.contactNumber');
                     }}
                     error={errors['newPatient.contactNumber']}
-                    autoComplete="off"
                   />
                   {errors['newPatient.contactNumber'] && /already/i.test(errors['newPatient.contactNumber']) && (
                     <button type="button" onClick={useExistingByContact} className="mt-1 text-sm font-semibold text-brand-800 underline">
