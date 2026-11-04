@@ -56,7 +56,6 @@ export function PhoneInput({ label, value, onValueChange, error, hint, optional,
           type="tel"
           inputMode="numeric"
           autoComplete="tel-national"
-          maxLength={14}
           placeholder="917 555 0101"
           required={required}
           aria-invalid={error ? true : undefined}
