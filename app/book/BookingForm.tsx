@@ -15,7 +15,11 @@ import { bookingRequestSchema, fieldErrors, stripNameChars } from '@/lib/validat
 export type BookService = { id: number; name: string; durationMinutes: number };
 export type BookDentist = { id: number; name: string; workingDays: number[] };
 
+/** Opened from the Messenger bot: choices already made, plus the signed token that marks channel 'chat'. */
+export type BookPrefill = { serviceId: number; dentistId: number | 'any'; date?: string; start?: string; chatRef?: string };
+
 type Props = {
+  prefill?: BookPrefill;
   services: BookService[];
   dentists: BookDentist[];
   today: string;
@@ -38,12 +42,12 @@ const STEPS = [
   { n: 3, label: 'Your details' },
 ] as const;
 
-export default function BookingForm({ services, dentists, today, maxDate, clinicPhone }: Props) {
-  const [step, setStep] = useState<Step>(1);
-  const [serviceId, setServiceId] = useState<number | null>(services.length === 1 ? services[0].id : null);
-  const [dentistId, setDentistId] = useState<number | 'any'>('any');
-  const [date, setDate] = useState<string | null>(null);
-  const [start, setStart] = useState<string | null>(null);
+export default function BookingForm({ services, dentists, today, maxDate, clinicPhone, prefill }: Props) {
+  const [step, setStep] = useState<Step>(prefill?.date && prefill.start ? 3 : 1);
+  const [serviceId, setServiceId] = useState<number | null>(prefill?.serviceId ?? (services.length === 1 ? services[0].id : null));
+  const [dentistId, setDentistId] = useState<number | 'any'>(prefill?.dentistId ?? 'any');
+  const [date, setDate] = useState<string | null>(prefill?.date ?? null);
+  const [start, setStart] = useState<string | null>(prefill?.start ?? null);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [slotsState, setSlotsState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [slotsReload, setSlotsReload] = useState(0);
@@ -146,8 +150,10 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       patientNote: details.patientNote,
       consent,
       website: honeypotRef.current?.value ?? '',
+      chatRef: prefill?.chatRef,
     };
     const { website, ...toCheck } = payload;
+    // toCheck (validated and sent) includes chatRef; the server verifies the token itself.
     const parsed = bookingRequestSchema.safeParse(toCheck);
     if (!parsed.success) {
       const errs = fieldErrors(parsed.error);

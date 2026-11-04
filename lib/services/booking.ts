@@ -106,7 +106,7 @@ export const SLOT_TAKEN_MESSAGE = 'That time was just taken. Please pick another
  */
 export async function createOnlineRequest(
   input: BookingRequest,
-  opts: { now?: Now } = {},
+  opts: { now?: Now; channel?: 'online' | 'chat' } = {},
 ): Promise<{ appointmentId: number; dentistId: number; patientId: number }> {
   const now = opts.now ?? nowManila();
   const service = await getServiceOrThrow(input.serviceId);
@@ -156,7 +156,7 @@ export async function createOnlineRequest(
         start: input.start,
         end,
         status: 'pending',
-        channel: 'online',
+        channel: opts.channel ?? 'online',
         patientNote: withMismatchFlag(flag, input.patientNote),
       });
       return { appointmentId, dentistId: chosen, patientId };

@@ -7,6 +7,7 @@
  */
 import { NextResponse } from 'next/server';
 import { jsonError, parseWith, readJsonBody } from '@/lib/http';
+import { verifyChatRef } from '@/lib/messenger';
 import { createOnlineRequest } from '@/lib/services/booking';
 import { errorResponse } from '@/lib/services/errors';
 import { clientIp, recordRequest, requestRetryAfter } from '@/lib/services/rate-limit';
@@ -38,7 +39,10 @@ export async function POST(req: Request) {
 
   try {
     assertDateInWindow(parsed.data.date, PUBLIC_BOOKING_WINDOW_DAYS);
-    await createOnlineRequest(parsed.data);
+    // A valid Messenger link token marks the request as channel 'chat'; a bad or expired one still
+    // books the request, as a normal online request (never lose the patient's booking).
+    const channel = verifyChatRef(parsed.data.chatRef) ? 'chat' : 'online';
+    await createOnlineRequest(parsed.data, { channel });
     recordRequest(ip);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {

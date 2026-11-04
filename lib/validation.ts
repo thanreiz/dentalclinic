@@ -138,6 +138,8 @@ export const bookingRequestSchema = z.object({
   patientNote: patientNoteSchema.optional(),
   consent: z.literal(true, { error: 'Please agree to the Data Privacy Act consent to continue' }),
   website: z.string().max(500).optional(),
+  /** Signed token from the Messenger bot link; marks the request as channel 'chat'. */
+  chatRef: z.string().max(200).optional(),
 });
 export type BookingRequestInput = z.input<typeof bookingRequestSchema>;
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;
