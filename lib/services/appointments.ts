@@ -17,6 +17,21 @@ import { transaction } from './tx';
 
 type Now = { date: string; time: string };
 
+/**
+ * Runs a patient notice after the response instead of inside the request (routes pass `deferNotice`
+ * from lib/http, which uses next/server `after()`). Without it the notice is awaited, as before
+ * (services called directly, tests). The notice code never throws, so a deferred one cannot fail.
+ */
+export type Defer = (task: () => Promise<unknown>) => Promise<void> | void;
+
+async function runNotice<T>(defer: Defer | undefined, task: () => Promise<T>): Promise<T | undefined> {
+  if (!defer) return task();
+  await defer(async () => {
+    await task();
+  });
+  return undefined;
+}
+
 export const EMAIL_FAILED_MESSAGE = 'Confirmed, but the email could not be sent.';
 
 async function loadForUpdate(conn: Queryable, id: number): Promise<AppointmentRow> {
@@ -192,7 +207,7 @@ async function notifyPatient(
 // POST /api/appointments/[id]/decline (Rule 12): pending -> declined. Patient notice after commit.
 // ---------------------------------------------------------------------------
 
-export async function declineAppointment(id: number, opts: { now?: Now } = {}): Promise<void> {
+export async function declineAppointment(id: number, opts: { now?: Now; defer?: Defer } = {}): Promise<void> {
   const now = opts.now ?? nowManila();
   const info = await transaction(async (conn) => {
     const a = await loadForUpdate(conn, id);
@@ -203,7 +218,7 @@ export async function declineAppointment(id: number, opts: { now?: Now } = {}): 
     await execute("UPDATE appointments SET status = 'declined' WHERE appointment_id = ?", [id], conn);
     return noticeInfo(conn, id);
   });
-  await notifyPatient('decline', id, info, { email: sendDeclineEmail, messenger: sendMessengerDecline });
+  await runNotice(opts.defer, () => notifyPatient('decline', id, info, { email: sendDeclineEmail, messenger: sendMessengerDecline }));
 }
 
 // ---------------------------------------------------------------------------
@@ -213,7 +228,7 @@ export async function declineAppointment(id: number, opts: { now?: Now } = {}): 
 export async function setAppointmentStatus(
   id: number,
   to: 'attended' | 'cancelled' | 'no-show',
-  opts: { now?: Now } = {},
+  opts: { now?: Now; defer?: Defer } = {},
 ): Promise<{ status: AppointmentStatus }> {
   const now = opts.now ?? nowManila();
   const { info } = await transaction(async (conn) => {
@@ -227,10 +242,11 @@ export async function setAppointmentStatus(
       throw invalidTransition(a.status, msg);
     }
     await execute('UPDATE appointments SET status = ? WHERE appointment_id = ?', [to, id], conn);
-    return { info: to === 'cancelled' ? await noticeInfo(conn, id) : null };
+    // A cancel after the start time is a record correction, not news for the patient (QA finding L1).
+    return { info: to === 'cancelled' && !startPassed ? await noticeInfo(conn, id) : null };
   });
-  // Cancelled by staff: tell the patient (attended / no-show are record-keeping, no notice).
-  if (info) await notifyPatient('cancel', id, info, { email: sendCancellationEmail, messenger: sendMessengerCancellation });
+  // Cancelled by staff before the start: tell the patient (attended / no-show / late cancels are record-keeping, no notice).
+  if (info) await runNotice(opts.defer, () => notifyPatient('cancel', id, info, { email: sendCancellationEmail, messenger: sendMessengerCancellation }));
   return { status: to };
 }
 
@@ -247,7 +263,7 @@ export async function setAppointmentStatus(
 export async function rescheduleAppointment(
   id: number,
   input: RescheduleInput,
-  opts: { now?: Now } = {},
+  opts: { now?: Now; defer?: Defer } = {},
 ): Promise<{ ok: true; newId: number } & Partial<NoticeResult>> {
   const now = opts.now ?? nowManila();
   const pre = await peek(id);
@@ -294,11 +310,14 @@ export async function rescheduleAppointment(
   // Tell the patient after the commit (a retry finds the old row cancelled and throws above, so
   // the notice is never sent twice). The new row has reminder_sent_at NULL, so its day-before
   // reminder still goes out.
-  const notice = await notifyPatient('reschedule', moved.newId, moved.info, {
-    email: (a) => sendRescheduleEmail({ ...a, oldDate: moved.oldDate, oldStart: moved.oldStart }),
-    messenger: (psid, a) => sendMessengerReschedule(psid, { ...a, oldDate: moved.oldDate, oldStartTime: moved.oldStart }),
-  });
-  return { ok: true as const, newId: moved.newId, ...notice };
+  // With `defer` the notice goes out after the response, so the result carries no notice fields.
+  const notice = await runNotice(opts.defer, () =>
+    notifyPatient('reschedule', moved.newId, moved.info, {
+      email: (a) => sendRescheduleEmail({ ...a, oldDate: moved.oldDate, oldStart: moved.oldStart }),
+      messenger: (psid, a) => sendMessengerReschedule(psid, { ...a, oldDate: moved.oldDate, oldStartTime: moved.oldStart }),
+    }),
+  );
+  return { ok: true as const, newId: moved.newId, ...(notice ?? {}) };
 }
 
 // ---------------------------------------------------------------------------

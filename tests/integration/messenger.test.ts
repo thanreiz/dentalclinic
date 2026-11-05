@@ -318,7 +318,7 @@ describe('Messenger id and notifications', () => {
   const psidOf = async (contact: string) =>
     (await queryOne<{ messenger_psid: string | null }>('SELECT messenger_psid FROM patients WHERE contact_number = ?', [contact]))?.messenger_psid ?? null;
 
-  it('a chat request stores the Messenger id; an online one does not; the latest chat booking wins', async () => {
+  it('a chat request stores the Messenger id; an online one does not', async () => {
     const a = bookingBody({ start: '13:00', chatRef: signChatRef('9001') });
     expect((await postRequest(req('POST', '/api/requests', a))).status).toBe(201);
     expect(await psidOf(a.contactNumber)).toBe('9001');
@@ -327,9 +327,29 @@ describe('Messenger id and notifications', () => {
     expect((await postRequest(req('POST', '/api/requests', online))).status).toBe(201);
     expect(await psidOf(online.contactNumber)).toBeNull();
 
-    const again = bookingBody({ contactNumber: a.contactNumber, date: workday(2), start: '13:00', chatRef: signChatRef('9002') });
-    expect((await postRequest(req('POST', '/api/requests', again))).status).toBe(201);
-    expect(await psidOf(a.contactNumber)).toBe('9002');
+  });
+
+  it('a different Messenger id on a patient that already has one is ignored (no hijack)', async () => {
+    const a = bookingBody({ start: '15:00', chatRef: signChatRef('9101') });
+    expect((await postRequest(req('POST', '/api/requests', a))).status).toBe(201);
+    expect(await psidOf(a.contactNumber)).toBe('9101');
+
+    // someone else's bot link, the same patient's phone number
+    const attacker = bookingBody({ contactNumber: a.contactNumber, date: workday(2), start: '15:00', chatRef: signChatRef('9102') });
+    expect((await postRequest(req('POST', '/api/requests', attacker))).status).toBe(201);
+    expect(await psidOf(a.contactNumber)).toBe('9101');
+  });
+
+  it('the same Messenger id again keeps it, and a patient with no id gets the first one', async () => {
+    const online = bookingBody({ start: '15:30' });
+    expect((await postRequest(req('POST', '/api/requests', online))).status).toBe(201);
+    expect(await psidOf(online.contactNumber)).toBeNull();
+    const chatBooking = bookingBody({ contactNumber: online.contactNumber, date: workday(2), start: '15:30', chatRef: signChatRef('9103') });
+    expect((await postRequest(req('POST', '/api/requests', chatBooking))).status).toBe(201);
+    expect(await psidOf(online.contactNumber)).toBe('9103');
+    const same = bookingBody({ contactNumber: online.contactNumber, date: workday(4), start: '12:00', chatRef: signChatRef('9103') });
+    expect((await postRequest(req('POST', '/api/requests', same))).status).toBe(201);
+    expect(await psidOf(online.contactNumber)).toBe('9103');
   });
 
   it('a bad token stores no id', async () => {

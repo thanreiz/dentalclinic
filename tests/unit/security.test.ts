@@ -101,6 +101,14 @@ describe('L3: client IP and throttles', () => {
     expect(clientIp(r({ 'x-real-ip': '198.51.100.5', 'x-forwarded-for': '2.2.2.2' }))).toBe('198.51.100.5');
     expect(clientIp(r({ 'x-forwarded-for': '198.51.100.6, 10.0.0.1' }))).toBe('198.51.100.6');
   });
+  it('login: the per-email cap is 200, so 50 bad guesses from rotating IPs do not lock the account', () => {
+    expect(LOGIN_MAX_FAILURES_PER_EMAIL).toBe(200);
+    const t0 = 2_000_000;
+    for (let i = 0; i < 199; i++) recordLoginFailure(`10.9.${Math.floor(i / 250)}.${i % 250}`, 'staff@clinic.test', t0);
+    expect(loginRetryAfter('192.0.2.201', 'staff@clinic.test', t0 + 1)).toBe(0);
+    recordLoginFailure('10.9.9.9', 'staff@clinic.test', t0);
+    expect(loginRetryAfter('192.0.2.201', 'staff@clinic.test', t0 + 1)).toBeGreaterThan(0);
+  });
   it('login: rotating IPs still hits the per-email bucket', () => {
     const t0 = 1_000_000;
     for (let i = 0; i < LOGIN_MAX_FAILURES_PER_EMAIL; i++) recordLoginFailure(`10.0.${Math.floor(i / 250)}.${i % 250}`, 'staff@clinic.test', t0);

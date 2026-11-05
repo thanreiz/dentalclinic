@@ -1,6 +1,6 @@
 /** POST /api/appointments/[id]/decline (staff, Rule 12): pending -> declined; the patient is told after commit. */
 import { NextResponse } from 'next/server';
-import { parseIdParam, parseOptionalJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
+import { deferNotice, parseIdParam, parseOptionalJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
 import { declineAppointment } from '@/lib/services/appointments';
 import { errorResponse } from '@/lib/services/errors';
 import { declineSchema } from '@/lib/validation';
@@ -16,7 +16,7 @@ export async function POST(req: Request, ctx: IdRouteContext) {
   const parsed = await parseOptionalJsonBody(req, declineSchema.passthrough());
   if (!parsed.ok) return parsed.response;
   try {
-    await declineAppointment(id.id);
+    await declineAppointment(id.id, { defer: deferNotice });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return errorResponse(err, 'POST /api/appointments/[id]/decline');

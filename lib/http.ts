@@ -2,7 +2,7 @@
  * Tiny route-handler helpers so every API returns the same JSON error shape:
  *   { error: 'validation_error', message, issues: { field: message } }
  */
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import type { z } from 'zod';
 import { SESSION_COOKIE, verifySession } from './session';
 import type { StaffUser } from './types';
@@ -22,8 +22,48 @@ export async function parseJsonBody<S extends z.ZodType>(
   return parseWith(schema, body.raw);
 }
 
+/**
+ * Run a patient notice (email / Messenger) after the response has been sent, so a slow mail server
+ * never holds up the staff screen (QA finding L2). Uses next/server `after()` inside a request;
+ * outside one (route handlers called directly in tests) the task simply runs first, so tests stay
+ * deterministic. The notice code never throws.
+ */
+export async function deferNotice(task: () => Promise<unknown>): Promise<void> {
+  try {
+    after(task);
+  } catch {
+    await task();
+  }
+}
+
 /** Largest JSON body any route accepts (the biggest real one, a dentist week, is < 2 KB). */
 export const MAX_JSON_BODY_BYTES = 64 * 1024;
+
+/**
+ * Read the body as text, stopping as soon as it passes `max` bytes (a missing or false Content-Length
+ * cannot make us buffer a huge body; QA finding L9).
+ */
+export async function readBodyCapped(req: Request, max: number): Promise<string | 'too_large' | 'unreadable'> {
+  const reader = req.body?.getReader();
+  if (!reader) return '';
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > max) {
+        await reader.cancel().catch(() => undefined);
+        return 'too_large';
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return 'unreadable';
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
+}
 
 /**
  * Read a JSON request body defensively (SECURITY-REVIEW I1, I3):
@@ -40,15 +80,14 @@ export async function readJsonBody(
   if (Number.isFinite(declared) && declared > MAX_JSON_BODY_BYTES) {
     return { ok: false, response: jsonError(413, 'payload_too_large', { message: 'Request body is too large' }) };
   }
-  let text: string;
-  try {
-    text = await req.text();
-  } catch {
-    return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
-  }
-  if (new TextEncoder().encode(text).length > MAX_JSON_BODY_BYTES) {
+  const read = await readBodyCapped(req, MAX_JSON_BODY_BYTES);
+  if (read === 'too_large') {
     return { ok: false, response: jsonError(413, 'payload_too_large', { message: 'Request body is too large' }) };
   }
+  if (read === 'unreadable') {
+    return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
+  }
+  const text = read;
   if (!text.trim()) {
     if (opts.allowEmpty) return { ok: true, raw: undefined };
     return { ok: false, response: jsonError(400, 'invalid_json', { message: 'Request body must be JSON' }) };
