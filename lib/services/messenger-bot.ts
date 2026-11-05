@@ -37,7 +37,7 @@ export const defaultBotDeps: BotDeps = {
   dentists: async () => (await listDentistsWithSchedules()).map((d) => ({ id: d.dentistId, name: d.dentistName })),
   slots: (input) => getSlots(input, { now: nowManila() }),
   today: todayManila,
-  baseUrl: () => (process.env.APP_URL || 'https://dentalclinic-sooty.vercel.app').replace(/\/+$/, ''),
+  baseUrl: () => (process.env.APP_URL || 'https://molarandco.vercel.app').replace(/\/+$/, ''),
   signRef: (psid) => signChatRef(psid),
 };
 

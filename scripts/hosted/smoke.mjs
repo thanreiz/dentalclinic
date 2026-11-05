@@ -5,7 +5,7 @@
 import { loadHostedEnv } from "./load-env.mjs";
 
 const v = loadHostedEnv();
-const U = (process.argv[2] || "https://dentalclinic-sooty.vercel.app").replace(/\/$/, "");
+const U = (process.argv[2] || "https://molarandco.vercel.app").replace(/\/$/, "");
 const H = { "Content-Type": "application/json", Origin: U };
 
 const json = async (r) => {

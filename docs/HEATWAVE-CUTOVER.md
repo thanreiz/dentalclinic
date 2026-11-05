@@ -65,7 +65,7 @@ Check it sets `DATABASE_URL` and `DATABASE_CA_CERT` for production. Then redeplo
 
 ## 7. Smoke
 
-- `https://dentalclinic-sooty.vercel.app/book` loads slots.
+- `https://molarandco.vercel.app/book` loads slots.
 - Staff login works.
 - `node scripts/hosted/smoke.mjs`.
 - Cron endpoint still rejects without secret.
