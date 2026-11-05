@@ -2,43 +2,43 @@ import type { AppointmentStatus, Channel } from '@/lib/rules';
 import { cx } from './cx';
 import { ChatIcon, GlobeIcon, PhoneIcon, WalkIcon } from './icons';
 
-/** One distinct color per status (text colors meet AA on their tinted backgrounds). */
+/** One distinct color per status, from the Molar & Co. tokens (brand/tokens.md; text pairs are contrast-checked there). */
 export const STATUS_STYLES: Record<AppointmentStatus, { badge: string; dot: string; block: string; label: string }> = {
   pending: {
     label: 'Pending',
-    badge: 'bg-amber-100 text-amber-900 ring-amber-300',
-    dot: 'bg-amber-500',
-    block: 'bg-amber-50/70 border-dashed border-amber-500 text-amber-950 hover:bg-amber-100',
+    badge: 'bg-status-pending-bg text-status-pending-fg ring-status-pending-dot/40',
+    dot: 'bg-status-pending-dot',
+    block: 'bg-status-pending-bg/70 border-dashed border-status-pending-dot text-status-pending-fg hover:bg-status-pending-bg',
   },
   scheduled: {
     label: 'Scheduled',
-    badge: 'bg-blue-100 text-blue-800 ring-blue-300',
-    dot: 'bg-blue-600',
-    block: 'bg-blue-50 border-blue-500 text-blue-950 hover:bg-blue-100',
+    badge: 'bg-status-scheduled-bg text-status-scheduled-fg ring-status-scheduled-dot/40',
+    dot: 'bg-status-scheduled-dot',
+    block: 'bg-status-scheduled-bg/70 border-status-scheduled-dot text-status-scheduled-fg hover:bg-status-scheduled-bg',
   },
   attended: {
     label: 'Attended',
-    badge: 'bg-green-100 text-green-800 ring-green-300',
-    dot: 'bg-green-600',
-    block: 'bg-green-50 border-green-600 text-green-950 hover:bg-green-100',
+    badge: 'bg-status-attended-bg text-status-attended-fg ring-status-attended-dot/40',
+    dot: 'bg-status-attended-dot',
+    block: 'bg-status-attended-bg/70 border-status-attended-dot text-status-attended-fg hover:bg-status-attended-bg',
   },
   cancelled: {
     label: 'Cancelled',
-    badge: 'bg-slate-100 text-slate-700 ring-slate-300',
-    dot: 'bg-slate-400',
-    block: 'bg-slate-50 border-slate-400 text-slate-700 hover:bg-slate-100',
+    badge: 'bg-status-cancelled-bg text-status-cancelled-fg ring-status-cancelled-dot/40',
+    dot: 'bg-status-cancelled-dot',
+    block: 'bg-status-cancelled-bg/70 border-status-cancelled-dot text-status-cancelled-fg hover:bg-status-cancelled-bg',
   },
   declined: {
     label: 'Declined',
-    badge: 'bg-rose-50 text-rose-800 ring-rose-300',
-    dot: 'bg-rose-400',
-    block: 'bg-rose-50 border-rose-300 text-rose-900 hover:bg-rose-100',
+    badge: 'bg-accent-100 text-accent-700 ring-accent-500/40',
+    dot: 'bg-accent-500',
+    block: 'bg-accent-100/70 border-accent-500 text-accent-700 hover:bg-accent-100',
   },
   'no-show': {
     label: 'No-show',
-    badge: 'bg-red-700 text-white ring-red-800',
-    dot: 'bg-white',
-    block: 'bg-red-50 border-red-600 text-red-950 hover:bg-red-100',
+    badge: 'bg-status-noshow-bg text-status-noshow-fg ring-status-noshow-dot/40',
+    dot: 'bg-status-noshow-dot',
+    block: 'bg-status-noshow-bg/70 border-status-noshow-dot text-status-noshow-fg hover:bg-status-noshow-bg',
   },
 };
 

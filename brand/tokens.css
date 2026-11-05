@@ -1,0 +1,55 @@
+/* Molar & Co. design tokens. Paste the @theme block into app/globals.css (Tailwind v4).
+   Generated from brand/tokens.md; every text pair is contrast-checked there. */
+
+@theme {
+  /* Brand ramp. 700 is the main action color (white text 7:1 AA). */
+  --color-brand-50: #F0F7F6;
+  --color-brand-100: #DDEDEA;
+  --color-brand-200: #BDDAD6;
+  --color-brand-300: #94C2BC;
+  --color-brand-400: #68A59E;
+  --color-brand-500: #478A84;
+  --color-brand-600: #3B7571;
+  --color-brand-700: #326564;
+  --color-brand-800: #274F4E;
+  --color-brand-900: #1B3736;
+
+  /* Accent: terracotta. Sparingly: one highlight per screen. */
+  --color-accent-100: #FBE6DE;
+  --color-accent-500: #D4694F;
+  --color-accent-700: #9B432D;
+
+  /* Neutrals (brand-tinted) */
+  --color-ground: #F3F8F7;
+  --color-surface: #FFFFFF;
+  --color-ink: #1F2D2C;
+  --color-ink-muted: #53625F;
+  --color-line: #D4E0DD;
+  --color-line-strong: #7E938F;
+
+  /* Appointment status: fg = text, bg = chip tint, dot = marker/data */
+  --color-status-pending-fg: #85580A;
+  --color-status-pending-bg: #FDF1D3;
+  --color-status-pending-dot: #D99A1E;
+  --color-status-scheduled-fg: #1D5A96;
+  --color-status-scheduled-bg: #E2EEFA;
+  --color-status-scheduled-dot: #3C87D0;
+  --color-status-attended-fg: #1D6A3A;
+  --color-status-attended-bg: #E0F3E6;
+  --color-status-attended-dot: #35A05A;
+  --color-status-cancelled-fg: #4B5855;
+  --color-status-cancelled-bg: #E8EDEC;
+  --color-status-cancelled-dot: #8A9895;
+  --color-status-noshow-fg: #A02A2A;
+  --color-status-noshow-bg: #FBE7E5;
+  --color-status-noshow-dot: #D9534F;
+
+  /* Type: one UI family. Jost is the logo wordmark/marketing face only. */
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --brand-primary: var(--color-brand-700);
+  --brand-primary-hover: var(--color-brand-800);
+  --focus-ring: var(--color-brand-600);
+}

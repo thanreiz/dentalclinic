@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import { listDentistsWithSchedules, listServices } from '@/lib/queries/setup';
 import { addDays, dayOfWeek, isValidDate, isValidTime, todayManila } from '@/lib/time';
-import { InfoIcon, ToothIcon } from '@/components/ui/icons';
+import { BrandLockup } from '@/components/ui/BrandLogo';
+import { InfoIcon } from '@/components/ui/icons';
 import BookingForm, { type BookPrefill } from './BookingForm';
 
 export const dynamic = 'force-dynamic';
@@ -13,7 +14,6 @@ const DEMO_BANNER = 'Demo system: please use sample details, not your real infor
 
 /** Public online request form (FR1). Mobile-first; must work at 360 px (NF01). */
 export default async function BookPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const clinicName = process.env.CLINIC_NAME || 'G4 Dental Clinic';
   const clinicPhone = process.env.CLINIC_PHONE || undefined;
   const [services, dentists] = await Promise.all([listServices(), listDentistsWithSchedules()]);
   const today = todayManila();
@@ -35,13 +35,8 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       </div>
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-brand-700 text-white">
-            <ToothIcon className="size-6" />
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-[17px] font-bold tracking-tight text-slate-900">{clinicName}</p>
-            <p className="text-sm text-slate-600">Request an appointment online</p>
-          </div>
+          <BrandLockup className="h-11 shrink-0" />
+          <p className="min-w-0 border-l border-slate-200 pl-3 text-sm leading-snug text-slate-600">Request an appointment online</p>
         </div>
       </header>
       <main className="mx-auto max-w-lg px-4 pt-5 pb-12">

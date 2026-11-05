@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
-import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, MenuIcon, PlusIcon, ToothIcon, UsersIcon, XIcon } from '@/components/ui/icons';
+import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, MenuIcon, PlusIcon, UsersIcon, XIcon } from '@/components/ui/icons';
+import { BrandIcon, BrandLockup } from '@/components/ui/BrandLogo';
 import { LinkPendingIcon } from '@/components/ui/LinkPending';
 import LogoutButton from './LogoutButton';
 
@@ -135,11 +136,8 @@ export default function StaffShell({
   );
 
   const mark = (
-    <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5 rounded-md">
-      <span className="grid size-8 shrink-0 place-items-center rounded-[10px] bg-brand-700 text-white">
-        <ToothIcon className="size-[18px]" />
-      </span>
-      <span className="truncate text-[15px] font-bold tracking-tight text-slate-900">{clinicName}</span>
+    <Link href="/dashboard" aria-label={`${clinicName}, schedule`} className="block rounded-md">
+      <BrandLockup className="h-10" />
     </Link>
   );
 
@@ -166,9 +164,7 @@ export default function StaffShell({
 
       {/* Below 1024 px: 48 px bar + menu sheet */}
       <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-[var(--color-rule)] bg-canvas px-4 lg:hidden">
-        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-brand-700 text-white" aria-hidden="true">
-          <ToothIcon className="size-4" />
-        </span>
+        <BrandIcon className="h-8 shrink-0" />
         <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-slate-900">{current}</p>
         <button
           type="button"
