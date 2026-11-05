@@ -71,7 +71,7 @@ Evidence key: **E2E nn** = `tests/e2e/nn-*.spec.ts`; **probe** = scripted curl/S
 | Rule 9 | 8 concurrent staff bookings (4 Reyes + 4 Lim, same chair and slot); 2 requests confirmed on one chair; 2 confirms of one request; public request vs staff booking; 3 partially overlapping bookings; 3 concurrent status changes (probe) | Exactly one wins each time | 1 success each time, rest 409, no 5xx, one DB row | PASS |
 | Rule 10 | 3 "any dentist" requests for the same slot | Dentist 1, then 2, then 409 | `[201, 201, 409]` assigned dentist 1 then 2 | PASS |
 | Rule 11 | Inspect rows after a reschedule | Same patient/service/channel, notes copied, reminder NULL, `requested_at` now, link, new end time | All as written | PASS |
-| Rule 12 | Decline a pending request | `declined`, no email, slot free | As expected | PASS |
+| Rule 12 | Decline a pending request (E2E 04) | `declined`, patient emailed (DECISIONS M6), slot free | As expected | PASS |
 
 ### 2.4 Phase acceptance bullets
 

@@ -36,10 +36,10 @@ test.describe('FR2/FR12/Rule 12: confirm and decline online requests', () => {
     await expect(page.getByRole('link', { name: new RegExp(name) })).toHaveCount(0);
   });
 
-  test('declining frees the slot at once and sends no email', async ({ page, request }) => {
+  test('declining frees the slot at once and emails the patient', async ({ page, request }) => {
     const { date, slot } = await findSlot(request, { dentistId: REYES, serviceId: SVC.prophylaxis, fromDays: 28, index: 3 });
     const name = uniqueName('E2E Decline');
-    const req = await createPendingRequest(request, { date, start: slot.start, dentistId: REYES, serviceId: SVC.prophylaxis, name });
+    const req = await createPendingRequest(request, { date, start: slot.start, dentistId: REYES, serviceId: SVC.prophylaxis, name, email: 'decline.me@example.com' });
     expect((await getSlots(request, date, SVC.prophylaxis, REYES)).some((s) => s.start === slot.start), 'pending request holds the slot').toBe(false);
     const mailsBefore = mailCount();
 
@@ -52,7 +52,12 @@ test.describe('FR2/FR12/Rule 12: confirm and decline online requests', () => {
     const [row] = await sql<{ status: string }>(`SELECT status FROM appointments WHERE appointment_id = ?`, [req.id]);
     expect(row.status).toBe('declined');
     expect((await getSlots(request, date, SVC.prophylaxis, REYES)).some((s) => s.start === slot.start), 'declined slot is open again').toBe(true);
-    expect(mailCount()).toBe(mailsBefore);
+    if (MAIL_LOG) {
+      const mails = mailsSince(mailsBefore);
+      expect(mails.length).toBe(1);
+      expect(mails[0]).toContain('Appointment request not available');
+      expect(mails[0]).toContain('decline.me@example.com');
+    }
   });
 
   test('Phase 5: chair taken after the page loaded -> "Slot no longer free", pick the other chair, confirm works', async ({ page, request }) => {
