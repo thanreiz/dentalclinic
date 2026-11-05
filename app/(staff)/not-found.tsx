@@ -11,7 +11,7 @@ export default function StaffNotFound() {
         description="That record does not exist or was removed. Check the link or search again."
         action={
           <ButtonLink href="/dashboard" variant="primary">
-            Back to dashboard
+            Back to the schedule
           </ButtonLink>
         }
       />
