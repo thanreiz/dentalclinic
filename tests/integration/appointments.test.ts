@@ -106,7 +106,7 @@ describe('POST /api/appointments/[id]/confirm', () => {
 });
 
 describe('POST /api/appointments/[id]/decline (Rule 12)', () => {
-  it('pending -> declined, no email, and the slot is free again', async () => {
+  it('pending -> declined, the patient is told, and the slot is free again', async () => {
     const date = workday(1);
     const sentBefore = mail.current!.sent.length;
     const id = await pendingRequest({ date, start: '11:00' });
@@ -114,7 +114,7 @@ describe('POST /api/appointments/[id]/decline (Rule 12)', () => {
     const res = await decline(req('POST', `/api/appointments/${id}/decline`, undefined, cookie), idCtx(id));
     expect(res.status).toBe(200);
     expect(await statusOf(id)).toBe('declined');
-    expect(mail.current!.sent.length).toBe(sentBefore);
+    expect(mail.current!.sent.length).toBe(sentBefore + 1); // decline notice (see staff-notices.test.ts)
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00' })))).status).toBe(201);
     // declined is final
     const again = await decline(req('POST', `/api/appointments/${id}/decline`, {}, cookie), idCtx(id));

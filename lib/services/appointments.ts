@@ -3,8 +3,8 @@
  * status (Rule 7), dentist note. Lock order everywhere: dentist -> chair -> appointment row.
  */
 import { execute, getPool, queryOne, type Queryable } from '../db';
-import { sendConfirmation } from '../mail';
-import { sendMessengerConfirmation } from './messenger-notify';
+import { sendCancellationEmail, sendConfirmation, sendDeclineEmail, sendRescheduleEmail } from '../mail';
+import { sendMessengerCancellation, sendMessengerConfirmation, sendMessengerDecline, sendMessengerReschedule } from './messenger-notify';
 import { checkBookable, freeChairs, lockChair, lockDentist } from '../queries/overlap';
 import { canTransition, hasStarted } from '../rules';
 import { nowManila, toHHMM } from '../time';
@@ -133,19 +133,77 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/appointments/[id]/decline (Rule 12): pending -> declined. No email.
+// Patient notices after a staff change (reschedule, decline, cancel). Always AFTER the commit,
+// never inside the transaction. Best effort: a failure is logged and never blocks or undoes the
+// change. Email is the main channel; Messenger is a copy for patients with a stored Messenger id
+// (Meta delivers it only within 24 hours of the patient's last message, see DECISIONS M3).
+// ---------------------------------------------------------------------------
+
+type NoticeInfo = { to: string | null; psid: string | null; patientName: string; date: string; start: string; dentist: string; service: string };
+type NoticeResult = { emailSent: boolean; emailSkipped?: 'no_email'; messengerSent?: boolean };
+
+async function noticeInfo(conn: Queryable, appointmentId: number): Promise<NoticeInfo> {
+  const r = await queryOne<{ full_name: string; email: string | null; messenger_psid: string | null; dentist_name: string; service_name: string; appointment_date: string; start_time: string }>(
+    `SELECT p.full_name, p.email, p.messenger_psid, d.dentist_name, s.service_name, a.appointment_date, a.start_time
+       FROM appointments a JOIN patients p ON p.patient_id = a.patient_id
+       JOIN dentists d ON d.dentist_id = a.dentist_id JOIN services s ON s.service_id = a.service_id
+      WHERE a.appointment_id = ?`,
+    [appointmentId],
+    conn,
+  );
+  if (!r) throw notFound();
+  return { to: r.email, psid: r.messenger_psid, patientName: r.full_name, date: r.appointment_date, start: toHHMM(r.start_time), dentist: r.dentist_name, service: r.service_name };
+}
+
+async function notifyPatient(
+  label: string,
+  id: number,
+  info: NoticeInfo,
+  send: {
+    email: (a: { to: string; patientName: string; date: string; startTime: string; dentist: string; service: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
+    messenger: (psid: string, a: { patientName: string; date: string; startTime: string; dentist: string; service: string }) => Promise<{ ok: true } | { ok: false; error: string }>;
+  },
+): Promise<NoticeResult> {
+  const base = { patientName: info.patientName, date: info.date, startTime: info.start, dentist: info.dentist, service: info.service };
+  let messengerSent: boolean | undefined;
+  if (info.psid) {
+    try {
+      const m = await send.messenger(info.psid, base);
+      messengerSent = m.ok;
+      if (!m.ok) console.error(`[${label}] appointment ${id}: the Messenger message failed: ${m.error}`);
+    } catch (err) {
+      messengerSent = false;
+      console.error(`[${label}] appointment ${id}: the Messenger message threw:`, err instanceof Error ? err.message : err);
+    }
+  }
+  const tail = messengerSent === undefined ? {} : { messengerSent };
+  if (!info.to) return { emailSent: false, emailSkipped: 'no_email', ...tail };
+  try {
+    const sent = await send.email({ ...base, to: info.to });
+    if (!sent.ok) console.error(`[${label}] appointment ${id}: the email failed: ${sent.error}`);
+    return { emailSent: sent.ok, ...tail };
+  } catch (err) {
+    console.error(`[${label}] appointment ${id}: the email threw:`, err instanceof Error ? err.message : err);
+    return { emailSent: false, ...tail };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/appointments/[id]/decline (Rule 12): pending -> declined. Patient notice after commit.
 // ---------------------------------------------------------------------------
 
 export async function declineAppointment(id: number, opts: { now?: Now } = {}): Promise<void> {
   const now = opts.now ?? nowManila();
-  await transaction(async (conn) => {
+  const info = await transaction(async (conn) => {
     const a = await loadForUpdate(conn, id);
     const startPassed = hasStarted(a.appointment_date, a.start_time, now);
     if (!canTransition(a.status, 'declined', { startPassed })) {
       throw invalidTransition(a.status, 'Only pending requests can be declined');
     }
     await execute("UPDATE appointments SET status = 'declined' WHERE appointment_id = ?", [id], conn);
+    return noticeInfo(conn, id);
   });
+  await notifyPatient('decline', id, info, { email: sendDeclineEmail, messenger: sendMessengerDecline });
 }
 
 // ---------------------------------------------------------------------------
@@ -158,7 +216,7 @@ export async function setAppointmentStatus(
   opts: { now?: Now } = {},
 ): Promise<{ status: AppointmentStatus }> {
   const now = opts.now ?? nowManila();
-  return transaction(async (conn) => {
+  const { info } = await transaction(async (conn) => {
     const a = await loadForUpdate(conn, id);
     const startPassed = hasStarted(a.appointment_date, a.start_time, now);
     if (!canTransition(a.status, to, { startPassed })) {
@@ -169,8 +227,11 @@ export async function setAppointmentStatus(
       throw invalidTransition(a.status, msg);
     }
     await execute('UPDATE appointments SET status = ? WHERE appointment_id = ?', [to, id], conn);
-    return { status: to };
+    return { info: to === 'cancelled' ? await noticeInfo(conn, id) : null };
   });
+  // Cancelled by staff: tell the patient (attended / no-show are record-keeping, no notice).
+  if (info) await notifyPatient('cancel', id, info, { email: sendCancellationEmail, messenger: sendMessengerCancellation });
+  return { status: to };
 }
 
 // ---------------------------------------------------------------------------
@@ -187,14 +248,14 @@ export async function rescheduleAppointment(
   id: number,
   input: RescheduleInput,
   opts: { now?: Now } = {},
-): Promise<{ ok: true; newId: number }> {
+): Promise<{ ok: true; newId: number } & Partial<NoticeResult>> {
   const now = opts.now ?? nowManila();
   const pre = await peek(id);
   if (pre.status !== 'scheduled') throw invalidTransition(pre.status, 'Only scheduled appointments can be rescheduled');
   const service = await getServiceOrThrow(pre.service_id);
   const end = endTimeOrThrow(input.start, service.duration_minutes);
 
-  return transaction(async (conn) => {
+  const moved = await transaction(async (conn) => {
     if (!(await lockDentist(conn, input.dentistId))) {
       throw new ServiceError(400, 'unknown_dentist', 'That dentist does not exist', { issues: { dentistId: 'Unknown dentist' } });
     }
@@ -227,8 +288,17 @@ export async function rescheduleAppointment(
       rescheduledFromId: id,
       followUpOfId: old.follow_up_of_id,
     });
-    return { ok: true as const, newId };
+    return { newId, info: await noticeInfo(conn, newId), oldDate: old.appointment_date, oldStart: toHHMM(old.start_time) };
   });
+
+  // Tell the patient after the commit (a retry finds the old row cancelled and throws above, so
+  // the notice is never sent twice). The new row has reminder_sent_at NULL, so its day-before
+  // reminder still goes out.
+  const notice = await notifyPatient('reschedule', moved.newId, moved.info, {
+    email: (a) => sendRescheduleEmail({ ...a, oldDate: moved.oldDate, oldStart: moved.oldStart }),
+    messenger: (psid, a) => sendMessengerReschedule(psid, { ...a, oldDate: moved.oldDate, oldStartTime: moved.oldStart }),
+  });
+  return { ok: true as const, newId: moved.newId, ...notice };
 }
 
 // ---------------------------------------------------------------------------

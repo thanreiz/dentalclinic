@@ -33,3 +33,33 @@ describe('clinic name at the end of a sentence', () => {
     expect(confirmationText(chat)).toContain('Your appointment at Molar & Co. is confirmed.');
   });
 });
+
+describe('reschedule, decline and cancellation copy', () => {
+  it('reschedule shows the old time and the new date, time, dentist and service, with the clinic phone', async () => {
+    const { rescheduleEmail } = await import('@/lib/mail');
+    const { rescheduleText } = await import('@/lib/services/messenger-notify');
+    process.env.CLINIC_NAME = 'Molar & Co.';
+    process.env.CLINIC_PHONE = '0917 000 0000';
+    const moved = { oldDate: '2026-11-05', oldStart: '09:00' };
+    const e = rescheduleEmail({ ...email, ...moved });
+    expect(e.subject).toContain('moved');
+    for (const part of ['has been moved', 'Was: ', '9:00 AM', 'Date: ', '3:00 PM', 'Dentist: Dr. Cruz', 'Service: Exam and X-ray', '0917 000 0000', 'Molar & Co.']) expect(e.text).toContain(part);
+    expect(e.text).not.toContain('..');
+    const m = rescheduleText({ ...chat, oldDate: '2026-11-05', oldStartTime: '09:00' });
+    for (const part of ['Hi Ana!', 'has been moved', 'Was: ', '9:00 AM', 'Exam and X-ray with Dr. Cruz', '3:00 PM', '0917 000 0000']) expect(m).toContain(part);
+    delete process.env.CLINIC_PHONE;
+  });
+
+  it('decline and cancellation name the appointment and the clinic, no doubled period', async () => {
+    const { declineEmail, cancellationEmail } = await import('@/lib/mail');
+    const { declineText, cancellationText } = await import('@/lib/services/messenger-notify');
+    process.env.CLINIC_NAME = 'Molar & Co.';
+    for (const t of [declineEmail(email).text, cancellationEmail(email).text, declineText(chat), cancellationText(chat)]) {
+      expect(t).toContain('Exam and X-ray');
+      expect(t).toContain('3:00 PM');
+      expect(t).not.toContain('..');
+    }
+    expect(cancellationEmail(email).subject).toContain('cancelled');
+    expect(declineEmail(email).subject).toContain('not available');
+  });
+});

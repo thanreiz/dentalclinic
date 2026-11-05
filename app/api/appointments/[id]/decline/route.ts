@@ -1,4 +1,4 @@
-/** POST /api/appointments/[id]/decline (staff, Rule 12): pending -> declined, no email. */
+/** POST /api/appointments/[id]/decline (staff, Rule 12): pending -> declined; the patient is told after commit. */
 import { NextResponse } from 'next/server';
 import { parseIdParam, parseOptionalJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
 import { declineAppointment } from '@/lib/services/appointments';
