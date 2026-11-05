@@ -53,7 +53,7 @@ export default function DentistNoteForm({ appointmentId, initialNote }: { appoin
           hint={`${note.length}/2000`}
         />
         <div className="flex items-center justify-end gap-3">
-          {dirty && <span className="text-xs text-slate-500">Unsaved changes</span>}
+          {dirty && <span className="text-xs text-ink-muted">Unsaved changes</span>}
           <Button type="submit" variant="secondary" loading={saving} disabled={!dirty}>
             Save note
           </Button>

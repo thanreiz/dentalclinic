@@ -4,11 +4,11 @@ import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cx } from './cx';
 
 export const controlBase =
-  'block w-full rounded-[10px] border bg-white px-3 text-base text-slate-900 placeholder:text-slate-400 ' +
+  'block w-full rounded-[10px] border bg-white px-3 text-base text-ink placeholder:text-line-strong ' +
   'transition-colors focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-brand-600/40 focus:border-brand-600 ' +
-  'disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm';
+  'disabled:bg-brand-50 disabled:text-ink-muted sm:text-sm';
 
-const controlState = (invalid: boolean) => (invalid ? 'border-red-600 focus:ring-red-600/30 focus:border-red-600' : 'border-slate-300');
+const controlState = (invalid: boolean) => (invalid ? 'border-red-600 focus:ring-red-600/30 focus:border-red-600' : 'border-line-strong');
 
 type FieldShellProps = {
   id: string;
@@ -25,18 +25,18 @@ type FieldShellProps = {
 function FieldShell({ id, label, error, hint, required, optional, className, children }: FieldShellProps) {
   return (
     <div className={cx('flex flex-col gap-1.5', className)}>
-      <label htmlFor={id} className="text-sm font-medium text-slate-800">
+      <label htmlFor={id} className="text-sm font-medium text-ink">
         {label}
         {required && (
           <span className="ml-0.5 text-red-700" aria-hidden="true">
             *
           </span>
         )}
-        {optional && <span className="ml-1.5 font-normal text-slate-500">(optional)</span>}
+        {optional && <span className="ml-1.5 font-normal text-ink-muted">(optional)</span>}
       </label>
       {children}
       {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-slate-500">
+        <p id={`${id}-hint`} className="text-xs text-ink-muted">
           {hint}
         </p>
       )}
@@ -125,8 +125,8 @@ export function Checkbox({ label, error, id, className, ...rest }: CheckboxProps
       <label
         htmlFor={fid}
         className={cx(
-          'flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 text-sm leading-relaxed text-slate-800',
-          error ? 'border-red-600' : 'border-slate-300 hover:border-slate-400',
+          'flex cursor-pointer items-start gap-3 rounded-lg border bg-white p-3 text-sm leading-relaxed text-ink',
+          error ? 'border-red-600' : 'border-line-strong hover:border-line-strong',
         )}
       >
         <input

@@ -33,10 +33,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           <span>{DEMO_BANNER}</span>
         </p>
       </div>
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b border-rule bg-white">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
           <BrandLockup className="h-11 shrink-0" />
-          <p className="min-w-0 border-l border-slate-200 pl-3 text-sm leading-snug text-slate-600">Request an appointment online</p>
+          <p className="min-w-0 border-l border-rule pl-3 text-sm leading-snug text-ink-muted">Request an appointment online</p>
         </div>
       </header>
       <main className="mx-auto max-w-lg px-4 pt-5 pb-12">
@@ -48,10 +48,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           clinicPhone={clinicPhone}
           prefill={prefill}
         />
-        <p className="mt-8 text-center text-xs text-slate-500">
+        <p className="mt-8 text-center text-xs text-ink-muted">
           No account needed. Your request is reviewed by clinic staff before it is confirmed.
           <br />
-          <Link href="/login" className="mt-2 inline-block py-1 text-slate-600 underline">
+          <Link href="/login" className="mt-2 inline-block py-1 text-ink-muted underline">
             Clinic staff login
           </Link>
         </p>

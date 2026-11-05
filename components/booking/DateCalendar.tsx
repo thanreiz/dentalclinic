@@ -61,19 +61,19 @@ export function DateCalendar({ value, onChange, min, max, today, isEnabled, labe
           type="button"
           onClick={() => setMonth(shiftMonth(month, -1))}
           disabled={!canPrev}
-          className="grid size-11 place-items-center rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+          className="grid size-11 place-items-center rounded-lg text-ink hover:bg-brand-50 disabled:opacity-30 disabled:hover:bg-transparent"
           aria-label="Previous month"
         >
           <ChevronLeft className="size-5" />
         </button>
-        <p className="text-base font-semibold text-slate-900" aria-live="polite">
+        <p className="text-base font-semibold text-ink" aria-live="polite">
           {MONTHS[m - 1]} {y}
         </p>
         <button
           type="button"
           onClick={() => setMonth(shiftMonth(month, 1))}
           disabled={!canNext}
-          className="grid size-11 place-items-center rounded-lg text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent"
+          className="grid size-11 place-items-center rounded-lg text-ink hover:bg-brand-50 disabled:opacity-30 disabled:hover:bg-transparent"
           aria-label="Next month"
         >
           <ChevronRight className="size-5" />
@@ -81,7 +81,7 @@ export function DateCalendar({ value, onChange, min, max, today, isEnabled, labe
       </div>
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAYS.map(([short, long]) => (
-          <abbr key={long} title={long} className="pb-1 text-xs font-medium text-slate-500 no-underline">
+          <abbr key={long} title={long} className="pb-1 text-xs font-medium text-ink-muted no-underline">
             {short}
           </abbr>
         ))}
@@ -107,8 +107,8 @@ export function DateCalendar({ value, onChange, min, max, today, isEnabled, labe
                 selected
                   ? 'bg-brand-700 text-white'
                   : enabled
-                    ? 'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-brand-50 hover:ring-brand-300'
-                    : 'cursor-not-allowed text-slate-300',
+                    ? 'bg-white text-ink ring-1 ring-rule hover:bg-brand-50 hover:ring-brand-300'
+                    : 'cursor-not-allowed text-line-strong',
               )}
             >
               {dayNum}

@@ -52,14 +52,14 @@ export function ConfirmDialog({
       onClick={(e) => {
         if (e.target === ref.current && !loading) onCancel();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-slate-200 bg-white p-0 text-slate-900 shadow-xl"
+      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl border border-rule bg-white p-0 text-ink shadow-xl"
     >
       <div className="p-5 sm:p-6">
         <h2 id={titleId} className="text-lg font-semibold">
           {title}
         </h2>
         {description && (
-          <div id={descId} className="mt-2 text-sm leading-relaxed text-slate-600">
+          <div id={descId} className="mt-2 text-sm leading-relaxed text-ink-muted">
             {description}
           </div>
         )}
