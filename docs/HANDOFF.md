@@ -6,13 +6,13 @@
 | --- | --- |
 | Build (all 16 FRs, 10 NFs, 9 screens, reminder cron) | **Done**, runs locally |
 | Typecheck / lint / production build | Clean |
-| Unit + integration tests (real MySQL 8) | **352 / 352 pass** |
+| Unit + integration tests (real MySQL 8) | **427 / 427 pass** on `main` 3b31811 (Nov 5 2026) |
 | Playwright end-to-end | **31 / 31 pass** (+1 opt-in abuse-limit spec, passes), two runs in a row |
 | QA table FR1–FR16, NF01–NF10, Rules 1–12, Phases 1–10 | All PASS: [TEST-REPORT.md](TEST-REPORT.md) (doubles as the paper's developer-testing table) |
 | October 2026 report | Dr. Reyes 10.0%, Dr. Lim 20.0%, total 14.3% (Table 3.22) |
 | Security review | 0 Critical; 2 High, 4 Medium, 4 Low all **fixed**: [SECURITY-REVIEW.md](SECURITY-REVIEW.md) |
 | Appendix B screenshots | `docs/screenshots/appendix-b/` |
-| **Deployed** | **Yes:** https://molarandco.vercel.app (Vercel, Singapore `sin1`, Aiven MySQL seeded, auto-deploys on push to `main`). Verified live: auth redirects, 401 on APIs, security headers, open slots from Aiven, cron rejects missing secret. Run `node scripts/hosted/smoke.mjs --live-write` for the email/reminder check (it writes test rows to the live DB; delete them by hand, do not reseed) |
+| **Deployed** | **Yes:** https://molarandco.vercel.app (Vercel, Singapore `sin1`, Aiven MySQL seeded, auto-deploys on push to `main`). Verified live: auth redirects, 401 on APIs, security headers, open slots from Aiven, cron rejects missing secret. Run `node scripts/hosted/smoke.mjs --live-write` for the email/reminder check (it writes test rows to the live DB; delete them by hand, never reseed with `seed.mjs`). Hosted DB has 2 dentists and 12 services; `appointments.follow_up_of_id` and `patients.messenger_psid` were added with the additive `scripts/hosted/add-*.mjs` scripts |
 | GitHub | **Pushed** to https://github.com/thanreiz/dentalclinic (public). Claude attribution lines removed from all commit messages. Vercel region set to Singapore (`sin1`) |
 
 Aiven connection, Gmail SMTP login, and the Aiven CA certificate were all verified working (read-only). Vercel CLI is logged in as `thanreiz`.
