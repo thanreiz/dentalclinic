@@ -22,6 +22,6 @@ The system stores one `duration_minutes` per service and computes each appointme
 Notes
 - Ids 1-3 are the paper's sample services (Tables 3.6 and 3.22); ids 4-12 are additions.
 - Ranges are from US clinic web pages, not Philippine data. Treat them as defaults the clinic can edit in Setup.
-- Dr. Cruz has no seeded appointments, so the October 2026 report totals still match Table 3.22.
+- Local seed has 3 dentists; the hosted database keeps 2 (Dr. Reyes, Dr. Lim) by choice. Dr. Cruz has no seeded appointments, so the October 2026 report totals still match Table 3.22.
 - The seed only affects `npm run db:reset` and local/demo databases. A hosted database keeps its current services
-  until they are added in Setup.
+  until they are added in Setup. The 9 services above were added to the hosted database by hand on Nov 5 2026.

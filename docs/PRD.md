@@ -31,7 +31,7 @@ Small dental clinics book through paper logbooks, phone calls, and chat messages
 ### Non-goals
 
 - Patient accounts or patient login
-- SMS, Messenger, or any chat-app messages or integration
+- SMS, or any chat app other than the Facebook Messenger booking bot and its confirmation and reminder copies (see DECISIONS M1-M3). Messenger is the chat channel for OBJ 4
 - Payments, billing, or cost analysis
 - AI, machine learning, or no-show prediction
 - Dental charts, x-rays, diagnoses, or prescriptions
@@ -56,7 +56,7 @@ The paper is the contract: if the code needs to differ from Chapter 3, change th
 
 ### Constraints
 
-- **Seven tables only:** `users`, `patients`, `dentists`, `dentist_schedules`, `services`, `chairs`, `appointments`, exactly as in Listing 3.2. Adding a table means rewriting the ERD, the DFD, and the data dictionary.
+- **Seven tables only:** `users`, `patients`, `dentists`, `dentist_schedules`, `services`, `chairs`, `appointments`, as in Listing 3.2 plus two approved nullable columns: `patients.messenger_psid` (Messenger) and `appointments.follow_up_of_id` (follow-up visits). Both must be added to the paper's ERD, data dictionary and Listing 3.2. Adding a table means rewriting the ERD, the DFD, and the data dictionary.
 - **Computed, never stored:** open slots, no-show counts, attendance totals, and the no-show rate. `end_time` is the one stored derived value.
 - **Stack named in Ch. 3:** Next.js + React, Tailwind CSS, MySQL 8.0.16+, Node.js LTS, SMTP mail, a daily scheduled job.
 - **Status and channel values** must match the ENUMs exactly: `pending`, `scheduled`, `attended`, `cancelled`, `declined`, `no-show` and `online`, `phone`, `chat`, `walk-in`. Use "cancelled" (double L) in the UI.
@@ -302,12 +302,14 @@ The stack is the one Chapter 3 names, including bcrypt and a signed session cook
 | `/book` | Public | Online request form, with a thank-you state after submit |
 | `/login` | Public | Staff login |
 | `/dashboard` | Staff | Schedule dashboard for a chosen day, default today |
-| `/appointments/new` | Staff | Staff booking (phone, chat, walk-in) |
-| `/appointments/[id]` | Staff | Detail page: confirm or decline, assign chair, reschedule, set status, dentist note |
+| `/appointments` | Staff | All appointments from every channel in one list; filters (channel, status, date range, patient), 50 per page |
+| `/appointments/new` | Staff | Staff booking (phone, chat, walk-in). Optional `followUpOf` query param books a follow-up of an attended visit |
+| `/appointments/[id]` | Staff | Detail page: confirm or decline, assign chair, reschedule, set status, dentist note; on an attended visit, a Book follow-up button and the follow-up chain |
 | `/requests` | Staff | Queue of pending online requests |
 | `/patients`, `/patients/[id]` | Staff | Search, profile, and history |
 | `/setup` | Staff | Dentists and schedules, services, chairs |
-| `/reports` | Staff | Totals, no-show rate, repeat no-show list with threshold |
+| `/reports` | Staff | Totals, no-show rate, bookings by channel, repeat no-show list with threshold |
+| `/api/messenger` | Meta (signed) | Messenger webhook: verify handshake and booking-bot events; 503 until the three `MESSENGER_*` variables are set |
 | `/api/slots` | Public | Returns open slots as JSON for `?date&serviceId&dentistId` (or `any`) |
 | `/api/cron/reminders` | Cron secret | Sends the day-before reminders |
 
@@ -321,7 +323,7 @@ Every write goes through one of these route handlers. Public routes, which the m
 | `POST /api/requests` | Public | Form fields, `consent: true`, honeypot `website` (must be empty) | Drops silently if `website` is filled; Zod check; matches or creates the patient; saves `pending` (rules 1–3, 9, 10). Returns 201, or 409 `{ error: "slot_taken", slots }`. |
 | `POST /api/auth/login` | Public | `email`, `password` | bcrypt check; sets the session cookie (8-hour expiry). 401 on failure, same message for either field. |
 | `POST /api/auth/logout` | Staff | None | Clears the cookie |
-| `POST /api/appointments` | Staff | `patientId` or a new patient, `serviceId`, `dentistId`, `date`, `start`, `chairId`, `channel` (`phone`, `chat`, `walk-in`) | Saves `scheduled` (rules 1–4, 6, 9). No email. |
+| `POST /api/appointments` | Staff | `patientId` or a new patient, `serviceId`, `dentistId`, `date`, `start`, `chairId`, `channel` (`phone`, `chat`, `walk-in`), optional `followUpOf` (id of an attended visit of the same patient) | Saves `scheduled` (rules 1–4, 6, 9). No email. |
 | `POST /api/appointments/[id]/confirm` | Staff | `chairId` | Re-checks rule 1; sets `scheduled`; sends the confirmation after commit. 409 if the slot is gone. |
 | `POST /api/appointments/[id]/decline` | Staff | None | Rule 12 |
 | `POST /api/appointments/[id]/reschedule` | Staff | `date`, `start`, `dentistId`, `chairId` | Rule 11 |

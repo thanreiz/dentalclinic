@@ -59,3 +59,14 @@ Keep the hosted values in `.env.hosted` (gitignored, never auto-loaded). Never n
 - `curl -sI https://<app>/book` shows `Content-Security-Policy`, `Strict-Transport-Security`, `X-Frame-Options: DENY`, and no `X-Powered-By`.
 - `/book` works; the browser console shows no CSP violations.
 - To end every staff session (e.g. a shared laptop was lost), generate a new `SESSION_SECRET` and redeploy.
+
+## Upgrading an existing hosted database
+
+`db:reset` wipes data, so never use it on a database with real bookings. Two additive migrations exist; run each once, BEFORE deploying the code that reads the column (safe to re-run):
+
+```bash
+node scripts/hosted/add-messenger-column.mjs   # patients.messenger_psid
+node scripts/hosted/add-follow-up-column.mjs   # appointments.follow_up_of_id (+ FK)
+```
+
+New services are added in Setup (see docs/SERVICE-DURATIONS.md for the 12-service list). `scripts/hosted/smoke.mjs` needs `--live-write` and leaves test rows on the live database.
