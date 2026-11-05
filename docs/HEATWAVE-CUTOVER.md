@@ -5,7 +5,7 @@ Sample data only. Never load real PHI.
 
 ## 0. Pre-checks (5 min)
 
-- Is Aiven still alive? `node scripts/hosted/smoke.mjs`. If yes, nothing to dump: data is seed data, `db:reset` rebuilds it. Skip the dump.
+- Is Aiven still alive? `node scripts/hosted/smoke.mjs --live-write` (writes test rows). If yes, nothing to dump: data is seed data, `db:reset` rebuilds it. Skip the dump.
 - Confirm Always Free MySQL.Free (HeatWave standalone) is offered in your OCI home region. Capacity can be out in some regions.
 - Spend guard: Always Free only. Do not upgrade the tenancy to PAYG without asking first. If a console wizard shows a price, stop.
 
@@ -67,7 +67,7 @@ Check it sets `DATABASE_URL` and `DATABASE_CA_CERT` for production. Then redeplo
 
 - `https://molarandco.vercel.app/book` loads slots.
 - Staff login works.
-- `node scripts/hosted/smoke.mjs`.
+- `node scripts/hosted/smoke.mjs --live-write` (writes test rows).
 - Cron endpoint still rejects without secret.
 
 ## 8. Docs after success
