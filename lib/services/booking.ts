@@ -127,7 +127,7 @@ async function assertNoDuplicateRequest(
 }
 
 export const LINK_USED_MESSAGE =
-  'This booking link was already used for a request. Message us again to get a new link, or call the clinic.';
+  'This link was already used for a request. Ask the Messenger bot for a new one (tap Start over, then Confirm), or call the clinic.';
 
 /**
  * Single-use Messenger link (derived, no stored token state). The link carries its issue time; it is

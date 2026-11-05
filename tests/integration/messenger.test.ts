@@ -191,6 +191,8 @@ describe('single-use link (closed only by a saved request)', () => {
     Number((await queryOne<{ n: number }>('SELECT COUNT(*) AS n FROM appointments a JOIN patients p USING (patient_id) WHERE p.contact_number = ?', [contact]))!.n);
   // Real links are filled in for a while before submit; mint them a minute in the past.
   const aged = (psid: string) => signChatRef(psid, Math.floor(Date.now() / 1000) - 60);
+  const channelOfContact = async (contact: string) =>
+    (await queryOne<{ channel: string }>('SELECT a.channel FROM appointments a JOIN patients p USING (patient_id) WHERE p.contact_number = ? ORDER BY a.appointment_id DESC LIMIT 1', [contact]))!.channel;
   const post = (body: ReturnType<typeof bookingBody>) => postRequest(req('POST', '/api/requests', body));
 
   it('a failed submit does not burn the link; the retry saves; a lost-response resubmit is safe', async () => {
@@ -235,6 +237,43 @@ describe('single-use link (closed only by a saved request)', () => {
     // new link minted now (after the first request) works for another request
     const next = bookingBody({ start: '15:00', date: workday(3), chatRef: signChatRef('4004') });
     expect((await post(next)).status).toBe(201);
+  });
+
+  it('a link that was only opened (never submitted) stays open for its full life', async () => {
+    const link = aged('4006');
+    // opening /book or walking the bot saves nothing
+    await webhookPost(signed(event('4006', { postback: { payload: 'restart' } })));
+    const rows = Number((await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM appointments a JOIN patients p USING (patient_id) WHERE p.messenger_psid = '4006'"))!.n);
+    expect(rows).toBe(0);
+    const body = bookingBody({ start: '16:30', date: workday(3), chatRef: link });
+    expect((await post(body)).status).toBe(201);
+    expect(await channelOfContact(body.contactNumber)).toBe('chat');
+  });
+
+  it('a successful submit closes the link: the message says to ask the bot for a new one', async () => {
+    const link = aged('4007');
+    expect((await post(bookingBody({ start: '09:00', date: workday(4), chatRef: link }))).status).toBe(201);
+    const res = await post(bookingBody({ start: '09:30', date: workday(4), chatRef: link }));
+    expect(res.status).toBe(409);
+    const j = await res.json();
+    expect(j.error).toBe('link_used');
+    expect(j.message).toContain('Ask the Messenger bot for a new one');
+    // a fresh link (bot Confirm mints one each time) works for the second slot
+    expect((await post(bookingBody({ start: '09:30', date: workday(4), chatRef: signChatRef('4007') }))).status).toBe(201);
+  });
+
+  it('an expired link is not a chat link: it books as online and is never "used"', async () => {
+    const old = signChatRef('4008', Math.floor(Date.now() / 1000) - 3 * 3600);
+    const body = bookingBody({ start: '10:00', date: workday(4), chatRef: old });
+    expect((await post(body)).status).toBe(201);
+    expect(await channelOfContact(body.contactNumber)).toBe('online');
+    const again = bookingBody({ start: '10:30', date: workday(4), chatRef: old });
+    expect((await post(again)).status).toBe(201);
+  });
+
+  it('another Messenger user is unaffected by a used link', async () => {
+    expect((await post(bookingBody({ start: '11:00', date: workday(4), chatRef: aged('4009') }))).status).toBe(201);
+    expect((await post(bookingBody({ start: '11:30', date: workday(4), chatRef: aged('4010') }))).status).toBe(201);
   });
 
   it('a request with a taken slot (409 slot_taken) leaves the link open', async () => {
