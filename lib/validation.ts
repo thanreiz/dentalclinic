@@ -30,11 +30,25 @@ export const monthSchema = z
   .trim()
   .refine((v) => /^\d{4}-\d{2}$/.test(v) && isValidDate(`${v}-01`), { message: 'Use a valid month (YYYY-MM)' });
 
-/** Positive integer id; accepts numeric strings (query params, form values). */
-export const idSchema = z.coerce
-  .number({ error: 'Must be a number' })
-  .int({ error: 'Must be a whole number' })
-  .positive({ error: 'Must be a positive id' });
+/**
+ * Positive integer id. Accepts a whole number, or a plain digit string for query params and form
+ * values ('7'). Anything else is refused: arrays, booleans, null, ' 5 ', '1e3', '0x10' (QA finding L6).
+ */
+const MAX_ID = Number.MAX_SAFE_INTEGER;
+export const idSchema = z
+  .union([z.number({ error: 'Must be a number' }), z.string({ error: 'Must be a number' })])
+  .transform((v, ctx) => {
+    const n = typeof v === 'string' ? (/^\d{1,16}$/.test(v) ? Number(v) : NaN) : v;
+    if (!Number.isFinite(n) || !Number.isInteger(n)) {
+      ctx.addIssue({ code: 'custom', message: typeof v === 'number' ? 'Must be a whole number' : 'Must be a number' });
+      return z.NEVER;
+    }
+    if (n <= 0 || n > MAX_ID) {
+      ctx.addIssue({ code: 'custom', message: 'Must be a positive id' });
+      return z.NEVER;
+    }
+    return n;
+  });
 
 /** 'any' or a dentist id (online form, GET /api/slots). */
 export const dentistChoiceSchema = z.union([z.literal('any'), idSchema]);
@@ -81,10 +95,16 @@ export const contactNumberSchema = z
     return n;
   });
 
-/** Birthdate: a real date, not in the future (Manila), not before 1900. */
-export const birthdateSchema = dateSchema.refine((v) => v >= '1900-01-01' && v <= todayManila(), {
-  message: 'Enter a valid birthdate',
-});
+/**
+ * Birthdate: a real date, not in the future (Manila), not before 1900. The wire format is
+ * YYYY-MM-DD (what the date field submits), but people see mm/dd/yyyy in the field, so the
+ * messages use that wording.
+ */
+export const birthdateSchema = z
+  .string()
+  .trim()
+  .refine((v) => isValidDate(v), { message: 'Enter a valid birthdate (mm/dd/yyyy)' })
+  .refine((v) => v >= '1900-01-01' && v <= todayManila(), { message: 'Enter a valid birthdate' });
 
 /** Optional free text: trimmed, '' -> null. */
 const optionalText = (max: number) =>

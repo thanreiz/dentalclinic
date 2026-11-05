@@ -174,3 +174,27 @@ describe('parseAppointmentFilters (/appointments query string)', () => {
     expect(parseAppointmentFilters({ channel: ['chat', 'phone'] }).filters.channel).toBeUndefined();
   });
 });
+
+describe('ids (QA L6) and the birthdate wording (UX)', () => {
+  const body = (over: Record<string, unknown>) => bookingRequestSchema.safeParse({ ...validRequest, ...over });
+  it('JSON bodies take whole numbers or plain digit strings only', () => {
+    expect(body({ serviceId: 3 }).success).toBe(true);
+    expect(body({ serviceId: '3' }).success).toBe(true);
+    for (const bad of [[3], true, null, ' 3 ', '1e3', '0x10', '3.5', 3.5, 0, -1, '0', '', '00', '99999999999999999999', {}]) {
+      expect(body({ serviceId: bad }).success, JSON.stringify(bad)).toBe(false);
+    }
+  });
+  it('query strings still work', () => {
+    expect(slotsQuerySchema.safeParse({ date: '2026-12-01', serviceId: '2', dentistId: '1' }).success).toBe(true);
+    expect(slotsQuerySchema.safeParse({ date: '2026-12-01', serviceId: '2', dentistId: 'any' }).success).toBe(true);
+    expect(slotsQuerySchema.safeParse({ date: '2026-12-01', serviceId: 'abc', dentistId: '1' }).success).toBe(false);
+  });
+  it('a bad birthdate says mm/dd/yyyy, a future one says it is invalid', () => {
+    const bad = body({ birthdate: '2026-02-30' });
+    expect(bad.success).toBe(false);
+    if (!bad.success) expect(fieldErrors(bad.error).birthdate).toBe('Enter a valid birthdate (mm/dd/yyyy)');
+    const future = body({ birthdate: '2999-01-01' });
+    if (!future.success) expect(fieldErrors(future.error).birthdate).toBe('Enter a valid birthdate');
+    if (!bad.success) expect(JSON.stringify(fieldErrors(bad.error))).not.toContain('YYYY');
+  });
+});

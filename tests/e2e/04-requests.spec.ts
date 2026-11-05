@@ -53,8 +53,9 @@ test.describe('FR2/FR12/Rule 12: confirm and decline online requests', () => {
     expect(row.status).toBe('declined');
     expect((await getSlots(request, date, SVC.prophylaxis, REYES)).some((s) => s.start === slot.start), 'declined slot is open again').toBe(true);
     if (MAIL_LOG) {
+      // the notice is sent after the response, so wait for it
+      await expect.poll(() => mailsSince(mailsBefore).length).toBe(1);
       const mails = mailsSince(mailsBefore);
-      expect(mails.length).toBe(1);
       expect(mails[0]).toContain('Appointment request not available');
       expect(mails[0]).toContain('decline.me@example.com');
     }

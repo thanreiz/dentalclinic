@@ -1,6 +1,6 @@
 /**
  * Best-effort in-memory throttles (no 8th table, per the PRD):
- *   - login: 10 failed attempts per IP + email per 15 minutes, and 50 per email from any IP
+ *   - login: 10 failed attempts per IP + email per 15 minutes, and 200 per email from any IP
  *     (rotating IPs does not buy many more guesses) -> 429 too_many_attempts;
  *   - public booking requests: REQUEST_LIMIT_PER_IP accepted requests per IP per
  *     REQUEST_LIMIT_IP_WINDOW_MINUTES -> 429 too_many_requests (the DB-backed caps in
@@ -13,7 +13,7 @@
 import { envInt } from './env-int';
 
 export const LOGIN_MAX_FAILURES = 10;
-export const LOGIN_MAX_FAILURES_PER_EMAIL = 50;
+export const LOGIN_MAX_FAILURES_PER_EMAIL = 200;
 export const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
 type Entry = { count: number; resetAt: number };

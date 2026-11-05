@@ -158,3 +158,54 @@ describe('decline and cancel notices', () => {
     expect(mail.sent).toHaveLength(0);
   });
 });
+
+describe('late cancels and deferred notices', () => {
+  it('cancelling an appointment that has already started sends no notice (record correction)', async () => {
+    await setPsid(1, '6021');
+    const id = await insertAppt({ patientId: 1, date: '2026-01-06', start: '09:00', end: '09:30', status: 'scheduled' });
+    await setAppointmentStatus(id, 'cancelled');
+    expect(await statusOf(id)).toBe('cancelled');
+    expect(mail.sent).toHaveLength(0);
+    expect(chat).toHaveLength(0);
+  });
+
+  it('with a defer function the notice is not sent until the deferred task runs', async () => {
+    await setPsid(1, '6022');
+    const tasks: (() => Promise<unknown>)[] = [];
+    const defer = (t: () => Promise<unknown>) => void tasks.push(t);
+
+    const a = await insertAppt({ patientId: 1, date: workday(3), start: '09:00', end: '09:30', status: 'pending', chairId: null });
+    await declineAppointment(a, { defer });
+    const b = await insertAppt({ patientId: 1, date: workday(3), start: '10:00', end: '10:30', status: 'scheduled' });
+    await setAppointmentStatus(b, 'cancelled', { defer });
+    const c = await insertAppt({ patientId: 1, date: workday(3), start: '11:00', end: '11:30', status: 'scheduled' });
+    const r = await rescheduleAppointment(c, { ...move, start: '12:00' }, { defer });
+
+    // committed already, nothing sent yet, no notice fields in the result
+    expect(await statusOf(a)).toBe('declined');
+    expect(await statusOf(b)).toBe('cancelled');
+    expect(await statusOf(c)).toBe('cancelled');
+    expect(r).toEqual({ ok: true, newId: r.newId });
+    expect(mail.sent).toHaveLength(0);
+    expect(chat).toHaveLength(0);
+    expect(tasks).toHaveLength(3);
+
+    for (const t of tasks) await t();
+    expect(mail.sent).toHaveLength(3);
+    expect(chat).toHaveLength(3);
+  });
+
+  it('a failing deferred notice stays quiet and the change stands', async () => {
+    mail.setFailAll(true);
+    messengerFails = true;
+    await setPsid(1, '6023');
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const tasks: (() => Promise<unknown>)[] = [];
+    const id = await insertAppt({ patientId: 1, date: workday(3), start: '14:00', end: '14:30', status: 'pending', chairId: null });
+    await declineAppointment(id, { defer: (t) => void tasks.push(t) });
+    await expect(tasks[0]()).resolves.toBeUndefined();
+    expect(await statusOf(id)).toBe('declined');
+    expect(err).toHaveBeenCalled();
+    err.mockRestore();
+  });
+});

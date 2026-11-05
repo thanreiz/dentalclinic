@@ -146,7 +146,7 @@ These come from Chapter 3. Each rule needs one place in the code (`lib/rules.ts`
 9. **Race safety:** run the overlap check and the write inside one transaction. Lock the dentist row first (`SELECT ... FROM dentists WHERE dentist_id = ? FOR UPDATE`), and the chair row too when one is set, so two people can't grab the same slot.
 10. **Any available dentist:** try dentists in `dentist_id` order, locking each in turn; assign the first one that passes rules 1–3 and release the others.
 11. **Reschedule:** only `scheduled` appointments. In one transaction, set the old row to `cancelled` and insert a new row with `status = 'scheduled'`, the same patient, service, and channel, the new date, start, dentist, and chair, `requested_at = NOW()`, `reminder_sent_at = NULL`, both notes copied, and `rescheduled_from_id` = the old id.
-12. **Decline:** sets `declined`, needs no reason, tells the patient by email and Messenger after the commit (an addition to the paper, see DECISIONS M6), and frees the slot at once because declined rows no longer count in rule 1.
+12. **Decline:** sets `declined`, needs no reason, tells the patient by email and Messenger after the commit and the response (an addition to the paper, see DECISIONS M6), and frees the slot at once because declined rows no longer count in rule 1.
 
 ## Data Model
 
@@ -320,7 +320,7 @@ Every write goes through one of these route handlers. Public routes, which the m
 | Method and path | Access | Input | Does |
 | --- | --- | --- | --- |
 | `GET /api/slots` | Public | `?date=YYYY-MM-DD&serviceId=1&dentistId=2` or `dentistId=any` | Returns `{ slots: [{ start: "09:00", end: "09:45", dentistIds: [1, 2] }] }`. With `any`, the union across dentists. Rule 5. |
-| `POST /api/requests` | Public | Form fields, `consent: true`, honeypot `website` (must be empty) | Drops silently if `website` is filled; Zod check; matches or creates the patient; saves `pending` (rules 1–3, 9, 10). Returns 201, or 409 `{ error: "slot_taken", slots }`. |
+| `POST /api/requests` | Public | Form fields, `consent: true`, honeypot `website` (must be empty) | Drops silently if `website` is filled; Zod check; matches or creates the patient; saves `pending` (rules 1–3, 9, 10). Returns 201, or 409 `{ error: "slot_taken", slots }`. Errors: 400 `date_in_past`, `date_out_of_range`, `unknown_service`; 409 `duplicate_request` (that patient already has a booking at that time), `link_used` (single-use Messenger link already used). |
 | `POST /api/auth/login` | Public | `email`, `password` | bcrypt check; sets the session cookie (8-hour expiry). 401 on failure, same message for either field. |
 | `POST /api/auth/logout` | Staff | None | Clears the cookie |
 | `POST /api/appointments` | Staff | `patientId` or a new patient, `serviceId`, `dentistId`, `date`, `start`, `chairId`, `channel` (`phone`, `chat`, `walk-in`), optional `followUpOf` (id of an attended visit of the same patient) | Saves `scheduled` (rules 1–4, 6, 9). No email. |

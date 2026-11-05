@@ -1,9 +1,9 @@
 /**
  * POST /api/appointments/[id]/reschedule { date, start, dentistId, chairId } (staff, FR4, Rule 11).
- * 200 { ok, newId } | 409 invalid_transition | in_past | outside_hours | dentist_conflict | chair_conflict.
+ * 200 { ok, newId } (the patient notice is sent after the response) | 409 invalid_transition | in_past | outside_hours | dentist_conflict | chair_conflict.
  */
 import { NextResponse } from 'next/server';
-import { parseIdParam, parseJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
+import { deferNotice, parseIdParam, parseJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
 import { rescheduleAppointment } from '@/lib/services/appointments';
 import { errorResponse } from '@/lib/services/errors';
 import { rescheduleSchema } from '@/lib/validation';
@@ -19,7 +19,7 @@ export async function POST(req: Request, ctx: IdRouteContext) {
   const parsed = await parseJsonBody(req, rescheduleSchema);
   if (!parsed.ok) return parsed.response;
   try {
-    return NextResponse.json(await rescheduleAppointment(id.id, parsed.data));
+    return NextResponse.json(await rescheduleAppointment(id.id, parsed.data, { defer: deferNotice }));
   } catch (err) {
     return errorResponse(err, 'POST /api/appointments/[id]/reschedule');
   }
