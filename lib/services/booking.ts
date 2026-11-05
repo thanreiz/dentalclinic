@@ -13,7 +13,7 @@ import type { AppointmentStatus, Channel, Slot } from '../types';
 import type { BookingRequest, StaffBooking } from '../validation';
 import { ServiceError } from './errors';
 import { allDentistIds, getServiceOrThrow } from './lookups';
-import { createPatientStrict, matchOrCreatePatient } from './patients';
+import { createPatientStrict, matchOrCreatePatient, setMessengerPsid } from './patients';
 import { assertContactRequestCap, assertGlobalRequestCaps } from './request-limits';
 import { getSlots } from './slots';
 import { transaction } from './tx';
@@ -106,7 +106,7 @@ export const SLOT_TAKEN_MESSAGE = 'That time was just taken. Please pick another
  */
 export async function createOnlineRequest(
   input: BookingRequest,
-  opts: { now?: Now } = {},
+  opts: { now?: Now; channel?: 'online' | 'chat'; messengerPsid?: string } = {},
 ): Promise<{ appointmentId: number; dentistId: number; patientId: number }> {
   const now = opts.now ?? nowManila();
   const service = await getServiceOrThrow(input.serviceId);
@@ -142,6 +142,7 @@ export async function createOnlineRequest(
       const typed = { fullName: input.fullName, email: input.email, birthdate: input.birthdate };
       const { patientId, existing } = await matchOrCreatePatient(conn, { ...typed, contactNumber: input.contactNumber });
       if (existing) await assertContactRequestCap(conn, patientId);
+      if (opts.messengerPsid) await setMessengerPsid(conn, patientId, opts.messengerPsid);
 
       // M2: never overwrite the record (B6), but flag a mismatch for staff in patient_note.
       const flag = existing
@@ -156,7 +157,7 @@ export async function createOnlineRequest(
         start: input.start,
         end,
         status: 'pending',
-        channel: 'online',
+        channel: opts.channel ?? 'online',
         patientNote: withMismatchFlag(flag, input.patientNote),
       });
       return { appointmentId, dentistId: chosen, patientId };
