@@ -49,6 +49,15 @@ export function signChatRef(psid: string, nowSeconds = Math.floor(Date.now() / 1
 
 /** Returns the Messenger id for a valid, unexpired token, else null. */
 export function verifyChatRef(token: string | undefined | null, nowSeconds = Math.floor(Date.now() / 1000)): string | null {
+  return verifyChatRefDetail(token, nowSeconds)?.psid ?? null;
+}
+
+/**
+ * Like verifyChatRef, plus the time the link was issued (expiry minus the TTL, in epoch seconds).
+ * The issue time is what lets the server tell whether this link was already used (see
+ * createOnlineRequest): no stored token state is needed.
+ */
+export function verifyChatRefDetail(token: string | undefined | null, nowSeconds = Math.floor(Date.now() / 1000)): { psid: string; issuedAt: number } | null {
   if (!token) return null;
   const parts = token.split('.');
   if (parts.length !== 3) return null;
@@ -64,7 +73,7 @@ export function verifyChatRef(token: string | undefined | null, nowSeconds = Mat
   }
   const a = Buffer.from(sig);
   const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b) ? psid : null;
+  return a.length === b.length && timingSafeEqual(a, b) ? { psid, issuedAt: exp - CHAT_REF_TTL_SECONDS } : null;
 }
 
 // ---------- sending ----------

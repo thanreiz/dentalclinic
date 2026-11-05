@@ -179,7 +179,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       setStep(2);
       return;
     }
-    if (r.status === 409 && r.data.error === 'duplicate_request') {
+    if (r.status === 409 && (r.data.error === 'duplicate_request' || r.data.error === 'link_used')) {
       // The patient already has a request for this time (also when the Messenger link is used twice).
       setFormError(
         (typeof r.data.message === 'string' && r.data.message) ||
