@@ -1,6 +1,8 @@
 import { ButtonLink } from '@/components/ui/Button';
 import { BrandIcon } from '@/components/ui/BrandLogo';
 
+export const metadata = { title: 'Page not found' };
+
 export default function NotFound() {
   return (
     <main className="flex min-h-[70dvh] flex-col items-center justify-center px-4 py-16 text-center">

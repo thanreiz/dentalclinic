@@ -49,7 +49,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
           />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Patients table">
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Patients{q ? ` matching ${q}` : ''}</caption>
                 <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">

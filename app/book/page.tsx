@@ -28,13 +28,13 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
 
   return (
     <BookShell>
-      <div role="note" className="shrink-0 border-b border-rule bg-brand-50 px-4 py-2">
-        <p className="mx-auto flex max-w-5xl items-start gap-2 text-[13px] leading-snug font-medium text-ink">
-          <InfoIcon className="mt-px size-4 shrink-0 text-accent-700" />
-          <span>{DEMO_BANNER}</span>
-        </p>
-      </div>
       <header className="shrink-0 border-b border-rule bg-white">
+        <p role="note" className="border-b border-rule bg-brand-50 px-4 py-2">
+          <span className="mx-auto flex max-w-5xl items-start gap-2 text-[13px] leading-snug font-medium text-ink">
+            <InfoIcon className="mt-px size-4 shrink-0 text-accent-700" />
+            <span>{DEMO_BANNER}</span>
+          </span>
+        </p>
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <BrandLockup className="h-11 shrink-0" />
           <h1 className="min-w-0 border-l border-rule pl-3 text-sm leading-snug font-normal text-ink-muted">Request an appointment online</h1>

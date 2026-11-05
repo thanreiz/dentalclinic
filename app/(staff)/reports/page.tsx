@@ -31,6 +31,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const threshold = Number.isInteger(tRaw) && tRaw >= 1 && tRaw <= 100 ? tRaw : defaultNoShowThreshold();
 
   const [report, repeat, channels, latestMonth] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold), getChannelReport(month), getLatestReportMonth()]);
+  // Phone stays out of this card, so totals and shares are over the rows shown and add up to 100%.
+  const shownRows = channels.rows.filter((r) => r.channel !== 'phone');
+  const shownTotal = shownRows.reduce((n, r) => n + r.bookings, 0);
   const t = report.totals;
 
   return (
@@ -68,11 +71,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       )}
 
       <Card className="mb-5 overflow-hidden">
-        <CardHeader title="Bookings by channel" description={`${channels.total} booking${channels.total === 1 ? '' : 's'} in ${monthLabel(month)} from every channel. Declined requests and reschedule moves are not counted.`} />
-        {channels.total === 0 ? (
+        <CardHeader title="Bookings by channel" description={`${shownTotal} booking${shownTotal === 1 ? '' : 's'} in ${monthLabel(month)} from Facebook, chat and walk-in. Phone calls, declined requests and reschedule moves are not counted.`} />
+        {shownTotal === 0 ? (
           <EmptyState icon={<ChartIcon />} title={`No bookings in ${monthLabel(month)}`} description="Bookings appear here once appointments exist for the month." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Bookings by channel table">
             <table className="w-full min-w-[520px] text-left text-sm">
               <caption className="sr-only">Bookings by channel</caption>
               <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">
@@ -85,15 +88,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
-                {channels.rows.filter((r) => r.channel !== 'phone').map((r) => (
+                {shownRows.map((r) => (
                   <tr key={r.channel}>
                     <th scope="row" className="px-4 py-3 font-medium"><ChannelBadge channel={r.channel} label={r.channel === 'online' ? 'Facebook' : undefined} /></th>
                     <td className="px-3 py-3 text-right tabular-nums">{r.bookings}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
-                        <span className="w-12 shrink-0 text-right font-semibold tabular-nums">{formatRate(r.share)}</span>
+                        <span className="w-12 shrink-0 text-right font-semibold tabular-nums">{formatRate(shownTotal ? r.bookings / shownTotal : null)}</span>
                         <div className="h-2 w-full overflow-hidden rounded-full bg-brand-50" aria-hidden="true">
-                          <div className="h-full rounded-full bg-brand-600" style={{ width: `${Math.min(100, (r.share ?? 0) * 100)}%` }} />
+                          <div className="h-full rounded-full bg-brand-600" style={{ width: `${Math.min(100, (shownTotal ? r.bookings / shownTotal : 0) * 100)}%` }} />
                         </div>
                       </div>
                     </td>
@@ -116,7 +119,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         {repeat.length === 0 ? (
           <EmptyState icon={<CheckIcon />} title="Nobody reaches this threshold" description={`No patient has ${threshold} or more no-shows.`} />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Repeat no-shows table">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Patients with at least {threshold} no-shows</caption>
               <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">
@@ -175,7 +178,7 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
   return (
     <Card className="min-w-0 overflow-hidden">
       <CardHeader title={title} />
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={`${title} table`}>
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Attendance {title.toLowerCase()}</caption>
           <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">

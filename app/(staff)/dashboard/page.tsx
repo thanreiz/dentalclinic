@@ -220,7 +220,7 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
   const showNow = nowMinutes !== null && nowMinutes >= start && nowMinutes <= end;
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Day schedule, scrolls sideways on small screens">
       <div className="grid min-w-[560px]" style={{ gridTemplateColumns: `4.5rem repeat(${columns.length}, minmax(9rem, 1fr))` }}>
         {/* header row */}
         <div className="sticky left-0 z-10 border-b border-rule bg-white" />
@@ -291,7 +291,6 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
                   <Link
                     key={a.appointmentId}
                     href={`/appointments/${a.appointmentId}`}
-                    aria-label={`${formatTime12(a.start)} to ${formatTime12(a.end)}, ${a.patientName}, ${a.serviceName}, ${a.status}, booked by ${CHANNEL_LABEL[a.channel].toLowerCase()}`}
                     className={cx(
                       'absolute overflow-hidden rounded-md border px-2 py-1 text-xs transition-colors',
                       style.block,
@@ -316,6 +315,10 @@ function ScheduleGrid({ columns, start, end, nowMinutes }: { columns: Column[]; 
                     </span>
                     {!compact && <span className="block truncate opacity-90">{a.serviceName}</span>}
                     {!compact && h >= 80 && <span className="block truncate text-[10px] font-medium opacity-75">via {CHANNEL_LABEL[a.channel]}</span>}
+                    {/* The link's name is its visible text; status and channel are added for screen readers. */}
+                    <span className="sr-only">
+                      , {a.status}, booked by {CHANNEL_LABEL[a.channel].toLowerCase()}
+                    </span>
                   </Link>
                 );
               })}

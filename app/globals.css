@@ -60,11 +60,18 @@ html {
 /* Staff shell and the public /book page are fixed frames: only their content area scrolls. Stop the page itself
    (and the sidebar) from rubber-banding or chaining scroll. Scoped by id so other pages keep normal scrolling. */
 html:has(#staff-shell),
-html:has(#staff-shell) body,
-html:has(#book-shell),
-html:has(#book-shell) body {
+html:has(#staff-shell) body {
   overflow: hidden;
   overscroll-behavior: none;
+}
+/* /book locks the page only when the screen is tall enough to leave the form room (zoomed-in or landscape phones
+   get an ordinary scrolling page instead). Keep 640 px in step with BookShell and BookingForm. */
+@media (min-height: 641px) {
+  html:has(#book-shell),
+  html:has(#book-shell) body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }
 
 body {

@@ -2,6 +2,9 @@
  * Tiny client-side fetch wrapper for the JSON route handlers.
  * Never throws: network failures come back as { ok: false, status: 0 }.
  */
+/** Fired when a staff API call comes back 401; StaffShell shows a banner with a login link. */
+export const SESSION_EXPIRED_EVENT = 'molar:session-expired';
+
 export type ApiResult<T = Record<string, unknown>> = {
   ok: boolean;
   status: number;
@@ -20,6 +23,7 @@ export async function api<T = Record<string, unknown>>(
       cache: 'no-store',
       signal: opts.signal,
     });
+    if (res.status === 401 && typeof window !== 'undefined') window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
     const data = (await res.json().catch(() => ({}))) as ApiResult<T>['data'];
     return { ok: res.ok, status: res.status, data };
   } catch (err) {
