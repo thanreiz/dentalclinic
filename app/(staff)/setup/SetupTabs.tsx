@@ -161,7 +161,7 @@ function DentistsPanel({ dentists }: { dentists: DentistWithSchedules[] }) {
         editing === d.dentistId ? (
           <DentistEditor key={d.dentistId} dentist={d} onDone={() => setEditing(null)} />
         ) : (
-          <Card key={d.dentistId}>
+          <Card key={d.dentistId} className="overflow-hidden">
             <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-5">
               <div className="min-w-0">
                 <p className="text-base font-semibold text-ink">{d.dentistName}</p>
@@ -226,7 +226,7 @@ function WeekStrip({ week }: { week: ({ start: string; end: string } | null)[] }
                 <span className="block">{formatTime12(w.end)}</span>
               </p>
             ) : (
-              <p className="mt-0.5 text-line-strong">Off</p>
+              <p className="mt-0.5 text-ink-muted">Off</p>
             )}
           </div>
         );

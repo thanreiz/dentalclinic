@@ -20,8 +20,9 @@ import DentistNoteForm from './DentistNoteForm';
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Appointment #${id}` };
+  // Generic on purpose: the page may turn out to be a 404, and "Appointment #999999" would be a misleading tab title.
+  await params;
+  return { title: 'Appointment' };
 }
 
 export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {

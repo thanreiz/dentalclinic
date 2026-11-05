@@ -99,7 +99,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
           />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Appointments table">
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Appointments from all channels</caption>
                 <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">

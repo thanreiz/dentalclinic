@@ -53,6 +53,9 @@ const SERVICE_GROUPS: { label: string; test: RegExp }[] = [
   { label: 'Check-ups & cleaning', test: /prophylaxis|exam|x-ray|whiten|clean|check/i },
 ];
 const GROUP_ORDER = ['Check-ups & cleaning', 'Fillings & restorations', 'Extractions & surgery', 'Braces', 'Other services'];
+/** Pinned under the content. On short screens (zoom, landscape) the page scrolls instead and the bar sticks to the bottom. */
+const ACTION_BAR =
+  '-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0 [@media(max-height:640px)]:sticky [@media(max-height:640px)]:bottom-0 [@media(max-height:640px)]:z-10';
 const eyebrow = 'text-[13px] font-medium text-ink-muted';
 const h2Class = 'text-2xl leading-8 font-bold tracking-tight text-ink outline-none';
 
@@ -66,7 +69,8 @@ function groupServices(list: BookService[]): { label: string; items: BookService
 }
 
 export default function BookingForm({ services, dentists, today, maxDate, clinicPhone, prefill, footer }: Props) {
-  const [step, setStep] = useState<Step>(prefill?.date && prefill.start ? 3 : 1);
+  const initialStep: Step = prefill?.date && prefill.start ? 3 : 1;
+  const [step, setStep] = useState<Step>(initialStep);
   const [serviceId, setServiceId] = useState<number | null>(prefill?.serviceId ?? (services.length === 1 ? services[0].id : null));
   const [dentistId, setDentistId] = useState<number | 'any'>(prefill?.dentistId ?? 'any');
   const [date, setDate] = useState<string | null>(prefill?.date ?? null);
@@ -86,6 +90,38 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   const firstRender = useRef(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
 
+
+  // Browser Back/Forward move between steps: one history entry per forward step, no entry when going back.
+  const stepRef = useRef<Step>(initialStep);
+  useEffect(() => {
+    stepRef.current = step;
+  }, [step]);
+  useEffect(() => {
+    window.history.replaceState({ ...(window.history.state ?? {}), bookStep: initialStep, bookIdx: 0 }, '');
+    const onPop = (e: PopStateEvent) => {
+      const s = e.state?.bookStep;
+      if (stepRef.current === 'done') return; // sent: stay on the confirmation
+      if (s === 1 || s === 2 || s === 3) setStep(s);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  function goStep(n: 1 | 2 | 3) {
+    const cur = stepRef.current;
+    if (cur === 'done' || n === cur) return;
+    const idx: number = window.history.state?.bookIdx ?? 0;
+    if (n > cur) {
+      window.history.pushState({ ...(window.history.state ?? {}), bookStep: n, bookIdx: idx + 1 }, '');
+      setStep(n);
+    } else if (idx >= cur - n) {
+      window.history.go(-(cur - n)); // popstate sets the step
+    } else {
+      window.history.replaceState({ ...(window.history.state ?? {}), bookStep: n, bookIdx: 0 }, '');
+      setStep(n);
+    }
+  }
+
   const service = services.find((s) => s.id === serviceId) ?? null;
   const groups = useMemo(() => groupServices(services.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))), [services, query]);
   const dentistLabel = dentistId === 'any' ? 'Any available dentist' : (dentists.find((d) => d.id === dentistId)?.name ?? '');
@@ -103,6 +139,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     }
     // New step: scroll the content area back to the top, then focus the heading without a second scroll jump.
     scrollerRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 }); // short screens scroll the page itself
     headingRef.current?.focus({ preventScroll: true });
   }, [step]);
 
@@ -197,8 +234,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     if (!parsed.success) {
       const errs = fieldErrors(parsed.error);
       setErrors(errs);
-      if (errs.serviceId) setStep(1);
-      else if (errs.date || errs.start) setStep(2);
+      if (errs.serviceId) goStep(1);
+      else if (errs.date || errs.start) goStep(2);
       else focusFirstError(errs);
       return;
     }
@@ -207,6 +244,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     const r = await api<{ slots?: Slot[] }>('/api/requests', { body: { ...toCheck, website } });
     setSubmitting(false);
     if (r.ok) {
+      window.history.replaceState({ ...(window.history.state ?? {}), bookStep: 'done' }, '');
       setStep('done');
       return;
     }
@@ -215,7 +253,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       setSlotsState('idle');
       setStart(null);
       setTakenNotice(true);
-      setStep(2);
+      goStep(2);
       return;
     }
     if (r.status === 409 && (r.data.error === 'duplicate_request' || r.data.error === 'link_used')) {
@@ -229,8 +267,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     if (r.status === 400 && r.data.issues && typeof r.data.issues === 'object') {
       const errs = r.data.issues as Record<string, string>;
       setErrors(errs);
-      if (errs.serviceId || errs.dentistId) setStep(1);
-      else if (errs.date || errs.start) setStep(2);
+      if (errs.serviceId || errs.dentistId) goStep(1);
+      else if (errs.date || errs.start) goStep(2);
       else focusFirstError(errs);
       setFormError(r.data.message ?? 'Please check the highlighted fields.');
       return;
@@ -258,6 +296,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   }
 
   function resetAll() {
+    window.history.replaceState({ ...(window.history.state ?? {}), bookStep: 1, bookIdx: 0 }, '');
     setStep(1);
     setDate(null);
     setStart(null);
@@ -270,7 +309,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
   if (step === 'done') {
     return (
-      <div id="book-content" ref={scrollerRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 outline-none lg:py-10">
+      <div id="book-content" ref={scrollerRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 outline-none lg:py-10 [@media(max-height:640px)]:overflow-visible">
       <div className="mx-auto w-full max-w-xl rounded-2xl border border-rule bg-white p-6 sm:p-8" role="status" aria-live="polite">
         <div className="flex items-center gap-4">
           <div className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-800">
@@ -374,7 +413,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           id="book-content"
           ref={scrollerRef}
           tabIndex={-1}
-          className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pb-4 px-2 pt-3 pb-6 outline-none"
+          className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pb-4 px-2 pt-3 pb-6 outline-none [@media(max-height:640px)]:overflow-visible"
         >
         {step === 1 && (
           <section className="flex flex-col gap-7" aria-labelledby="step1-heading">
@@ -544,7 +583,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                   {when} · {dentistLabel}
                 </p>
               </div>
-              <button type="button" onClick={() => setStep(2)} className="-my-2 -mr-1 inline-flex h-11 shrink-0 items-center rounded-lg px-3 text-sm font-semibold text-brand-800 underline">
+              <button type="button" onClick={() => goStep(2)} className="-my-2 -mr-1 inline-flex h-11 shrink-0 items-center rounded-lg px-3 text-sm font-semibold text-brand-800 underline">
                 Change
               </button>
             </div>
@@ -655,28 +694,28 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         </div>
 
         {step === 1 && (
-          <div className='-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0'>
-            <Button size="lg" className="w-full" disabled={!serviceId} onClick={() => setStep(2)}>
+          <div className={ACTION_BAR}>
+            <Button size="lg" className="w-full" disabled={!serviceId} onClick={() => goStep(2)}>
               Continue
             </Button>
             {!serviceId && services.length > 0 && <p className="mt-2 text-center text-xs text-ink-muted lg:text-left">Choose a service to continue.</p>}
           </div>
         )}
         {step === 2 && (
-          <div className={cx('-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0', 'flex gap-3')}>
-            <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(1)}>
+          <div className={cx(ACTION_BAR, 'flex gap-3')}>
+            <Button variant="secondary" size="lg" className="flex-1" onClick={() => goStep(1)}>
               Back
             </Button>
-            <Button size="lg" className="flex-[2]" disabled={!date || !start} onClick={() => setStep(3)}>
+            <Button size="lg" className="flex-[2]" disabled={!date || !start} onClick={() => goStep(3)}>
               Continue
             </Button>
           </div>
         )}
         {step === 3 && (
-          <div className='-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0'>
+          <div className={ACTION_BAR}>
             <FormError className="mb-3">{formError}</FormError>
             <div className="flex gap-3">
-              <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(2)} disabled={submitting}>
+              <Button variant="secondary" size="lg" className="flex-1" onClick={() => goStep(2)} disabled={submitting}>
                 Back
               </Button>
               <Button type="submit" size="lg" className="flex-[2]" disabled={!consent} loading={submitting} loadingText="Sending…">
@@ -688,7 +727,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         )}
       </div>
 
-      <aside aria-label="Your visit" className="hidden self-start rounded-2xl border border-rule bg-white p-5 lg:mt-16 lg:block">
+      <aside aria-label="Your visit" className="hidden self-start rounded-2xl border border-rule bg-white p-5 lg:mt-16 lg:block [@media(max-height:640px)]:lg:sticky [@media(max-height:640px)]:lg:top-4">
         <div className="flex items-center gap-3">
           <BrandIcon className="h-9" />
           <p className="text-base font-bold text-ink">Your visit</p>
@@ -699,7 +738,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           <AsideRow label="When" value={when} />
         </dl>
         {step === 3 && (
-          <button type="button" onClick={() => setStep(2)} className="mt-3 inline-flex h-10 items-center rounded-lg px-1 text-sm font-semibold text-brand-800 underline">
+          <button type="button" onClick={() => goStep(2)} className="mt-3 inline-flex h-10 items-center rounded-lg px-1 text-sm font-semibold text-brand-800 underline">
             Change
           </button>
         )}

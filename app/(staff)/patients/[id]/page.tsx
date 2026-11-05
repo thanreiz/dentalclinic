@@ -19,8 +19,8 @@ import PatientProfileForm from './PatientProfileForm';
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params;
-  return { title: `Patient #${id}` };
+  await params;
+  return { title: 'Patient record' };
 }
 
 export default async function PatientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -64,7 +64,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
         {history.length === 0 ? (
           <EmptyState icon={<CalendarIcon />} title="No appointments yet" description="Bookings for this patient will be listed here." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Appointment history table">
             <table className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">Appointment history for {patient.fullName}</caption>
               <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">

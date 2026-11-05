@@ -8,6 +8,7 @@ import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, ListIcon, MenuIcon, PlusIc
 import { BrandIcon, BrandLockup } from '@/components/ui/BrandLogo';
 import { LinkPendingIcon } from '@/components/ui/LinkPending';
 import LogoutButton from './LogoutButton';
+import SessionExpiredBanner from '@/components/SessionExpiredBanner';
 
 type NavItem = { href: string; label: string; icon: (p: { className?: string }) => ReactNode; badge?: boolean };
 
@@ -217,7 +218,7 @@ export default function StaffShell({
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close menu"
-              className="-mr-2 grid size-11 place-items-center rounded-lg text-ink hover:bg-brand-50"
+              className="-mr-2 grid size-11 place-items-center rounded-lg text-ink hover:bg-brand-50 focus:outline-2 focus:outline-offset-2 focus:outline-brand-600"
             >
               <XIcon className="size-5" />
             </button>
@@ -233,7 +234,10 @@ export default function StaffShell({
       )}
 
       <main id="main" inert={open} className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain scroll-pt-6 px-4 py-6 md:px-8 lg:scroll-pt-9 lg:px-10 lg:py-9">
-        <div className="mx-auto w-full min-w-0 max-w-6xl">{children}</div>
+        <div className="mx-auto w-full min-w-0 max-w-6xl">
+          <SessionExpiredBanner />
+          {children}
+        </div>
       </main>
     </div>
   );

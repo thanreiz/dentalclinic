@@ -2,12 +2,15 @@ import { ButtonLink } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { SearchIcon } from '@/components/ui/icons';
 
+export const metadata = { title: 'Not found' };
+
 export default function StaffNotFound() {
   return (
     <div className="rounded-lg border border-rule bg-white">
       <EmptyState
         icon={<SearchIcon />}
         title="Not found"
+        titleAs="h1"
         description="That record does not exist or was removed. Check the link or search again."
         action={
           <ButtonLink href="/dashboard" variant="primary">
