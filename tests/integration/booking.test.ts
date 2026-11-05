@@ -8,7 +8,7 @@ import { createOnlineRequest } from '@/lib/services/booking';
 import { ServiceError } from '@/lib/services/errors';
 import { addDays, todayManila } from '@/lib/time';
 import { bookingRequestSchema } from '@/lib/validation';
-import { bookingBody, EXTRACTION, FILLING, insertAppt, LIM, newContact, PROPHY, req, REYES, staffCookie, sundayAhead, workday } from './api-helpers';
+import { bookingBody, EXTRACTION, FILLING, CRUZ, insertAppt, LIM, newContact, PROPHY, req, REYES, staffCookie, sundayAhead, workday } from './api-helpers';
 import { resetTestDb } from './helpers';
 
 beforeAll(async () => {
@@ -40,8 +40,8 @@ describe('GET /api/slots', () => {
     const date = workday(0);
     const res = await getSlotsRoute(req('GET', `/api/slots?date=${date}&serviceId=${EXTRACTION}&dentistId=any`));
     const { slots } = await res.json();
-    expect(slots.find((s: { start: string }) => s.start === '10:00').dentistIds).toEqual([LIM]);
-    expect(slots.find((s: { start: string }) => s.start === '09:00').dentistIds).toEqual([REYES, LIM]);
+    expect(slots.find((s: { start: string }) => s.start === '10:00').dentistIds).toEqual([LIM, CRUZ]);
+    expect(slots.find((s: { start: string }) => s.start === '09:00').dentistIds).toEqual([REYES, LIM, CRUZ]);
   });
 
   it('Sunday -> no slots; past date, >60 days, bad params -> 400', async () => {
@@ -177,15 +177,17 @@ describe('POST /api/requests', () => {
     await insertAppt({ date, start: '10:00', end: '10:30', status: 'scheduled', dentistId: REYES });
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(201);
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', dentistId: 'any' })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(201);
     const rows = await query<{ start_time: string; dentist_id: number }>(
-      "SELECT start_time, dentist_id FROM appointments WHERE appointment_date = ? AND status = 'pending' ORDER BY start_time",
+      "SELECT start_time, dentist_id FROM appointments WHERE appointment_date = ? AND status = 'pending' ORDER BY start_time, dentist_id",
       [date],
     );
     expect(rows).toEqual([
       { start_time: '10:00:00', dentist_id: LIM },
+      { start_time: '10:00:00', dentist_id: CRUZ },
       { start_time: '11:00:00', dentist_id: REYES },
     ]);
-    // both busy at 10:00 now -> 409
+    // all three busy at 10:00 now -> 409
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(409);
   });
 
@@ -200,12 +202,12 @@ describe('POST /api/requests', () => {
     expect(Number(n!.n)).toBe(1);
   });
 
-  it('10 concurrent "any" requests via the service -> exactly 2 (one per dentist)', async () => {
+  it('10 concurrent "any" requests via the service -> exactly 3 (one per dentist)', async () => {
     const date = workday(4);
     const input = () => bookingRequestSchema.parse(bookingBody({ date, start: '15:00', dentistId: 'any' }));
     const settled = await Promise.allSettled(Array.from({ length: 10 }, () => createOnlineRequest(input())));
     const ok = settled.filter((s) => s.status === 'fulfilled') as PromiseFulfilledResult<{ dentistId: number }>[];
-    expect(ok.map((s) => s.value.dentistId).sort()).toEqual([REYES, LIM]);
+    expect(ok.map((s) => s.value.dentistId).sort()).toEqual([REYES, LIM, CRUZ]);
     const rejected = settled.filter((s) => s.status === 'rejected') as PromiseRejectedResult[];
     expect(rejected.every((r) => r.reason instanceof ServiceError && r.reason.code === 'slot_taken')).toBe(true);
   });

@@ -33,6 +33,7 @@ export type InsertAppointment = {
   patientNote: string | null;
   dentistNote?: string | null;
   rescheduledFromId?: number | null;
+  followUpOfId?: number | null;
 };
 
 /** INSERT with requested_at = NOW() (Manila session time zone) and reminder_sent_at = NULL. */
@@ -40,8 +41,8 @@ export async function insertAppointment(conn: Queryable, a: InsertAppointment): 
   const r = await execute(
     `INSERT INTO appointments
        (patient_id, dentist_id, service_id, chair_id, appointment_date, start_time, end_time,
-        status, channel, requested_at, patient_note, dentist_note, reminder_sent_at, rescheduled_from_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, NULL, ?)`,
+        status, channel, requested_at, patient_note, dentist_note, reminder_sent_at, rescheduled_from_id, follow_up_of_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, NULL, ?, ?)`,
     [
       a.patientId,
       a.dentistId,
@@ -55,6 +56,7 @@ export async function insertAppointment(conn: Queryable, a: InsertAppointment): 
       a.patientNote,
       a.dentistNote ?? null,
       a.rescheduledFromId ?? null,
+      a.followUpOfId ?? null,
     ],
     conn,
   );
@@ -243,6 +245,7 @@ export async function createStaffBooking(
         throw new ServiceError(400, 'unknown_patient', 'That patient does not exist', { issues: { patientId: 'Unknown patient' } });
       }
       patientId = input.patientId;
+      if (input.followUpOf !== undefined) await assertFollowUpTarget(conn, input.followUpOf, patientId);
     } else {
       patientId = await createPatientStrict(conn, input.newPatient!);
     }
@@ -258,9 +261,25 @@ export async function createStaffBooking(
       status: 'scheduled',
       channel: input.channel,
       patientNote: input.patientNote ?? null,
+      followUpOfId: input.followUpOf ?? null,
     });
     return { appointmentId, patientId };
   });
+}
+
+/** A follow-up must point at an existing ATTENDED visit of the same patient. */
+async function assertFollowUpTarget(conn: Queryable, targetId: number, patientId: number): Promise<void> {
+  const [rows] = (await conn.query('SELECT patient_id, status FROM appointments WHERE appointment_id = ? FOR UPDATE', [targetId])) as unknown as [
+    { patient_id: number; status: AppointmentStatus }[],
+  ];
+  const t = rows[0];
+  if (!t) throw new ServiceError(400, 'unknown_follow_up', 'The visit to follow up does not exist', { issues: { followUpOf: 'Unknown appointment' } });
+  if (Number(t.patient_id) !== Number(patientId)) {
+    throw new ServiceError(400, 'follow_up_patient_mismatch', 'A follow-up must be for the same patient as the visit it follows', { issues: { followUpOf: 'Different patient' } });
+  }
+  if (t.status !== 'attended') {
+    throw new ServiceError(409, 'follow_up_not_attended', 'Only an attended visit can have a follow-up', { issues: { followUpOf: 'Visit not attended' } });
+  }
 }
 
 export { freshSlots };

@@ -32,10 +32,15 @@ export default async function NewBookingPage({ searchParams }: { searchParams: P
   const channel = one(sp.channel);
   const serviceId = posInt(one(sp.serviceId));
   const dentistId = posInt(one(sp.dentistId));
+  const followUpOf = patient ? posInt(one(sp.followUpOf)) : undefined; // only meaningful with a prefilled patient
 
   return (
     <>
-      <PageHeader title="New booking" description="Phone, chat, or walk-in. Saved as scheduled with a chair; no confirmation email is sent." />
+      <PageHeader title="New booking" description={
+          followUpOf
+            ? `Follow-up of visit #${followUpOf}. Saved as scheduled with a chair; no confirmation email is sent, the reminder goes out the day before.`
+            : 'Phone, chat, or walk-in. Saved as scheduled with a chair; no confirmation email is sent.'
+        } />
       <NewBookingForm
         today={today}
         services={services.map((s) => ({ id: s.serviceId, name: s.serviceName, durationMinutes: s.durationMinutes }))}
@@ -49,6 +54,7 @@ export default async function NewBookingPage({ searchParams }: { searchParams: P
           dentistId: dentists.some((d) => d.dentistId === dentistId) ? dentistId : undefined,
           date: date && isValidDate(date) && date >= today ? date : undefined,
           start: start && /^\d{2}:\d{2}$/.test(start) ? start : undefined,
+          followUpOf,
           channel: (STAFF_CHANNELS as readonly string[]).includes(channel ?? '') ? (channel as StaffChannel) : undefined,
         }}
       />

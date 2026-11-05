@@ -225,6 +225,7 @@ export async function rescheduleAppointment(
       patientNote: old.patient_note,
       dentistNote: old.dentist_note,
       rescheduledFromId: id,
+      followUpOfId: old.follow_up_of_id,
     });
     return { ok: true as const, newId };
   });

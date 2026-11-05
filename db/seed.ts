@@ -25,12 +25,23 @@ export const DEFAULT_SEED_STAFF_PASSWORD = 'ClinicDemo2026!';
 type Status = 'pending' | 'scheduled' | 'attended' | 'cancelled' | 'declined' | 'no-show';
 type Ch = 'online' | 'phone' | 'chat' | 'walk-in';
 
-const DENTISTS = ['Dr. Reyes', 'Dr. Lim'] as const; // ids 1, 2
+const DENTISTS = ['Dr. Reyes', 'Dr. Lim', 'Dr. Cruz'] as const; // ids 1, 2, 3 (Dr. Cruz has no seeded appointments)
 const SERVICES = [
   ['Oral prophylaxis', 30],
   ['Tooth filling', 60],
   ['Tooth extraction', 45],
-] as const; // ids 1, 2, 3
+  // Ids 4-10: typical chair time per visit, rounded to 15 min (sources: Dental Line, Cleveland Clinic,
+  // Larson Ortho, Stellar Orthodontics, Aspen Dental, Associated OMS; see docs/SERVICE-DURATIONS.md).
+  ['Exam and X-ray', 30],
+  ['Wisdom tooth removal', 60],
+  ['Root canal treatment', 90],
+  ['Crown preparation', 90],
+  ['Braces fitting', 120],
+  ['Braces adjustment', 30],
+  ['Braces removal', 60],
+  ['Teeth whitening', 60], // durations for ids 11-12 supplied by the clinic owner
+  ['Dental implant', 90],
+] as const; // ids 1-12; the Table 3.6 rows only use ids 1-3
 const CHAIRS = ['Chair 1', 'Chair 2'] as const; // ids 1, 2
 
 /** [full_name, contact_number (digits only), email | null, birthdate]. ids 1..12 in this order. */
