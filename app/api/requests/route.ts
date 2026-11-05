@@ -7,7 +7,7 @@
  */
 import { NextResponse } from 'next/server';
 import { jsonError, parseWith, readJsonBody } from '@/lib/http';
-import { verifyChatRef } from '@/lib/messenger';
+import { verifyChatRefDetail } from '@/lib/messenger';
 import { createOnlineRequest } from '@/lib/services/booking';
 import { errorResponse } from '@/lib/services/errors';
 import { clientIp, recordRequest, requestRetryAfter } from '@/lib/services/rate-limit';
@@ -41,9 +41,15 @@ export async function POST(req: Request) {
     assertDateInWindow(parsed.data.date, PUBLIC_BOOKING_WINDOW_DAYS);
     // A valid Messenger link token marks the request as channel 'chat'; a bad or expired one still
     // books the request, as a normal online request (never lose the patient's booking).
-    const psid = verifyChatRef(parsed.data.chatRef);
-    await createOnlineRequest(parsed.data, psid ? { channel: 'chat', messengerPsid: psid } : { channel: 'online' });
-    recordRequest(ip);
+    // The link is single-use: it closes only once a request from it is saved. A resubmit of the same
+    // request (lost response, double tap) is answered 201 without a second row; a different request
+    // on a used link gets 409 link_used.
+    const ref = verifyChatRefDetail(parsed.data.chatRef);
+    const saved = await createOnlineRequest(
+      parsed.data,
+      ref ? { channel: 'chat', messengerPsid: ref.psid, chatLinkIssuedAt: ref.issuedAt } : { channel: 'online' },
+    );
+    if (!saved.alreadySaved) recordRequest(ip);
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch (err) {
     return errorResponse(err, 'POST /api/requests');

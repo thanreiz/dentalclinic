@@ -126,6 +126,37 @@ async function assertNoDuplicateRequest(
   if (dup) throw new ServiceError(409, 'duplicate_request', DUPLICATE_REQUEST_MESSAGE);
 }
 
+export const LINK_USED_MESSAGE =
+  'This link was already used for a request. Ask the Messenger bot for a new one (tap Start over, then Confirm), or call the clinic.';
+
+/**
+ * Single-use Messenger link (derived, no stored token state). The link carries its issue time; it is
+ * "used" once a chat request exists for that Messenger id saved after that time (strictly: a link minted in the same second as a save is a new link). Opening the
+ * link, or a submit that failed or timed out, saves nothing, so it stays open. The same request sent
+ * again (lost response, double tap) returns the saved one with `alreadySaved`; a different request on
+ * a used link throws 409 `link_used`. Not a chat link: null.
+ */
+async function usedChatLink(
+  conn: Queryable,
+  input: { contactNumber: string; serviceId: number; date: string; start: string },
+  opts: { messengerPsid?: string; chatLinkIssuedAt?: number },
+): Promise<{ appointmentId: number; dentistId: number; patientId: number; alreadySaved: true } | null> {
+  if (!opts.messengerPsid || opts.chatLinkIssuedAt === undefined) return null;
+  const patientId = await findPatientIdByContact(input.contactNumber, conn);
+  const row = await queryOne<{ appointment_id: number; dentist_id: number; patient_id: number; same: number | string }>(
+    `SELECT a.appointment_id, a.dentist_id, a.patient_id,
+            (a.patient_id <=> ? AND a.service_id = ? AND a.appointment_date = ? AND a.start_time = ?) AS same
+       FROM appointments a JOIN patients p ON p.patient_id = a.patient_id
+      WHERE p.messenger_psid = ? AND a.channel = 'chat' AND a.requested_at > FROM_UNIXTIME(?)
+      ORDER BY same DESC, a.appointment_id DESC LIMIT 1`,
+    [patientId, input.serviceId, input.date, toHHMMSS(input.start), opts.messengerPsid, opts.chatLinkIssuedAt],
+    conn,
+  );
+  if (!row) return null;
+  if (Number(row.same) === 1) return { appointmentId: row.appointment_id, dentistId: row.dentist_id, patientId: row.patient_id, alreadySaved: true };
+  throw new ServiceError(409, 'link_used', LINK_USED_MESSAGE);
+}
+
 /**
  * Save an online request as `pending` (channel online, chair NULL). With dentistId 'any', tries
  * dentists in dentist_id order, locking each in turn, and assigns the first that passes Rules 1–3
@@ -135,8 +166,8 @@ async function assertNoDuplicateRequest(
  */
 export async function createOnlineRequest(
   input: BookingRequest,
-  opts: { now?: Now; channel?: 'online' | 'chat'; messengerPsid?: string } = {},
-): Promise<{ appointmentId: number; dentistId: number; patientId: number }> {
+  opts: { now?: Now; channel?: 'online' | 'chat'; messengerPsid?: string; chatLinkIssuedAt?: number } = {},
+): Promise<{ appointmentId: number; dentistId: number; patientId: number; alreadySaved?: true }> {
   const now = opts.now ?? nowManila();
   const service = await getServiceOrThrow(input.serviceId);
   const end = endTimeOrThrow(input.start, service.duration_minutes);
@@ -144,6 +175,8 @@ export async function createOnlineRequest(
 
   try {
     return await transaction(async (conn) => {
+      const used = await usedChatLink(conn, input, opts);
+      if (used) return used;
       await assertNoDuplicateRequest(conn, input, end);
       const candidates = input.dentistId === 'any' ? await allDentistIds(conn) : [input.dentistId];
       let chosen: number | null = null;
@@ -165,10 +198,17 @@ export async function createOnlineRequest(
         }
       }
       if (chosen === null) {
-        // A parallel submit of the same request may have just taken the slot: report it as a duplicate.
+        // A parallel submit of the same request may have just taken the slot: answer it as the same
+        // request (same link) or report it as a duplicate.
+        const usedNow = await usedChatLink(conn, input, opts);
+        if (usedNow) return usedNow;
         await assertNoDuplicateRequest(conn, input, end);
         throw new ServiceError(409, 'slot_taken', SLOT_TAKEN_MESSAGE);
       }
+
+      // Re-check under the dentist lock: a parallel submit on the same link may have just committed.
+      const usedLocked = await usedChatLink(conn, input, opts);
+      if (usedLocked) return usedLocked;
 
       // H1: clinic-wide caps, then the per-contact cap once the patient is known. Same 429 for a
       // new or matched number (a new number can't reach the per-contact cap).

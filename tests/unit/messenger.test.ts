@@ -313,3 +313,14 @@ describe('pickTimes / dateLabel', () => {
     expect(dateLabel('2026-11-09')).toBe('Mon, Nov 9');
   });
 });
+
+describe('verifyChatRefDetail', () => {
+  it('returns the issue time; rejects bad or expired tokens', async () => {
+    const { verifyChatRefDetail } = await import('@/lib/messenger');
+    const now = 1_800_000_000;
+    expect(verifyChatRefDetail(signChatRef('42', now), now + 60)).toEqual({ psid: '42', issuedAt: now });
+    expect(verifyChatRefDetail(signChatRef('42', now), now + CHAT_REF_TTL_SECONDS + 1)).toBeNull();
+    expect(verifyChatRefDetail('42.1.AAAA', now)).toBeNull();
+    expect(verifyChatRefDetail(undefined)).toBeNull();
+  });
+});
