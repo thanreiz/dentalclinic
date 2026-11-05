@@ -79,7 +79,7 @@ describe('POST /api/messenger', () => {
     expect(m.quick_replies.map((q) => q.title)).toEqual(['Oral prophylaxis', 'Tooth filling', 'Tooth extraction', 'Exam and X-ray', 'Wisdom tooth removal', 'Root canal treatment', 'Crown preparation', 'Braces fitting', 'Braces adjustment', 'Braces removal', 'Teeth whitening', 'Dental implant']);
   });
 
-  it('walks to a prefilled /book link carrying a verifiable token (real slots from the database)', async () => {
+  it('walks to a summary, change, confirm and a prefilled /book link carrying a verifiable token (real slots from the database)', async () => {
     await webhookPost(signed(event('222', { postback: { payload: 'den:1:any' } })));
     const days = sent[0].message as { quick_replies: { payload: string }[] };
     expect(days.quick_replies.length).toBeGreaterThan(0);
@@ -90,8 +90,34 @@ describe('POST /api/messenger', () => {
     const times = sent[0].message as { quick_replies: { payload: string }[] };
     const timePayload = times.quick_replies[0].payload;
 
+    // the last answer shows a summary first (no link yet); Confirm releases the link
     sent.length = 0;
     await webhookPost(signed(event('222', { message: { quick_reply: { payload: timePayload }, text: 'x' } })));
+    const summary = sent[0].message as { text: string; quick_replies: { title: string; payload: string }[] };
+    expect(summary.text).toContain('Please check your request');
+    expect(JSON.stringify(summary)).not.toContain('/book?');
+    expect(summary.quick_replies.map((q) => q.title)).toEqual(['Confirm', 'Change something', 'Start over']);
+
+    // change the time: only the time is redone, then the summary returns
+    sent.length = 0;
+    await webhookPost(signed(event('222', { message: { quick_reply: { payload: summary.quick_replies[1].payload }, text: 'x' } })));
+    const changeMenu = sent[0].message as { quick_replies: { title: string; payload: string }[] };
+    const changeTime = changeMenu.quick_replies.find((q) => q.title === 'Time')!;
+    sent.length = 0;
+    await webhookPost(signed(event('222', { postback: { payload: changeTime.payload } })));
+    const newTimes = sent[0].message as { quick_replies: { payload: string }[] };
+    sent.length = 0;
+    await webhookPost(signed(event('222', { postback: { payload: newTimes.quick_replies[0].payload } })));
+    expect((sent[0].message as { text: string }).text).toContain('Please check your request');
+
+    // typed "start over" restarts from the services
+    sent.length = 0;
+    await webhookPost(signed(event('222', { message: { text: 'Start Over' } })));
+    expect(sent).toHaveLength(2);
+    expect((sent[1].message as { quick_replies: { payload: string }[] }).quick_replies[0].payload).toBe('svc:1');
+
+    sent.length = 0;
+    await webhookPost(signed(event('222', { postback: { payload: summary.quick_replies[0].payload } })));
     const btn = (sent[0].message as { attachment: { payload: { buttons: { url: string }[] } } }).attachment.payload.buttons[0].url;
     const u = new URL(btn);
     expect(u.pathname).toBe('/book');
