@@ -1,10 +1,21 @@
 /**
- * Messenger booking bot (SOP 1). Stateless: every choice travels in the quick-reply payload, so
- * no database state is needed.
+ * Molar & Co. Messenger booking bot (SOP 1). Stateless: every choice travels in the quick-reply
+ * payload, so no database state is needed.
  *
- *   greeting -> "book" -> svc:<serviceId> -> den:<serviceId>:<dentistId|any>
- *            -> date:<serviceId>:<dentist>:<YYYY-MM-DD> -> time:<serviceId>:<dentist>:<date>:<HH:MM>
- *            -> a button that opens /book prefilled, carrying a signed token (chatRef)
+ *   book -> svc:<serviceId> -> den:<serviceId>:<dentistId|any>
+ *        -> date:<serviceId>:<dentist>:<YYYY-MM-DD> -> time:<serviceId>:<dentist>:<date>:<HH:MM>
+ *        -> sum:<state>   summary of every choice (Confirm / Change something / Start over)
+ *        -> ok:<state>    after Confirm: a button that opens /book prefilled, with a signed token (chatRef)
+ *
+ *   <state> = <serviceId>:<dentistId|any>:<date>:<HH:MM>
+ *   chg:<state>          "what do you want to change?"
+ *   cs|cd|cx|ct:<state>  pick a new service / dentist / day / time; each answer is a `sum:<new state>`
+ *                        payload, so only that step is redone and the summary comes back
+ *   restart              start over (also typed: "start over", "restart", "menu"; also the persistent menu)
+ *
+ * Every `sum:` / `ok:` is re-checked against live availability: a choice that no longer fits (a
+ * changed service or dentist, a slot taken meanwhile) sends the patient back to the step to redo,
+ * never to a stale summary.
  *
  * The patient's name, phone, email and consent are collected by the existing /book form (full
  * validation, Data Privacy consent, spam caps), because a Messenger text reply carries no state.
@@ -20,6 +31,7 @@ const MAX_QUICK_REPLIES = 13; // Messenger's limit
 const DATES_TO_OFFER = 6;
 const DAYS_TO_SCAN = 21;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const RESTART_WORDS = new Set(['start over', 'restart', 'menu']);
 
 export type BotEvent = { senderId: string; text?: string; payload?: string };
 
@@ -43,7 +55,11 @@ export const defaultBotDeps: BotDeps = {
 
 const clip = (s: string, n = 20) => (s.length <= n ? s : `${s.slice(0, n - 1)}…`);
 const reply = (title: string, payload: string): QuickReply => ({ content_type: 'text', title: clip(title), payload });
-const withReplies = (text: string, replies: QuickReply[]): OutgoingMessage => ({ text, quick_replies: replies.slice(0, MAX_QUICK_REPLIES) });
+/** Items are cut first so the fixed `extras` (Start over, Back...) always fit inside Messenger's 13. */
+const withReplies = (text: string, items: QuickReply[], extras: QuickReply[] = []): OutgoingMessage => ({
+  text,
+  quick_replies: [...items.slice(0, MAX_QUICK_REPLIES - extras.length), ...extras],
+});
 
 const dentistArg = (v: string): number | 'any' | null => {
   if (v === 'any') return 'any';
@@ -55,10 +71,23 @@ export function dateLabel(date: string): string {
 }
 
 const MENU_TEXT =
-  'Hi! This is the clinic booking assistant. I can help you request an appointment. A staff member will confirm it afterwards.';
+  "Hi! This is Molar & Co.'s booking assistant. I can help you request an appointment. A staff member will confirm it afterwards.";
 
 function menu(): OutgoingMessage {
   return withReplies(MENU_TEXT, [reply('Book appointment', 'book')]);
+}
+
+const START_OVER = reply('Start over', 'restart');
+
+/** The four answers the flow collects; the payload form is `svc:den:date:time`. */
+type State = { serviceId: number; dentist: number | 'any'; dentistRaw: string; date: string; time: string };
+const STATE_RE = '(\\d{1,9}):(any|\\d{1,9}):(\\d{4}-\\d{2}-\\d{2}):(\\d{2}:\\d{2})';
+const stateKey = (x: Pick<State, 'serviceId' | 'dentistRaw' | 'date' | 'time'>) => `${x.serviceId}:${x.dentistRaw}:${x.date}:${x.time}`;
+
+function parseState(m: RegExpExecArray, at = 1): State | null {
+  const dentist = dentistArg(m[at + 1]);
+  if (dentist === null) return null;
+  return { serviceId: Number(m[at]), dentist, dentistRaw: m[at + 1], date: m[at + 2], time: m[at + 3] };
 }
 
 /** Open dates (next few weeks, inside the public booking window) that still have a free time. */
@@ -73,29 +102,106 @@ async function openDates(deps: BotDeps, serviceId: number, dentistId: number | '
   return out;
 }
 
-/** Up to 13 times, spread across the day when there are more. */
+/** Up to 12 times (one quick reply is kept for "Start over"), spread across the day when there are more. */
+const MAX_TIMES = MAX_QUICK_REPLIES - 1;
 export function pickTimes(slots: Slot[]): Slot[] {
-  if (slots.length <= MAX_QUICK_REPLIES) return slots;
-  const step = (slots.length - 1) / (MAX_QUICK_REPLIES - 1);
-  return Array.from({ length: MAX_QUICK_REPLIES }, (_, i) => slots[Math.round(i * step)]);
+  if (slots.length <= MAX_TIMES) return slots;
+  const step = (slots.length - 1) / (MAX_TIMES - 1);
+  return Array.from({ length: MAX_TIMES }, (_, i) => slots[Math.round(i * step)]);
+}
+
+// ---------- pickers (the payload of each answer is built by `mk`, so edits reuse them) ----------
+
+async function servicePicker(deps: BotDeps, text: string, mk: (id: number) => string, extras: QuickReply[] = []): Promise<OutgoingMessage> {
+  const services = await deps.services();
+  if (services.length === 0) return { text: 'Sorry, there are no services to book right now. Please contact the clinic.' };
+  return withReplies(text, services.map((s) => reply(s.name, mk(s.id))), extras);
+}
+
+async function dentistPicker(deps: BotDeps, text: string, mk: (dentist: string) => string, extras: QuickReply[] = []): Promise<OutgoingMessage> {
+  const dentists = await deps.dentists();
+  return withReplies(text, [reply('Any dentist', mk('any')), ...dentists.map((d) => reply(d.name, mk(String(d.id))))], extras);
+}
+
+async function datePicker(deps: BotDeps, serviceId: number, dentist: number | 'any', text: string, mk: (date: string) => string, extras: QuickReply[] = []): Promise<OutgoingMessage> {
+  const dates = await openDates(deps, serviceId, dentist);
+  if (dates.length === 0) return withReplies('Sorry, there are no open times in the next few weeks. Please call the clinic.', [], [START_OVER]);
+  return withReplies(text, dates.map((d) => reply(dateLabel(d), mk(d))), extras);
+}
+
+function timePicker(slots: Slot[], text: string, mk: (time: string) => string, extras: QuickReply[] = []): OutgoingMessage {
+  return withReplies(text, pickTimes(slots).map((s) => reply(formatTime12(s.start), mk(s.start))), extras);
+}
+
+// ---------- review ----------
+
+/**
+ * Check a full set of answers against live data. A complete, still-bookable set gets the summary
+ * (or, for `confirm`, the link); anything that no longer fits sends the patient to the step to redo.
+ */
+async function review(st: State, deps: BotDeps, senderId: string, confirm: boolean): Promise<OutgoingMessage[]> {
+  const services = await deps.services();
+  const service = services.find((s) => s.id === st.serviceId);
+  if (!service) return [menu()];
+  const dentists = await deps.dentists();
+  const dentist = st.dentist === 'any' ? null : dentists.find((d) => d.id === st.dentist);
+  const redo = (patch: Partial<State>) => stateKey({ ...st, ...patch });
+  if (st.dentist !== 'any' && !dentist) {
+    return [await dentistPicker(deps, 'That dentist is no longer available. Please pick again:', (d) => `sum:${redo({ dentistRaw: d })}`, [START_OVER])];
+  }
+
+  const slots = await deps.slots({ date: st.date, serviceId: st.serviceId, dentistId: st.dentist }).catch(() => []);
+  if (!slots.some((s) => s.start === st.time)) {
+    if (slots.length > 0) {
+      return [timePicker(slots, `${formatTime12(st.time)} is no longer open on ${dateLabel(st.date)}. Pick another time:`, (t) => `sum:${redo({ time: t })}`, [START_OVER])];
+    }
+    return [await datePicker(deps, st.serviceId, st.dentist, `${dateLabel(st.date)} has no open times for this choice. Pick another day:`, (d) => `sum:${redo({ date: d })}`, [START_OVER])];
+  }
+
+  const key = stateKey(st);
+  if (confirm) {
+    const qs = new URLSearchParams({ service: String(st.serviceId), dentist: st.dentistRaw, date: st.date, time: st.time, ref: deps.signRef(senderId) });
+    return [
+      {
+        attachment: {
+          type: 'template',
+          payload: {
+            template_type: 'button',
+            text: `Thanks! ${service.name}, ${dateLabel(st.date)}, ${formatTime12(st.time)}. Tap below to enter your details and send the request. The clinic will confirm it. The link works for 2 hours.`,
+            buttons: [{ type: 'web_url', url: `${deps.baseUrl()}/book?${qs}`, title: 'Enter my details' }],
+          },
+        },
+      },
+    ];
+  }
+  const lines = [
+    'Please check your request:',
+    `Service: ${service.name}`,
+    `Dentist: ${dentist ? dentist.name : 'Any available dentist'}`,
+    `Day: ${dateLabel(st.date)}`,
+    `Time: ${formatTime12(st.time)}`,
+    '',
+    'Is this correct?',
+  ];
+  return [withReplies(lines.join('\n'), [reply('Confirm', `ok:${key}`), reply('Change something', `chg:${key}`), START_OVER])];
 }
 
 /** Build the replies for one incoming event. Never throws; unknown input gets the menu. */
 export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps): Promise<OutgoingMessage[]> {
   const payload = event.payload ?? '';
   try {
-    if (payload === 'book') {
-      const services = await deps.services();
-      if (services.length === 0) return [{ text: 'Sorry, there are no services to book right now. Please contact the clinic.' }];
-      return [withReplies('Which service do you need?', services.map((s) => reply(s.name, `svc:${s.id}`)))];
-    }
+    // Typed "start over" / "restart" / "menu" (a quick-reply tap carries a payload and wins).
+    if (!payload && RESTART_WORDS.has((event.text ?? '').trim().toLowerCase().replace(/[.!]+$/, ''))) return restart(deps);
+
+    if (payload === 'restart') return restart(deps);
+
+    if (payload === 'book') return [await servicePicker(deps, 'Which service do you need?', (id) => `svc:${id}`)];
 
     let m = /^svc:(\d{1,9})$/.exec(payload);
     if (m) {
       const serviceId = Number(m[1]);
       if (!(await deps.services()).some((s) => s.id === serviceId)) return [menu()];
-      const dentists = await deps.dentists();
-      return [withReplies('Do you prefer a dentist?', [reply('Any dentist', `den:${serviceId}:any`), ...dentists.map((d) => reply(d.name, `den:${serviceId}:${d.id}`))])];
+      return [await dentistPicker(deps, 'Do you prefer a dentist?', (d) => `den:${serviceId}:${d}`, [START_OVER])];
     }
 
     m = /^den:(\d{1,9}):(any|\d{1,9})$/.exec(payload);
@@ -103,9 +209,7 @@ export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps
       const serviceId = Number(m[1]);
       const dentist = dentistArg(m[2]);
       if (dentist === null) return [menu()];
-      const dates = await openDates(deps, serviceId, dentist);
-      if (dates.length === 0) return [withReplies('Sorry, there are no open times in the next few weeks. Please call the clinic.', [reply('Start over', 'book')])];
-      return [withReplies('Which day works for you?', dates.map((d) => reply(dateLabel(d), `date:${serviceId}:${m![2]}:${d}`)))];
+      return [await datePicker(deps, serviceId, dentist, 'Which day works for you?', (d) => `date:${serviceId}:${m![2]}:${d}`, [START_OVER])];
     }
 
     m = /^date:(\d{1,9}):(any|\d{1,9}):(\d{4}-\d{2}-\d{2})$/.exec(payload);
@@ -114,33 +218,64 @@ export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps
       const dentist = dentistArg(m[2]);
       const date = m[3];
       if (dentist === null) return [menu()];
-      const slots = pickTimes(await deps.slots({ date, serviceId, dentistId: dentist }).catch(() => []));
-      if (slots.length === 0) return [withReplies('That day just filled up. Please pick another day.', [reply('Pick another day', `den:${serviceId}:${m[2]}`)])];
-      return [withReplies(`Open times on ${dateLabel(date)}:`, slots.map((s) => reply(formatTime12(s.start), `time:${serviceId}:${m![2]}:${date}:${s.start}`)))];
+      const slots = await deps.slots({ date, serviceId, dentistId: dentist }).catch(() => []);
+      if (slots.length === 0) return [withReplies('That day just filled up. Please pick another day.', [reply('Pick another day', `den:${serviceId}:${m[2]}`)], [START_OVER])];
+      return [timePicker(slots, `Open times on ${dateLabel(date)}:`, (t) => `time:${serviceId}:${m![2]}:${date}:${t}`, [START_OVER])];
     }
 
-    m = /^time:(\d{1,9}):(any|\d{1,9}):(\d{4}-\d{2}-\d{2}):(\d{2}:\d{2})$/.exec(payload);
+    // time: (the last question) and sum: (back from a change) both land on the summary.
+    m = new RegExp(`^(?:time|sum):${STATE_RE}$`).exec(payload);
     if (m) {
-      const [, svc, den, date, time] = m;
-      const qs = new URLSearchParams({ service: svc, dentist: den, date, time, ref: deps.signRef(event.senderId) });
+      const st = parseState(m);
+      return st ? review(st, deps, event.senderId, false) : [menu()];
+    }
+
+    m = new RegExp(`^ok:${STATE_RE}$`).exec(payload);
+    if (m) {
+      const st = parseState(m);
+      return st ? review(st, deps, event.senderId, true) : [menu()];
+    }
+
+    m = new RegExp(`^chg:${STATE_RE}$`).exec(payload);
+    if (m) {
+      const st = parseState(m);
+      if (!st) return [menu()];
+      const key = stateKey(st);
       return [
-        {
-          attachment: {
-            type: 'template',
-            payload: {
-              template_type: 'button',
-              text: `${dateLabel(date)}, ${formatTime12(time)}. Tap below to enter your details and send the request. The clinic will confirm it.`,
-              buttons: [{ type: 'web_url', url: `${deps.baseUrl()}/book?${qs}`, title: 'Enter my details' }],
-            },
-          },
-        },
+        withReplies('What would you like to change?', [reply('Service', `cs:${key}`), reply('Dentist', `cd:${key}`), reply('Day', `cx:${key}`), reply('Time', `ct:${key}`)], [reply('Back to summary', `sum:${key}`), START_OVER]),
       ];
+    }
+
+    // Redo one answer; every choice comes back as `sum:<new state>`, which re-checks the whole set.
+    m = new RegExp(`^c([sdxt]):${STATE_RE}$`).exec(payload);
+    if (m) {
+      const st = parseState(m, 2);
+      if (!st) return [menu()];
+      const back = reply('Back to summary', `sum:${stateKey(st)}`);
+      const redo = (patch: Partial<State>) => `sum:${stateKey({ ...st, ...patch })}`;
+      switch (m[1]) {
+        case 's':
+          return [await servicePicker(deps, 'Pick a different service:', (id) => redo({ serviceId: id }), [back])];
+        case 'd':
+          return [await dentistPicker(deps, 'Pick a dentist:', (d) => redo({ dentistRaw: d }), [back])];
+        case 'x':
+          return [await datePicker(deps, st.serviceId, st.dentist, 'Pick a different day:', (d) => redo({ date: d }), [back])];
+        default: {
+          const slots = await deps.slots({ date: st.date, serviceId: st.serviceId, dentistId: st.dentist }).catch(() => []);
+          if (slots.length === 0) return [await datePicker(deps, st.serviceId, st.dentist, `${dateLabel(st.date)} has no open times. Pick another day:`, (d) => redo({ date: d }), [back])];
+          return [timePicker(slots, `Open times on ${dateLabel(st.date)}:`, (t) => redo({ time: t }), [back])];
+        }
+      }
     }
   } catch (err) {
     console.error('[messenger:bot] failed to build a reply:', err instanceof Error ? err.message : err);
     return [{ text: 'Sorry, something went wrong. Please try again in a moment.' }];
   }
   return [menu()];
+}
+
+async function restart(deps: BotDeps): Promise<OutgoingMessage[]> {
+  return [{ text: 'No problem, starting over.' }, await servicePicker(deps, 'Which service do you need?', (id) => `svc:${id}`)];
 }
 
 const MAX_EVENTS = 50;
