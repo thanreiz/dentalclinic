@@ -63,7 +63,7 @@ export function StatusBadge({ status, className }: { status: AppointmentStatus; 
 export const CHANNEL_LABEL: Record<Channel, string> = { online: 'Online', phone: 'Phone', chat: 'Chat', 'walk-in': 'Walk-in' };
 const CHANNEL_ICON = { online: GlobeIcon, phone: PhoneIcon, chat: ChatIcon, 'walk-in': WalkIcon } as const;
 
-export function ChannelBadge({ channel, className }: { channel: Channel; className?: string }) {
+export function ChannelBadge({ channel, className, label }: { channel: Channel; className?: string; label?: string }) {
   const Icon = CHANNEL_ICON[channel];
   return (
     <span
@@ -73,7 +73,7 @@ export function ChannelBadge({ channel, className }: { channel: Channel; classNa
       )}
     >
       <Icon className="size-3.5" />
-      {CHANNEL_LABEL[channel]}
+      {label ?? CHANNEL_LABEL[channel]}
     </span>
   );
 }

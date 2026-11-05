@@ -85,9 +85,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
-                {channels.rows.map((r) => (
+                {channels.rows.filter((r) => r.channel !== 'phone').map((r) => (
                   <tr key={r.channel}>
-                    <th scope="row" className="px-4 py-3 font-medium"><ChannelBadge channel={r.channel} /></th>
+                    <th scope="row" className="px-4 py-3 font-medium"><ChannelBadge channel={r.channel} label={r.channel === 'online' ? 'Facebook' : undefined} /></th>
                     <td className="px-3 py-3 text-right tabular-nums">{r.bookings}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
