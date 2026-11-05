@@ -4,11 +4,12 @@ import { listDentistsWithSchedules, listServices } from '@/lib/queries/setup';
 import { addDays, dayOfWeek, isValidDate, isValidTime, todayManila } from '@/lib/time';
 import { BrandLockup } from '@/components/ui/BrandLogo';
 import { InfoIcon, PhoneIcon } from '@/components/ui/icons';
+import BookShell from './BookShell';
 import BookingForm, { type BookPrefill } from './BookingForm';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Book an appointment' };
-export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f766e' };
+export const viewport: Viewport = { width: 'device-width', initialScale: 1, themeColor: '#0f766e', interactiveWidget: 'resizes-content' };
 
 const DEMO_BANNER = 'Demo system: please use sample details, not your real information.';
 
@@ -26,14 +27,14 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   });
 
   return (
-    <div className="min-h-dvh bg-canvas">
-      <div role="note" className="border-b border-rule bg-brand-50 px-4 py-2">
+    <BookShell>
+      <div role="note" className="shrink-0 border-b border-rule bg-brand-50 px-4 py-2">
         <p className="mx-auto flex max-w-5xl items-start gap-2 text-[13px] leading-snug font-medium text-ink">
           <InfoIcon className="mt-px size-4 shrink-0 text-accent-700" />
           <span>{DEMO_BANNER}</span>
         </p>
       </div>
-      <header className="border-b border-rule bg-white">
+      <header className="shrink-0 border-b border-rule bg-white">
         <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <BrandLockup className="h-11 shrink-0" />
           <h1 className="min-w-0 border-l border-rule pl-3 text-sm leading-snug font-normal text-ink-muted">Request an appointment online</h1>
@@ -45,7 +46,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           )}
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-4 pt-6 pb-12 lg:pt-10">
+      <main className="flex min-h-0 flex-1 flex-col">
         <BookingForm
           services={services.map((s) => ({ id: s.serviceId, name: s.serviceName, durationMinutes: s.durationMinutes }))}
           dentists={dentists.map((d) => ({ id: d.dentistId, name: d.dentistName, workingDays: d.schedules.map((s) => s.dayOfWeek) }))}
@@ -53,14 +54,16 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           maxDate={addDays(today, 60)}
           clinicPhone={clinicPhone}
           prefill={prefill}
+          footer={
+            <p className="mt-8 text-center text-xs text-ink-muted">
+              <Link href="/login" className="inline-block py-1 text-ink-muted underline">
+                Clinic staff login
+              </Link>
+            </p>
+          }
         />
-        <p className="mt-10 text-center text-xs text-ink-muted">
-          <Link href="/login" className="inline-block py-1 text-ink-muted underline">
-            Clinic staff login
-          </Link>
-        </p>
       </main>
-    </div>
+    </BookShell>
   );
 }
 

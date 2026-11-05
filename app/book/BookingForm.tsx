@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { api } from '@/components/api';
 import { DateCalendar } from '@/components/booking/DateCalendar';
 import { Button } from '@/components/ui/Button';
@@ -26,6 +26,8 @@ type Props = {
   today: string;
   maxDate: string;
   clinicPhone?: string;
+  /** Rendered at the end of the scrolling content (staff login link). */
+  footer?: ReactNode;
 };
 
 type Step = 1 | 2 | 3 | 'done';
@@ -63,7 +65,7 @@ function groupServices(list: BookService[]): { label: string; items: BookService
   return GROUP_ORDER.filter((l) => map.has(l)).map((label) => ({ label, items: map.get(label)! }));
 }
 
-export default function BookingForm({ services, dentists, today, maxDate, clinicPhone, prefill }: Props) {
+export default function BookingForm({ services, dentists, today, maxDate, clinicPhone, prefill, footer }: Props) {
   const [step, setStep] = useState<Step>(prefill?.date && prefill.start ? 3 : 1);
   const [serviceId, setServiceId] = useState<number | null>(prefill?.serviceId ?? (services.length === 1 ? services[0].id : null));
   const [dentistId, setDentistId] = useState<number | 'any'>(prefill?.dentistId ?? 'any');
@@ -82,6 +84,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [query, setQuery] = useState('');
   const firstRender = useRef(true);
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const service = services.find((s) => s.id === serviceId) ?? null;
   const groups = useMemo(() => groupServices(services.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))), [services, query]);
@@ -98,7 +101,9 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       firstRender.current = false;
       return;
     }
-    headingRef.current?.focus();
+    // New step: scroll the content area back to the top, then focus the heading without a second scroll jump.
+    scrollerRef.current?.scrollTo({ top: 0 });
+    headingRef.current?.focus({ preventScroll: true });
   }, [step]);
 
   // Load open slots whenever service, dentist, or date changes (Rule 5 via GET /api/slots).
@@ -265,6 +270,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
   if (step === 'done') {
     return (
+      <div id="book-content" ref={scrollerRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 outline-none lg:py-10">
       <div className="mx-auto w-full max-w-xl rounded-2xl border border-rule bg-white p-6 sm:p-8" role="status" aria-live="polite">
         <div className="flex items-center gap-4">
           <div className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-800">
@@ -297,6 +303,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         <Button variant="secondary" size="lg" className="mt-6 w-full" onClick={resetAll}>
           Book another appointment
         </Button>
+      </div>
+      {footer}
       </div>
     );
   }
@@ -332,12 +340,10 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       );
     });
 
-  const actionBar = 'sticky bottom-0 z-10 -mx-4 border-t border-rule bg-canvas/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-none lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none';
-
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <form onSubmit={submit} noValidate className="flex min-w-0 flex-col gap-6">
-        <ol className="flex items-center" aria-label="Booking steps">
+    <form onSubmit={submit} noValidate className="mx-auto grid min-h-0 w-full max-w-5xl flex-1 grid-rows-[minmax(0,1fr)] gap-8 px-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="flex min-h-0 min-w-0 flex-col">
+        <ol className="flex shrink-0 items-center pt-4 pb-3 lg:pt-6" aria-label="Booking steps">
           {STEPS.map(({ n, label }, i) => {
             const active = step === n;
             const done = typeof step === 'number' && step > n;
@@ -364,6 +370,12 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           })}
         </ol>
 
+        <div
+          id="book-content"
+          ref={scrollerRef}
+          tabIndex={-1}
+          className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pb-4 px-2 pt-3 pb-6 outline-none"
+        >
         {step === 1 && (
           <section className="flex flex-col gap-7" aria-labelledby="step1-heading">
             <div>
@@ -418,12 +430,6 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               </div>
             </fieldset>
 
-            <div className={actionBar}>
-              <Button size="lg" className="w-full" disabled={!serviceId} onClick={() => setStep(2)}>
-                Continue
-              </Button>
-              {!serviceId && services.length > 0 && <p className="mt-2 text-center text-xs text-ink-muted lg:text-left">Choose a service to continue.</p>}
-            </div>
           </section>
         )}
 
@@ -517,14 +523,6 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               </p>
             )}
 
-            <div className={cx(actionBar, 'flex gap-3')}>
-              <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(1)}>
-                Back
-              </Button>
-              <Button size="lg" className="flex-[2]" disabled={!date || !start} onClick={() => setStep(3)}>
-                Continue
-              </Button>
-            </div>
           </section>
         )}
 
@@ -651,24 +649,46 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               </p>
             </div>
 
-            <FormError>{formError}</FormError>
-
-            <div className={actionBar}>
-              <div className="flex gap-3">
-                <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(2)} disabled={submitting}>
-                  Back
-                </Button>
-                <Button type="submit" size="lg" className="flex-[2]" disabled={!consent} loading={submitting} loadingText="Sending…">
-                  Request appointment
-                </Button>
-              </div>
-              {!consent && <p className="mt-2 text-center text-xs text-ink-muted lg:text-left">Tick the consent box to send your request.</p>}
-            </div>
           </section>
         )}
-      </form>
+          {footer}
+        </div>
 
-      <aside aria-label="Your visit" className="hidden rounded-2xl border border-rule bg-white p-5 lg:sticky lg:top-6 lg:block">
+        {step === 1 && (
+          <div className='-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0'>
+            <Button size="lg" className="w-full" disabled={!serviceId} onClick={() => setStep(2)}>
+              Continue
+            </Button>
+            {!serviceId && services.length > 0 && <p className="mt-2 text-center text-xs text-ink-muted lg:text-left">Choose a service to continue.</p>}
+          </div>
+        )}
+        {step === 2 && (
+          <div className={cx('-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0', 'flex gap-3')}>
+            <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(1)}>
+              Back
+            </Button>
+            <Button size="lg" className="flex-[2]" disabled={!date || !start} onClick={() => setStep(3)}>
+              Continue
+            </Button>
+          </div>
+        )}
+        {step === 3 && (
+          <div className='-mx-4 shrink-0 border-t border-rule bg-canvas px-4 py-3 lg:mx-0 lg:px-0'>
+            <FormError className="mb-3">{formError}</FormError>
+            <div className="flex gap-3">
+              <Button variant="secondary" size="lg" className="flex-1" onClick={() => setStep(2)} disabled={submitting}>
+                Back
+              </Button>
+              <Button type="submit" size="lg" className="flex-[2]" disabled={!consent} loading={submitting} loadingText="Sending…">
+                Request appointment
+              </Button>
+            </div>
+            {!consent && <p className="mt-2 text-center text-xs text-ink-muted lg:text-left">Tick the consent box to send your request.</p>}
+          </div>
+        )}
+      </div>
+
+      <aside aria-label="Your visit" className="hidden self-start rounded-2xl border border-rule bg-white p-5 lg:mt-16 lg:block">
         <div className="flex items-center gap-3">
           <BrandIcon className="h-9" />
           <p className="text-base font-bold text-ink">Your visit</p>
@@ -683,17 +703,14 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             Change
           </button>
         )}
-        <p className="mt-4 rounded-lg bg-brand-50 p-3 text-xs leading-relaxed text-ink">
-          This sends a request. The clinic confirms it by email, so there is nothing to pay now.
-        </p>
         {clinicPhone && (
-          <p className="mt-4 flex items-center gap-2 text-sm text-ink-muted">
+          <p className="mt-4 flex items-center gap-2 border-t border-rule pt-4 text-sm text-ink-muted">
             <PhoneIcon className="size-4 shrink-0" />
             Questions? Call {clinicPhone}
           </p>
         )}
       </aside>
-    </div>
+    </form>
   );
 }
 
