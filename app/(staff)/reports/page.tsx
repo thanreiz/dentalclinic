@@ -63,7 +63,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <div className="overflow-x-auto">
             <table className="w-full min-w-[520px] text-left text-sm">
               <caption className="sr-only">Bookings by channel</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
+              <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3">Channel</th>
                   <th scope="col" className="px-3 py-3 text-right">Bookings</th>
@@ -72,7 +72,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   <th scope="col" className="px-3 py-3 text-right">No-show</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-rule">
                 {channels.rows.map((r) => (
                   <tr key={r.channel}>
                     <th scope="row" className="px-4 py-3 font-medium"><ChannelBadge channel={r.channel} /></th>
@@ -80,7 +80,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="w-12 shrink-0 text-right font-semibold tabular-nums">{formatRate(r.share)}</span>
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-brand-50" aria-hidden="true">
                           <div className="h-full rounded-full bg-brand-600" style={{ width: `${Math.min(100, (r.share ?? 0) * 100)}%` }} />
                         </div>
                       </div>

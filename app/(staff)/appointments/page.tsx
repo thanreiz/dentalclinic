@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { requireStaffPage } from '@/lib/auth';
 import { listAppointments } from '@/lib/queries/appointments';
 import { APPOINTMENT_STATUSES, CHANNELS, formatContact } from '@/lib/rules';
@@ -19,7 +20,7 @@ const PAGE_SIZE = 50;
 const CHANNEL_LABEL: Record<(typeof CHANNELS)[number], string> = { online: 'Online', phone: 'Phone', chat: 'Chat', 'walk-in': 'Walk-in' };
 
 const controlClass =
-  'h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none';
+  'h-10 w-full rounded-lg border border-line-strong bg-white px-3 text-sm text-ink focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none';
 
 /** Every appointment from every channel in one list (SOP 1: centralized bookings). */
 export default async function AppointmentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -35,6 +36,8 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     qs.set('page', String(p));
     return `/appointments?${qs}`;
   };
+  // A page past the end (a stale link, a filter that shrank the list) goes to the last page, not an empty list.
+  if (page > pages) redirect(href(pages));
 
   return (
     <>
@@ -48,12 +51,12 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
         }
       />
 
-      <form method="get" action="/appointments" className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:grid-cols-6">
-        <label className="col-span-2 flex flex-col gap-1 text-xs font-medium text-slate-700 lg:col-span-2">
+      <form method="get" action="/appointments" className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-rule bg-white p-4 lg:grid-cols-6">
+        <label className="col-span-2 flex flex-col gap-1 text-xs font-medium text-ink lg:col-span-2">
           Patient name or number
           <input type="search" name="q" defaultValue={filters.q ?? ''} maxLength={100} placeholder="e.g. Maria or 917 555" className={controlClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink">
           Channel
           <select name="channel" defaultValue={filters.channel ?? ''} className={controlClass}>
             <option value="">All channels</option>
@@ -62,7 +65,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink">
           Status
           <select name="status" defaultValue={filters.status ?? ''} className={controlClass}>
             <option value="">All statuses</option>
@@ -71,11 +74,11 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
             ))}
           </select>
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink">
           From
           <input type="date" name="from" defaultValue={filters.from ?? ''} className={controlClass} />
         </label>
-        <label className="flex flex-col gap-1 text-xs font-medium text-slate-700">
+        <label className="flex flex-col gap-1 text-xs font-medium text-ink">
           To
           <input type="date" name="to" defaultValue={filters.to ?? ''} className={controlClass} />
         </label>
@@ -99,7 +102,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Appointments from all channels</caption>
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">
                   <tr>
                     <th scope="col" className="px-4 py-3">Date and time</th>
                     <th scope="col" className="px-4 py-3">Patient</th>
@@ -109,21 +112,21 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                     <th scope="col" className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-rule">
                   {rows.map((a) => (
-                    <tr key={a.appointmentId} className="hover:bg-slate-50">
+                    <tr key={a.appointmentId} className="hover:bg-canvas">
                       <td className="px-4 py-3 whitespace-nowrap">
                         <Link href={`/appointments/${a.appointmentId}`} className="font-semibold text-brand-800 hover:underline">
                           {formatDateHuman(a.date)}
                         </Link>
-                        <span className="block text-xs text-slate-600">{formatTime12(a.start)}</span>
+                        <span className="block text-xs text-ink-muted">{formatTime12(a.start)}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <Link href={`/patients/${a.patientId}`} className="font-medium text-slate-900 hover:underline">{a.patientName}</Link>
-                        <span className="block text-xs whitespace-nowrap tabular-nums text-slate-600">{formatContact(a.contactNumber)}</span>
+                        <Link href={`/patients/${a.patientId}`} className="font-medium text-ink hover:underline">{a.patientName}</Link>
+                        <span className="block text-xs whitespace-nowrap tabular-nums text-ink-muted">{formatContact(a.contactNumber)}</span>
                       </td>
-                      <td className="hidden px-4 py-3 text-slate-700 lg:table-cell">{a.serviceName}</td>
-                      <td className="hidden px-4 py-3 text-slate-700 md:table-cell">{a.dentistName}</td>
+                      <td className="hidden px-4 py-3 text-ink lg:table-cell">{a.serviceName}</td>
+                      <td className="hidden px-4 py-3 text-ink md:table-cell">{a.dentistName}</td>
                       <td className="px-4 py-3"><ChannelBadge channel={a.channel} /></td>
                       <td className="px-4 py-3"><StatusBadge status={a.status} /></td>
                     </tr>
@@ -131,8 +134,8 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                 </tbody>
               </table>
             </div>
-            <nav className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm" aria-label="Pagination">
-              <p className="text-slate-600">
+            <nav className="flex items-center justify-between gap-3 border-t border-rule px-4 py-3 text-sm" aria-label="Pagination">
+              <p className="text-ink-muted">
                 {total} appointment{total === 1 ? '' : 's'} · page {Math.min(page, pages)} of {pages}
               </p>
               <div className="flex gap-2">
