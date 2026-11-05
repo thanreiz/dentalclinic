@@ -4,7 +4,7 @@
  * everywhere, so no deadlocks between our own writers), then Rules 1–3 via checkBookable
  * (Listing 3.1 with :appointment_id = 0), then INSERT. A deadlock is retried once (tx.ts).
  */
-import { execute, type Queryable } from '../db';
+import { execute, queryOne, type Queryable } from '../db';
 import { mismatchFlag, withMismatchFlag } from '../patient-note';
 import { checkBookable, lockChair, lockDentist, workingHoursOn, type BookableResult } from '../queries/overlap';
 import { computeEndTime, slotIntervalMinutes } from '../rules';
@@ -13,7 +13,7 @@ import type { AppointmentStatus, Channel, Slot } from '../types';
 import type { BookingRequest, StaffBooking } from '../validation';
 import { ServiceError } from './errors';
 import { allDentistIds, getServiceOrThrow } from './lookups';
-import { createPatientStrict, matchOrCreatePatient, setMessengerPsid } from './patients';
+import { createPatientStrict, findPatientIdByContact, matchOrCreatePatient, setMessengerPsid } from './patients';
 import { assertContactRequestCap, assertGlobalRequestCaps } from './request-limits';
 import { getSlots } from './slots';
 import { transaction } from './tx';
@@ -96,6 +96,33 @@ export function conflictError(r: Exclude<BookableResult, { ok: true }>, dentistI
 // ---------------------------------------------------------------------------
 
 export const SLOT_TAKEN_MESSAGE = 'That time was just taken. Please pick another slot.';
+export const DUPLICATE_REQUEST_MESSAGE =
+  'You already have a request for that time. The clinic will confirm it, so there is no need to send it again.';
+
+/**
+ * Duplicate guard for public requests: a patient (matched by contact number) who already has a
+ * pending or scheduled booking that overlaps this time, with any dentist, gets a clear 409
+ * `duplicate_request` instead of a second row. This also covers re-opening or re-submitting the
+ * same Messenger link. Runs before the slot check so a person's own request never shows up as
+ * "that time was just taken". Read-only; a no-op for a brand-new contact number.
+ */
+async function assertNoDuplicateRequest(
+  conn: Queryable,
+  input: { contactNumber: string; date: string; start: string },
+  end: string,
+): Promise<void> {
+  const patientId = await findPatientIdByContact(input.contactNumber, conn);
+  if (patientId === null) return;
+  const dup = await queryOne<{ appointment_id: number }>(
+    `SELECT appointment_id FROM appointments
+      WHERE patient_id = ? AND appointment_date = ? AND status IN ('pending', 'scheduled')
+        AND start_time < ? AND end_time > ?
+      LIMIT 1`,
+    [patientId, input.date, toHHMMSS(end), toHHMMSS(input.start)],
+    conn,
+  );
+  if (dup) throw new ServiceError(409, 'duplicate_request', DUPLICATE_REQUEST_MESSAGE);
+}
 
 /**
  * Save an online request as `pending` (channel online, chair NULL). With dentistId 'any', tries
@@ -115,6 +142,7 @@ export async function createOnlineRequest(
 
   try {
     return await transaction(async (conn) => {
+      await assertNoDuplicateRequest(conn, input, end);
       const candidates = input.dentistId === 'any' ? await allDentistIds(conn) : [input.dentistId];
       let chosen: number | null = null;
       for (const dentistId of candidates) {
@@ -134,7 +162,11 @@ export async function createOnlineRequest(
           break;
         }
       }
-      if (chosen === null) throw new ServiceError(409, 'slot_taken', SLOT_TAKEN_MESSAGE);
+      if (chosen === null) {
+        // A parallel submit of the same request may have just taken the slot: report it as a duplicate.
+        await assertNoDuplicateRequest(conn, input, end);
+        throw new ServiceError(409, 'slot_taken', SLOT_TAKEN_MESSAGE);
+      }
 
       // H1: clinic-wide caps, then the per-contact cap once the patient is known. Same 429 for a
       // new or matched number (a new number can't reach the per-contact cap).
