@@ -120,6 +120,43 @@ describe('POST /api/requests', () => {
     expect(Number(n!.n)).toBe(1);
   });
 
+  it('the same person sending the same request again -> 409 duplicate_request, nothing saved', async () => {
+    const date = workday(9);
+    const contactNumber = newContact();
+    const first = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', serviceId: FILLING, contactNumber })));
+    expect(first.status).toBe(201);
+    const before = await countAppts();
+    // Same link submitted again: same slot, then the same time with the other dentist, then an overlapping time.
+    for (const extra of [{ start: '10:00' }, { start: '10:00', dentistId: LIM }, { start: '10:30' }]) {
+      const res = await postRequest(req('POST', '/api/requests', bookingBody({ date, serviceId: FILLING, contactNumber, ...extra })));
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.error).toBe('duplicate_request');
+      expect(body.slots).toBeUndefined();
+    }
+    expect(await countAppts()).toBe(before);
+  });
+
+  it('a different time or day is still allowed, and so is another person at the same time', async () => {
+    const date = workday(9);
+    const contactNumber = newContact();
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '15:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date: workday(10), start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    // A stranger asking for the taken time is still "slot taken", not a duplicate.
+    const other = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, dentistId: REYES })));
+    expect([201, 409]).toContain(other.status);
+    if (other.status === 409) expect((await other.json()).error).not.toBe('duplicate_request');
+  });
+
+  it('a declined or cancelled request does not block sending it again', async () => {
+    const date = workday(11);
+    const contactNumber = newContact();
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    await query("UPDATE appointments SET status = 'declined' WHERE appointment_date = ? AND start_time = '11:00:00'", [date]);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+  });
+
   it('slot taken -> 409 slot_taken with fresh slots; off-grid / outside hours / Sunday -> 409', async () => {
     const date = workday(2); // Reyes 09:00 pending from the previous test
     const res = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '09:00' })));
