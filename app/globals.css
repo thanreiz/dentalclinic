@@ -57,6 +57,14 @@ html {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Staff shell is a fixed frame: only <main> scrolls. Stop the page itself (and the sidebar) from
+   rubber-banding or chaining scroll on macOS trackpads. Scoped so the public /book page keeps normal scrolling. */
+html:has(#staff-shell),
+html:has(#staff-shell) body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--color-canvas);
   color: var(--color-ink);
