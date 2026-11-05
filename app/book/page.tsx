@@ -55,9 +55,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
           prefill={prefill}
         />
         <p className="mt-10 text-center text-xs text-ink-muted">
-          No account needed. Your request is reviewed by clinic staff before it is confirmed.
-          <br />
-          <Link href="/login" className="mt-2 inline-block py-1 text-ink-muted underline">
+          <Link href="/login" className="inline-block py-1 text-ink-muted underline">
             Clinic staff login
           </Link>
         </p>

@@ -294,10 +294,6 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             </li>
           ))}
         </ol>
-        <p className="mt-5 text-sm text-ink-muted">
-          This is a request, not yet a confirmed booking.
-          {clinicPhone ? ` For changes, call the clinic at ${clinicPhone}.` : ''}
-        </p>
         <Button variant="secondary" size="lg" className="mt-6 w-full" onClick={resetAll}>
           Book another appointment
         </Button>
