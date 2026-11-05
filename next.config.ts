@@ -40,6 +40,19 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // The old Vercel URL still resolves to this project. Send people (and bookmarks) to the real domain.
+  // The cron endpoint and the Messenger webhook are excluded: they are called by machines that do not
+  // follow redirects, and a redirect there would silently stop reminders or bot replies.
+  async redirects() {
+    return [
+      {
+        source: "/:path((?!api/cron|api/messenger).*)",
+        has: [{ type: "host", value: "dentalclinic-sooty.vercel.app" }],
+        destination: "https://molarandco.vercel.app/:path*",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
