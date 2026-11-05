@@ -5,7 +5,7 @@
  * row's rescheduled_from_id points to is a move, not a lost visit (Rule 11).
  * No-show rate = no-show / (attended + no-show); null when the denominator is 0.
  */
-import { query } from '../db';
+import { query, queryOne } from '../db';
 import { CHANNELS, noShowRate } from '../rules';
 import { monthRange } from '../time';
 import type { ChannelReport, MonthlyReport, RepeatNoShow, ReportCounts } from '../types';
@@ -93,6 +93,21 @@ export async function getMonthlyReport(month: string): Promise<MonthlyReport> {
     byDentist: byDentist.map((r) => ({ dentistId: r.dentist_id, dentistName: r.dentist_name, ...counts(r) })),
     byService: byService.map((r) => ({ serviceId: r.service_id, serviceName: r.service_name, ...counts(r) })),
   };
+}
+
+/**
+ * The most recent month (YYYY-MM) that has completed visits (attended, no-show, or a cancellation that
+ * was not a reschedule), or null when there are none. Lets the Reports empty state point at real data.
+ */
+export async function getLatestReportMonth(): Promise<string | null> {
+  const r = await queryOne<{ month: string | null }>(
+    `SELECT DATE_FORMAT(MAX(a.appointment_date), '%Y-%m') AS month
+       FROM appointments a
+      WHERE a.status IN ('attended', 'no-show')
+         OR (a.status = 'cancelled' AND NOT EXISTS (
+               SELECT 1 FROM appointments r WHERE r.rescheduled_from_id = a.appointment_id))`,
+  );
+  return r?.month ?? null;
 }
 
 export async function getRepeatNoShows(threshold: number): Promise<RepeatNoShow[]> {

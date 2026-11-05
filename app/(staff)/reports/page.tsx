@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireStaffPage } from '@/lib/auth';
-import { getChannelReport, getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
+import { getChannelReport, getLatestReportMonth, getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
 import { defaultNoShowThreshold, formatContact, formatRate } from '@/lib/rules';
 import { formatDateHuman, monthOf, todayManila } from '@/lib/time';
 import type { ReportCounts } from '@/lib/types';
 import { monthSchema } from '@/lib/validation';
 import { Card, CardHeader, PageHeader } from '@/components/ui/Card';
 import { ChannelBadge } from '@/components/ui/Badges';
+import { ButtonLink } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ChartIcon, CheckIcon } from '@/components/ui/icons';
@@ -29,7 +30,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const tRaw = typeof sp.threshold === 'string' ? Number(sp.threshold) : NaN;
   const threshold = Number.isInteger(tRaw) && tRaw >= 1 && tRaw <= 100 ? tRaw : defaultNoShowThreshold();
 
-  const [report, repeat, channels] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold), getChannelReport(month)]);
+  const [report, repeat, channels, latestMonth] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold), getChannelReport(month), getLatestReportMonth()]);
   const t = report.totals;
 
   return (
@@ -46,7 +47,18 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
       {t.total === 0 ? (
         <Card className="mb-5">
-          <EmptyState icon={<ChartIcon />} title={`No completed visits in ${monthLabel(month)}`} description="Totals appear once appointments are marked attended, cancelled, or no-show." />
+          <EmptyState
+            icon={<ChartIcon />}
+            title={`No completed visits in ${monthLabel(month)}`}
+            description="Totals appear once appointments are marked attended, cancelled, or no-show."
+            action={
+              latestMonth && latestMonth !== month ? (
+                <ButtonLink href={`/reports?${new URLSearchParams({ month: latestMonth, threshold: String(threshold) })}`} variant="secondary">
+                  View {monthLabel(latestMonth)}, the latest month with visits
+                </ButtonLink>
+              ) : undefined
+            }
+          />
         </Card>
       ) : (
         <div className="mb-5 grid min-w-0 gap-5 2xl:grid-cols-2">
