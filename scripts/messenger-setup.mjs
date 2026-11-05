@@ -6,7 +6,7 @@
  *
  * It calls Meta's Messenger Profile API for the Page the token belongs to. The token is read from
  * the environment and never printed. Postback payloads match lib/services/messenger-bot.ts:
- * "book" (greeting menu) and "restart".
+ * "GET_STARTED" (greeting), "book" and "restart".
  */
 const token = process.env.MESSENGER_PAGE_TOKEN;
 if (!token) {
@@ -18,7 +18,7 @@ const res = await fetch('https://graph.facebook.com/v21.0/me/messenger_profile',
   method: 'POST',
   headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
   body: JSON.stringify({
-    get_started: { payload: 'book' },
+    get_started: { payload: 'GET_STARTED' },
     persistent_menu: [
       {
         locale: 'default',

@@ -54,6 +54,30 @@ describe('GET /api/messenger (Meta handshake)', () => {
   });
 });
 
+describe('POST /api/messenger delivery', () => {
+  it('a redelivered webhook (same message id) is answered once; users in one batch all get replies', async () => {
+    const body = event('4100', { message: { mid: 'm.redeliver.1', text: 'hi' } });
+    expect((await webhookPost(signed(body))).status).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect((await webhookPost(signed(body))).status).toBe(200);
+    expect(sent).toHaveLength(1);
+    sent.length = 0;
+    const many = JSON.stringify({ object: 'page', entry: [{ messaging: Array.from({ length: 30 }, (_, i) => ({ sender: { id: String(4200 + i) }, message: { mid: `m.batch.${i}`, text: 'hi' } })) }] });
+    expect((await webhookPost(signed(many))).status).toBe(200);
+    expect(sent).toHaveLength(30);
+    expect(new Set(sent.map((s) => s.to)).size).toBe(30);
+  });
+
+  it('the typed restart variants and Get Started work through the webhook', async () => {
+    await webhookPost(signed(event('4300', { message: { text: 'Start  over please' } })));
+    expect(sent).toHaveLength(2);
+    sent.length = 0;
+    await webhookPost(signed(event('4300', { postback: { payload: 'GET_STARTED' } })));
+    expect(JSON.stringify(sent[0].message)).toContain('"payload":"book"');
+    expect(sent).toHaveLength(1);
+  });
+});
+
 describe('POST /api/messenger', () => {
   it('rejects unsigned and wrongly signed deliveries without replying', async () => {
     const body = event('111', { message: { text: 'hi' } });

@@ -1,7 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CHAT_REF_TTL_SECONDS, sendMessengerMessage, setMessengerTransport, signChatRef, verifyChatRef, verifyMessengerSignature, type OutgoingMessage } from '@/lib/messenger';
-import { botReplies, dateLabel, extractEvents, pickTimes, type BotDeps } from '@/lib/services/messenger-bot';
+import { alreadyHandled, botReplies, dateLabel, extractEvents, normalizeTyped, pickTimes, processEvents, resetHandledMids, type BotDeps, type BotEvent } from '@/lib/services/messenger-bot';
 import type { Slot } from '@/lib/types';
 
 beforeEach(() => {
@@ -322,5 +322,114 @@ describe('verifyChatRefDetail', () => {
     expect(verifyChatRefDetail(signChatRef('42', now), now + CHAT_REF_TTL_SECONDS + 1)).toBeNull();
     expect(verifyChatRefDetail('42.1.AAAA', now)).toBeNull();
     expect(verifyChatRefDetail(undefined)).toBeNull();
+  });
+});
+
+describe('QA fixes: restart words, greeting, window, ids', () => {
+  const slot = (start: string): Slot => ({ start, end: start, dentistIds: [1] });
+  const deps: BotDeps = {
+    services: async () => [{ id: 1, name: 'Oral prophylaxis' }, { id: 2, name: 'Tooth filling' }],
+    dentists: async () => [{ id: 1, name: 'Dr. Reyes' }],
+    slots: async ({ date }) => (date <= '2026-12-31' && date >= '2026-11-08' ? [slot('09:00')] : []),
+    today: () => '2026-11-08',
+    baseUrl: () => 'https://molarandco.vercel.app',
+    signRef: () => 'ref',
+  };
+  const first = async (payload?: string, text?: string) => (await botReplies({ senderId: '1', payload, text }, deps))[0] as { text?: string; quick_replies?: { title: string; payload: string }[]; attachment?: unknown };
+
+  it('normalizes typed text: NFKC, case, whitespace, punctuation, emoji', () => {
+    expect(normalizeTyped('  ＭＥＮＵ！ ')).toBe('menu');
+    expect(normalizeTyped('Start   Over...')).toBe('start over');
+    expect(normalizeTyped('Restart 🔁')).toBe('restart');
+  });
+
+  it('typed restart variants all restart; near misses do not', async () => {
+    for (const t of ['start over', 'startover', 'Restart', 'MENU', 'start  over', 'menu please', 'Start over please!', 'please restart', 'ｍｅｎｕ', 'restart 🔁', 'Start-over'.replace('-', ' ')]) {
+      const r = await botReplies({ senderId: '1', text: t }, deps);
+      expect(r[0], t).toMatchObject({ text: expect.stringContaining('starting over') });
+    }
+    for (const t of ['', 'hi', 'menu items?', 'I want to restart my life', 'cancel']) {
+      expect(((await first(undefined, t)) as { quick_replies: { payload: string }[] }).quick_replies.map((q) => q.payload), t).toEqual(['book']);
+    }
+  });
+
+  it('Get Started shows the greeting with the Book button, not the service list', async () => {
+    const m = await first('GET_STARTED');
+    expect(m.text).toContain("Molar & Co.'s booking assistant");
+    expect(m.quick_replies?.map((q) => q.payload)).toEqual(['book']);
+  });
+
+  it('the message with the booking link also offers Start over', async () => {
+    const m = await first('ok:1:any:2026-11-09:09:00');
+    expect(m.attachment).toBeDefined();
+    expect(m.quick_replies).toEqual([{ content_type: 'text', title: 'Start over', payload: 'restart' }]);
+  });
+
+  it('a date past the 60-day window or in the past gets no link: back to the day picker', async () => {
+    for (const p of ['ok:1:any:2027-12-31:09:00', 'sum:1:any:2027-12-31:09:00', 'ok:1:any:2020-01-01:09:00']) {
+      const m = await first(p);
+      expect(m.attachment, p).toBeUndefined();
+      expect(m.text).toContain('not open for booking');
+      expect(m.quick_replies?.at(-1)?.payload).toBe('restart');
+    }
+    expect((await first('ok:1:any:2027-01-06:09:00')).attachment).toBeUndefined(); // 60 days = 2027-01-07
+    expect((await first('ok:1:any:2026-12-31:09:00')).attachment).toBeDefined();
+  });
+
+  it('leading-zero ids are rejected everywhere (menu, no link)', async () => {
+    for (const p of ['ok:01:any:2026-11-09:09:00', 'sum:1:01:2026-11-09:09:00', 'chg:001:any:2026-11-09:09:00', 'cs:01:any:2026-11-09:09:00', 'svc:01', 'den:1:01', 'date:01:any:2026-11-09']) {
+      const m = await first(p);
+      expect(m.attachment, p).toBeUndefined();
+      expect(m.quick_replies?.map((q) => q.payload), p).toEqual(['book']);
+    }
+  });
+});
+
+describe('extractEvents mid, de-dupe and concurrency', () => {
+  beforeEach(() => resetHandledMids());
+  it('keeps the message id of messages and postbacks', () => {
+    const e = extractEvents({ object: 'page', entry: [{ messaging: [{ sender: { id: '1' }, message: { mid: 'm.1', text: 'a' } }, { sender: { id: '2' }, postback: { mid: 'm.2', payload: 'book' } }, { sender: { id: '3' }, message: { text: 'b' } }] }] });
+    expect(e.map((x) => x.mid)).toEqual(['m.1', 'm.2', undefined]);
+  });
+  it('a mid seen within 10 minutes is a duplicate; later or different is not; no mid is never one', () => {
+    expect(alreadyHandled('a', 1000)).toBe(false);
+    expect(alreadyHandled('a', 2000)).toBe(true);
+    expect(alreadyHandled('a', 1000 + 10 * 60 * 1000 + 1)).toBe(false);
+    expect(alreadyHandled('b', 1000)).toBe(false);
+    expect(alreadyHandled(undefined)).toBe(false);
+  });
+  const ev = (senderId: string, n: number, mid?: string): BotEvent => ({ senderId, text: String(n), ...(mid ? { mid } : {}) });
+  it('runs users concurrently (bounded), one user strictly in order, skips redelivered ids', async () => {
+    const log: string[] = [];
+    let running = 0;
+    let peak = 0;
+    const events = [...Array.from({ length: 20 }, (_, i) => ev(`u${i}`, 0)), ev('u0', 1), ev('u0', 2), ev('u1', 1, 'dup'), ev('u1', 2, 'dup')];
+    await processEvents(
+      events,
+      async (e) => {
+        running++;
+        peak = Math.max(peak, running);
+        await new Promise((r) => setTimeout(r, 5));
+        log.push(`${e.senderId}:${e.text}`);
+        running--;
+      },
+      4,
+    );
+    expect(peak).toBeGreaterThan(1);
+    expect(peak).toBeLessThanOrEqual(4);
+    const u0 = log.filter((l) => l.startsWith('u0:'));
+    expect(u0).toEqual(['u0:0', 'u0:1', 'u0:2']);
+    expect(log.filter((l) => l.startsWith('u1:'))).toEqual(['u1:0', 'u1:1']); // second 'dup' skipped
+    expect(log).toHaveLength(23);
+  });
+  it('a throwing handler does not stop the others', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const done: string[] = [];
+    await processEvents([ev('a', 1), ev('b', 1), ev('a', 2)], async (e) => {
+      if (e.senderId === 'a' && e.text === '1') throw new Error('boom');
+      done.push(`${e.senderId}${e.text}`);
+    });
+    expect(done.sort()).toEqual(['a2', 'b1']);
+    err.mockRestore();
   });
 });
