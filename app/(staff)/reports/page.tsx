@@ -49,7 +49,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <EmptyState icon={<ChartIcon />} title={`No completed visits in ${monthLabel(month)}`} description="Totals appear once appointments are marked attended, cancelled, or no-show." />
         </Card>
       ) : (
-        <div className="mb-5 grid gap-5 2xl:grid-cols-2">
+        <div className="mb-5 grid min-w-0 gap-5 2xl:grid-cols-2">
           <BreakdownTable title="By dentist" rows={report.byDentist.map((r) => ({ key: r.dentistId, name: r.dentistName, ...r }))} totals={t} />
           <BreakdownTable title="By service" rows={report.byService.map((r) => ({ key: r.serviceId, name: r.serviceName, ...r }))} totals={t} />
         </div>
@@ -141,7 +141,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
 function Total({ label, value, cls, hint, rate }: { label: string; value: number | string; cls: string; hint?: string; rate?: number | null }) {
   return (
-    <div className="rounded-lg border border-rule bg-white px-4 py-3.5">
+    <div className="min-w-0 rounded-lg border border-rule bg-white px-4 py-3.5">
       <p className="text-sm font-medium text-ink-muted">{label}</p>
       <p className={cx('mt-1 text-3xl font-semibold tabular-nums', cls)}>{value}</p>
       {rate !== undefined && <RateBar rate={rate} className="mt-2" />}
@@ -161,7 +161,7 @@ function RateBar({ rate, className }: { rate: number | null; className?: string 
 
 function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportCounts & { key: number; name: string })[]; totals: ReportCounts }) {
   return (
-    <Card className="overflow-hidden">
+    <Card className="min-w-0 overflow-hidden">
       <CardHeader title={title} />
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-left text-sm">
