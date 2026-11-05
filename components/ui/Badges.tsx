@@ -28,11 +28,13 @@ export const STATUS_STYLES: Record<AppointmentStatus, { badge: string; dot: stri
     dot: 'bg-status-cancelled-dot',
     block: 'bg-status-cancelled-bg/70 border-status-cancelled-dot text-status-cancelled-fg hover:bg-status-cancelled-bg',
   },
+  // Brand rule: the terracotta accent is never a status color. Declined shares the neutral family
+  // with cancelled and is told apart by a hollow dot, a dotted block border and its label.
   declined: {
     label: 'Declined',
-    badge: 'bg-accent-100 text-accent-700 ring-accent-500/40',
-    dot: 'bg-accent-500',
-    block: 'bg-accent-100/70 border-accent-500 text-accent-700 hover:bg-accent-100',
+    badge: 'bg-status-cancelled-bg text-status-cancelled-fg ring-status-cancelled-dot/40',
+    dot: 'bg-transparent ring-1 ring-inset ring-status-cancelled-fg',
+    block: 'bg-status-cancelled-bg/50 border-dotted border-status-cancelled-dot text-status-cancelled-fg hover:bg-status-cancelled-bg',
   },
   'no-show': {
     label: 'No-show',
