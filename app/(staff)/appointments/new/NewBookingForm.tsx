@@ -470,7 +470,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
 
       {/* ---------------- Summary ---------------- */}
       <div className="min-w-0">
-        <Card className="lg:sticky lg:top-20">
+        <Card className="lg:sticky lg:top-0">
           <CardHeader title="Summary" />
           <dl className="flex flex-col gap-2.5 px-4 py-4 text-sm sm:px-5">
             <Row label="Patient" value={patient?.fullName ?? (mode === 'new' && newPatient.fullName ? `${newPatient.fullName} (new)` : null)} />

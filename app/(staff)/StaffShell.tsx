@@ -169,7 +169,7 @@ export default function StaffShell({
   );
 
   return (
-    <div className="min-h-dvh bg-canvas lg:flex">
+    <div className="relative flex h-dvh flex-col overflow-hidden bg-canvas lg:flex-row">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2"
@@ -178,7 +178,7 @@ export default function StaffShell({
       </a>
 
       {/* Desktop: sidebar on the ground */}
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col justify-between border-r border-rule px-3 py-5 lg:flex">
+      <aside className="hidden min-h-0 w-60 shrink-0 flex-col justify-between overflow-y-auto border-r border-rule px-3 py-5 lg:flex">
         <div className="flex flex-col gap-8">
           <div className="px-1">{mark}</div>
           {nav}
@@ -190,7 +190,7 @@ export default function StaffShell({
       </aside>
 
       {/* Below 1024 px: 48 px bar + menu sheet */}
-      <header inert={open} className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-rule bg-canvas px-4 lg:hidden">
+      <header inert={open} className="z-30 flex h-12 shrink-0 items-center gap-3 border-b border-rule bg-canvas px-4 lg:hidden">
         <BrandIcon className="h-8 shrink-0" />
         <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{current}</p>
         <button
@@ -230,8 +230,8 @@ export default function StaffShell({
         </div>
       )}
 
-      <main id="main" inert={open} className="min-w-0 flex-1 px-4 py-6 md:px-8 lg:px-10 lg:py-9">
-        <div className="mx-auto max-w-6xl">{children}</div>
+      <main id="main" inert={open} className="relative min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain scroll-pt-6 px-4 py-6 md:px-8 lg:scroll-pt-9 lg:px-10 lg:py-9">
+        <div className="mx-auto w-full min-w-0 max-w-6xl">{children}</div>
       </main>
     </div>
   );
