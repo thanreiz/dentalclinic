@@ -36,14 +36,40 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
 
   return (
     <>
-      <Link href={a.status === 'pending' ? '/requests' : `/dashboard?date=${a.date}`} className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
+      <Link href={a.status === 'pending' ? '/requests' : `/dashboard?date=${a.date}`} className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" /> {a.status === 'pending' ? 'Requests' : 'Schedule'}
       </Link>
       <div className="mb-6 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Appointment #{a.appointmentId}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-ink">Appointment #{a.appointmentId}</h1>
         <StatusBadge status={a.status} className="text-sm" />
         <ChannelBadge channel={a.channel} />
       </div>
+
+      {(a.followUpOfId || a.followUpIds.length > 0) && (
+        <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950">
+          {a.followUpOfId && (
+            <p>
+              Follow-up of{' '}
+              <Link href={`/appointments/${a.followUpOfId}`} className="font-semibold underline">
+                #{a.followUpOfId}
+              </Link>
+            </p>
+          )}
+          {a.followUpIds.length > 0 && (
+            <p>
+              Follow-up booked:{' '}
+              {a.followUpIds.map((fid, i) => (
+                <span key={fid}>
+                  {i > 0 && ', '}
+                  <Link href={`/appointments/${fid}`} className="font-semibold underline">
+                    #{fid}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+      )}
 
       {(a.rescheduledFromId || a.replacedById) && (
         <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
@@ -79,10 +105,10 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
                 {formatTime12(a.start)} – {formatTime12(a.end)}
               </Item>
               <Item label="Service">
-                {a.service.name} <span className="text-slate-500">({a.service.durationMinutes} min)</span>
+                {a.service.name} <span className="text-ink-muted">({a.service.durationMinutes} min)</span>
               </Item>
               <Item label="Dentist">{a.dentist.name}</Item>
-              <Item label="Chair">{a.chair ? a.chair.name : <span className="text-slate-500">Not assigned yet</span>}</Item>
+              <Item label="Chair">{a.chair ? a.chair.name : <span className="text-ink-muted">Not assigned yet</span>}</Item>
               <Item label="Channel">
                 <ChannelBadge channel={a.channel} />
               </Item>
@@ -93,9 +119,9 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
                     <CheckIcon className="size-4" /> Reminder sent {formatDateTimeHuman(a.reminderSentAt)}
                   </span>
                 ) : a.status === 'scheduled' ? (
-                  <span className="text-slate-500">Sent automatically the day before</span>
+                  <span className="text-ink-muted">Sent automatically the day before</span>
                 ) : (
-                  <span className="text-slate-500">None</span>
+                  <span className="text-ink-muted">None</span>
                 )}
               </Item>
             </dl>
@@ -121,15 +147,15 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
                   {formatContact(a.patient.contact)}
                 </a>
               </Item>
-              <Item label="Email">{a.patient.email ?? <span className="text-slate-500">None on file</span>}</Item>
+              <Item label="Email">{a.patient.email ?? <span className="text-ink-muted">None on file</span>}</Item>
               <Item label="Birthdate">
-                {formatDateHuman(a.patient.birthdate)} <span className="text-slate-500">({ageOn(a.patient.birthdate, today)} yrs)</span>
+                {formatDateHuman(a.patient.birthdate)} <span className="text-ink-muted">({ageOn(a.patient.birthdate, today)} yrs)</span>
               </Item>
             </dl>
-            <div className="border-t border-slate-100 px-4 py-4 sm:px-5">
-              <p className="text-sm font-medium text-slate-500">Patient note</p>
+            <div className="border-t border-rule px-4 py-4 sm:px-5">
+              <p className="text-sm font-medium text-ink-muted">Patient note</p>
               {noteFlag && <DetailsDifferFlag flag={noteFlag} className="mt-2" />}
-              <p className="mt-1 text-sm whitespace-pre-wrap text-slate-900">{ownNote || <span className="text-slate-500">No note</span>}</p>
+              <p className="mt-1 text-sm whitespace-pre-wrap text-ink">{ownNote || <span className="text-ink-muted">No note</span>}</p>
             </div>
           </Card>
 
@@ -155,6 +181,11 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
             }}
             dentists={dentists.map((d) => ({ id: d.dentistId, name: d.dentistName }))}
             today={today}
+            followUpHref={
+              a.status === 'attended'
+                ? `/appointments/new?patientId=${a.patient.id}&serviceId=${a.service.id}&dentistId=${a.dentist.id}&followUpOf=${a.appointmentId}${a.channel === 'online' ? '' : `&channel=${a.channel}`}`
+                : undefined
+            }
           />
         </div>
       </div>
@@ -165,8 +196,8 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
 function Item({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="text-sm font-medium text-slate-500">{label}</dt>
-      <dd className="mt-0.5 text-sm break-words text-slate-900">{children}</dd>
+      <dt className="text-sm font-medium text-ink-muted">{label}</dt>
+      <dd className="mt-0.5 text-sm break-words text-ink">{children}</dd>
     </div>
   );
 }

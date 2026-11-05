@@ -13,8 +13,8 @@ export function DateNav({ date, today, basePath, params = {} }: { date: string; 
   const href = (d: string) => `${basePath}?${new URLSearchParams({ ...params, date: d })}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center rounded-lg border border-slate-300 bg-white shadow-sm">
-        <Link href={href(addDays(date, -1))} className="grid size-10 place-items-center rounded-l-lg text-slate-700 hover:bg-slate-50" aria-label="Previous day">
+      <div className="flex items-center rounded-lg border border-line-strong bg-white">
+        <Link href={href(addDays(date, -1))} className="grid size-10 place-items-center rounded-l-lg text-ink hover:bg-canvas" aria-label="Previous day">
           <LinkPendingIcon>
             <ChevronLeft className="size-5" />
           </LinkPendingIcon>
@@ -29,9 +29,9 @@ export function DateNav({ date, today, basePath, params = {} }: { date: string; 
           onChange={(e) => {
             if (e.target.value) router.push(href(e.target.value));
           }}
-          className="h-10 border-x border-slate-200 px-2 text-sm text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
+          className="h-10 border-x border-rule px-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
         />
-        <Link href={href(addDays(date, 1))} className="grid size-10 place-items-center rounded-r-lg text-slate-700 hover:bg-slate-50" aria-label="Next day">
+        <Link href={href(addDays(date, 1))} className="grid size-10 place-items-center rounded-r-lg text-ink hover:bg-canvas" aria-label="Next day">
           <LinkPendingIcon>
             <ChevronRight className="size-5" />
           </LinkPendingIcon>

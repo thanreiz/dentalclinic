@@ -52,38 +52,41 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <caption className="sr-only">Patients{q ? ` matching ${q}` : ''}</caption>
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+                <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">
                   <tr>
-                    <th scope="col" className="px-4 py-3">Name</th>
-                    <th scope="col" className="px-4 py-3">Contact number</th>
-                    <th scope="col" className="hidden px-4 py-3 md:table-cell">Email</th>
-                    <th scope="col" className="hidden px-4 py-3 lg:table-cell">Birthdate</th>
-                    <th scope="col" className="px-4 py-3 text-right">Visits</th>
-                    <th scope="col" className="hidden px-4 py-3 sm:table-cell">Last attended</th>
+                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Name</th>
+                    <th scope="col" className="px-4 py-3 whitespace-nowrap">Contact number</th>
+                    <th scope="col" className="hidden px-4 py-3 lg:table-cell">Email</th>
+                    <th scope="col" className="hidden px-4 py-3 xl:table-cell">Birthdate</th>
+                    <th scope="col" className="hidden px-4 py-3 text-right whitespace-nowrap sm:table-cell">Visits</th>
+                    <th scope="col" className="hidden px-4 py-3 whitespace-nowrap sm:table-cell">Last attended</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-rule">
                   {rows.map((p) => (
-                    <tr key={p.patientId} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
+                    <tr key={p.patientId} className="hover:bg-brand-50/50">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <Link href={`/patients/${p.patientId}`} className="font-semibold text-brand-800 hover:underline">
                           {p.fullName}
                         </Link>
+                        <span className="block text-xs font-normal text-ink-muted sm:hidden">
+                          {p.appointmentCount} visit{p.appointmentCount === 1 ? '' : 's'}
+                        </span>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap tabular-nums text-slate-800">{formatContact(p.contactNumber)}</td>
-                      <td className="hidden max-w-56 truncate px-4 py-3 text-slate-700 md:table-cell">{p.email ?? <span className="text-slate-400">—</span>}</td>
-                      <td className="hidden px-4 py-3 whitespace-nowrap text-slate-700 lg:table-cell">{formatDateHuman(p.birthdate)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-800">{p.appointmentCount}</td>
-                      <td className="hidden px-4 py-3 whitespace-nowrap text-slate-700 sm:table-cell">
-                        {p.lastVisitDate ? formatDateHuman(p.lastVisitDate) : <span className="text-slate-400">—</span>}
+                      <td className="px-4 py-3 whitespace-nowrap tabular-nums text-ink">{formatContact(p.contactNumber)}</td>
+                      <td className="hidden max-w-56 truncate px-4 py-3 text-ink lg:table-cell">{p.email ?? <span className="text-line-strong">—</span>}</td>
+                      <td className="hidden px-4 py-3 whitespace-nowrap text-ink xl:table-cell">{formatDateHuman(p.birthdate)}</td>
+                      <td className="hidden px-4 py-3 text-right tabular-nums text-ink sm:table-cell">{p.appointmentCount}</td>
+                      <td className="hidden px-4 py-3 whitespace-nowrap text-ink sm:table-cell">
+                        {p.lastVisitDate ? formatDateHuman(p.lastVisitDate) : <span className="text-line-strong">—</span>}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <nav className="flex items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm" aria-label="Pagination">
-              <p className="text-slate-600">
+            <nav className="flex items-center justify-between gap-3 border-t border-rule px-4 py-3 text-sm" aria-label="Pagination">
+              <p className="text-ink-muted">
                 {total} patient{total === 1 ? '' : 's'} · page {Math.min(page, pages)} of {pages}
               </p>
               <div className="flex gap-2">

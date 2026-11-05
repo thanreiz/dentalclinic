@@ -15,7 +15,11 @@ import { bookingRequestSchema, fieldErrors, stripNameChars } from '@/lib/validat
 export type BookService = { id: number; name: string; durationMinutes: number };
 export type BookDentist = { id: number; name: string; workingDays: number[] };
 
+/** Opened from the Messenger bot: choices already made, plus the signed token that marks channel 'chat'. */
+export type BookPrefill = { serviceId: number; dentistId: number | 'any'; date?: string; start?: string; chatRef?: string };
+
 type Props = {
+  prefill?: BookPrefill;
   services: BookService[];
   dentists: BookDentist[];
   today: string;
@@ -38,12 +42,12 @@ const STEPS = [
   { n: 3, label: 'Your details' },
 ] as const;
 
-export default function BookingForm({ services, dentists, today, maxDate, clinicPhone }: Props) {
-  const [step, setStep] = useState<Step>(1);
-  const [serviceId, setServiceId] = useState<number | null>(services.length === 1 ? services[0].id : null);
-  const [dentistId, setDentistId] = useState<number | 'any'>('any');
-  const [date, setDate] = useState<string | null>(null);
-  const [start, setStart] = useState<string | null>(null);
+export default function BookingForm({ services, dentists, today, maxDate, clinicPhone, prefill }: Props) {
+  const [step, setStep] = useState<Step>(prefill?.date && prefill.start ? 3 : 1);
+  const [serviceId, setServiceId] = useState<number | null>(prefill?.serviceId ?? (services.length === 1 ? services[0].id : null));
+  const [dentistId, setDentistId] = useState<number | 'any'>(prefill?.dentistId ?? 'any');
+  const [date, setDate] = useState<string | null>(prefill?.date ?? null);
+  const [start, setStart] = useState<string | null>(prefill?.start ?? null);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [slotsState, setSlotsState] = useState<'idle' | 'loading' | 'error'>('idle');
   const [slotsReload, setSlotsReload] = useState(0);
@@ -146,8 +150,10 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       patientNote: details.patientNote,
       consent,
       website: honeypotRef.current?.value ?? '',
+      chatRef: prefill?.chatRef,
     };
     const { website, ...toCheck } = payload;
+    // toCheck (validated and sent) includes chatRef; the server verifies the token itself.
     const parsed = bookingRequestSchema.safeParse(toCheck);
     if (!parsed.success) {
       const errs = fieldErrors(parsed.error);
@@ -171,6 +177,14 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       setStart(null);
       setTakenNotice(true);
       setStep(2);
+      return;
+    }
+    if (r.status === 409 && r.data.error === 'duplicate_request') {
+      // The patient already has a request for this time (also when the Messenger link is used twice).
+      setFormError(
+        (typeof r.data.message === 'string' && r.data.message) ||
+          'You already have a request for that time. The clinic will confirm it, so there is no need to send it again.',
+      );
       return;
     }
     if (r.status === 400 && r.data.issues && typeof r.data.issues === 'object') {
@@ -217,21 +231,21 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
   if (step === 'done') {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm" role="status" aria-live="polite">
+      <div className="rounded-xl border border-rule bg-white p-6 text-center" role="status" aria-live="polite">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-100 text-green-700">
           <CheckIcon className="size-7" />
         </div>
-        <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-xl font-semibold text-slate-900 outline-none">
+        <h2 ref={headingRef} tabIndex={-1} className="mt-4 text-xl font-semibold text-ink outline-none">
           Thank you
         </h2>
-        <p className="mt-2 text-base text-slate-700">Request received. The clinic will email you once it is confirmed.</p>
-        <dl className="mt-5 space-y-2 rounded-lg bg-slate-50 p-4 text-left text-sm">
+        <p className="mt-2 text-base text-ink">Request received. The clinic will email you once it is confirmed.</p>
+        <dl className="mt-5 space-y-2 rounded-lg bg-canvas p-4 text-left text-sm">
           <SummaryRow label="Service" value={service?.name ?? ''} />
           <SummaryRow label="Dentist" value={dentistLabel} />
           {date && start && <SummaryRow label="When" value={`${formatDateHuman(date)}, ${formatTime12(start)}`} />}
           <SummaryRow label="Email" value={details.email} />
         </dl>
-        <p className="mt-4 text-sm text-slate-600">
+        <p className="mt-4 text-sm text-ink-muted">
           This is a request, not yet a confirmed booking.
           {clinicPhone ? ` For changes, call the clinic at ${clinicPhone}.` : ''}
         </p>
@@ -250,8 +264,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           const done = typeof step === 'number' && step > n;
           return (
             <li key={n} aria-current={active ? 'step' : undefined} className="flex flex-col gap-1.5">
-              <span className={cx('h-1.5 rounded-full', active || done ? 'bg-brand-600' : 'bg-slate-200')} />
-              <span className={cx('text-xs font-medium', active ? 'text-brand-800' : done ? 'text-slate-700' : 'text-slate-500')}>
+              <span className={cx('h-1.5 rounded-full', active || done ? 'bg-brand-600' : 'bg-brand-100')} />
+              <span className={cx('text-xs font-medium', active ? 'text-brand-800' : done ? 'text-ink' : 'text-ink-muted')}>
                 <span className="sr-only">Step {n}: </span>
                 {label}
               </span>
@@ -262,12 +276,12 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
       {step === 1 && (
         <section className="flex flex-col gap-5" aria-labelledby="step1-heading">
-          <h2 id="step1-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+          <h2 id="step1-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-ink outline-none">
             What do you need?
           </h2>
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium text-slate-800">Service</legend>
-            {services.length === 0 && <p className="text-sm text-slate-600">No services are available for online booking right now.</p>}
+            <legend className="mb-2 text-sm font-medium text-ink">Service</legend>
+            {services.length === 0 && <p className="text-sm text-ink-muted">No services are available for online booking right now.</p>}
             {services.map((s) => (
               <ChoiceCard
                 key={s.id}
@@ -281,7 +295,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             {errors.serviceId && <p className="text-sm text-red-700" role="alert">Please choose a service.</p>}
           </fieldset>
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-2 text-sm font-medium text-slate-800">Dentist</legend>
+            <legend className="mb-2 text-sm font-medium text-ink">Dentist</legend>
             <ChoiceCard
               name="dentist"
               checked={dentistId === 'any'}
@@ -302,10 +316,10 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       {step === 2 && (
         <section className="flex flex-col gap-5" aria-labelledby="step2-heading">
           <div>
-            <h2 id="step2-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+            <h2 id="step2-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-ink outline-none">
               Pick a date and time
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <p className="mt-1 text-sm text-ink-muted">
               {service?.name} · {dentistLabel}
             </p>
           </div>
@@ -315,7 +329,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               {TAKEN_TEXT}
             </div>
           )}
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+          <div className="rounded-xl border border-rule bg-white p-3">
             <p id="cal-label" className="sr-only">
               Appointment date
             </p>
@@ -332,15 +346,15 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
           {date && (
             <fieldset aria-describedby="slots-status">
-              <legend className="mb-2 flex items-center gap-1.5 text-sm font-medium text-slate-800">
-                <ClockIcon className="size-4 text-slate-500" />
+              <legend className="mb-2 flex items-center gap-1.5 text-sm font-medium text-ink">
+                <ClockIcon className="size-4 text-ink-muted" />
                 Open times on {formatDateHuman(date)}
               </legend>
               <div id="slots-status" aria-live="polite">
                 {slotsState === 'loading' && (
                   <div className="grid grid-cols-3 gap-2" aria-label="Loading open times">
                     {Array.from({ length: 6 }, (_, i) => (
-                      <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-200/70" />
+                      <div key={i} className="h-12 animate-pulse rounded-lg bg-brand-100/70" />
                     ))}
                   </div>
                 )}
@@ -353,9 +367,9 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                   </div>
                 )}
                 {slotsState === 'idle' && slots && slots.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-slate-300 bg-white p-4 text-center">
-                    <p className="text-sm font-semibold text-slate-900">No open times</p>
-                    <p className="mt-1 text-sm text-slate-600">Every time on this day is taken. Please pick another date.</p>
+                  <div className="rounded-lg border border-dashed border-line-strong bg-white p-4 text-center">
+                    <p className="text-sm font-semibold text-ink">No open times</p>
+                    <p className="mt-1 text-sm text-ink-muted">Every time on this day is taken. Please pick another date.</p>
                   </div>
                 )}
               </div>
@@ -370,8 +384,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                           'relative flex h-12 cursor-pointer items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors',
                           'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
                           checked
-                            ? 'bg-brand-700 text-white shadow-sm'
-                            : 'bg-white text-slate-900 ring-1 ring-slate-300 hover:bg-brand-50 hover:ring-brand-400',
+                            ? 'bg-brand-700 text-white'
+                            : 'bg-white text-ink ring-1 ring-line-strong hover:bg-brand-50 hover:ring-brand-400',
                         )}
                       >
                         <input
@@ -399,7 +413,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             </fieldset>
           )}
           {!date && (
-            <p className="flex items-center gap-2 text-sm text-slate-600">
+            <p className="flex items-center gap-2 text-sm text-ink-muted">
               <CalendarIcon className="size-4" /> Choose a day to see open times. Greyed-out days are closed.
             </p>
           )}
@@ -417,15 +431,15 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
       {step === 3 && (
         <section className="flex flex-col gap-4" aria-labelledby="step3-heading">
-          <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+          <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-ink outline-none">
             Your details
           </h2>
 
           <div className="flex items-start gap-3 rounded-lg border border-brand-200 bg-brand-50 p-3 text-sm">
             <ToothIcon className="mt-0.5 size-5 shrink-0 text-brand-700" />
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-900">{service?.name}</p>
-              <p className="text-slate-700">
+              <p className="font-semibold text-ink">{service?.name}</p>
+              <p className="text-ink">
                 {date && start ? `${formatDateHuman(date)}, ${formatTime12(start)}` : ''} · {dentistLabel}
               </p>
             </div>
@@ -463,7 +477,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="name@example.com"
+            placeholder="name@email.com"
             required
             value={details.email}
             onChange={(e) => setDetail('email', e.target.value)}
@@ -521,7 +535,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             label={CONSENT_TEXT}
             error={errors.consent}
           />
-          <p id="book-privacy" className="-mt-2 text-xs leading-relaxed text-slate-600">
+          <p id="book-privacy" className="-mt-2 text-xs leading-relaxed text-ink-muted">
             The clinic uses these details only to schedule your visit and send its confirmation and reminder. This is a demo
             system: all data is deleted after the project defense. To see, correct or delete your details,{' '}
             {clinicPhone ? `call the clinic at ${clinicPhone}` : 'contact the clinic'}.
@@ -537,7 +551,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               Request appointment
             </Button>
           </div>
-          {!consent && <p className="-mt-2 text-center text-xs text-slate-500">Tick the consent box to send your request.</p>}
+          {!consent && <p className="-mt-2 text-center text-xs text-ink-muted">Tick the consent box to send your request.</p>}
         </section>
       )}
     </form>
@@ -550,12 +564,12 @@ function ChoiceCard({ name, checked, onChange, title, meta }: { name: string; ch
       className={cx(
         'flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border bg-white px-4 py-3 transition-colors',
         'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
-        checked ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600' : 'border-slate-300 hover:border-slate-400',
+        checked ? 'border-brand-600 bg-brand-100/70 ring-1 ring-brand-600' : 'border-line-strong hover:border-line-strong',
       )}
     >
       <input type="radio" name={name} checked={checked} onChange={onChange} className="size-5 shrink-0 accent-brand-700" />
-      <span className="min-w-0 flex-1 text-base font-medium text-slate-900">{title}</span>
-      {meta && <span className="shrink-0 text-sm text-slate-600">{meta}</span>}
+      <span className="min-w-0 flex-1 text-base font-medium text-ink">{title}</span>
+      {meta && <span className="shrink-0 text-sm text-ink-muted">{meta}</span>}
     </label>
   );
 }
@@ -563,8 +577,8 @@ function ChoiceCard({ name, checked, onChange, title, meta }: { name: string; ch
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="min-w-0 text-right font-medium break-words text-slate-900">{value}</dd>
+      <dt className="text-ink-muted">{label}</dt>
+      <dd className="min-w-0 text-right font-medium break-words text-ink">{value}</dd>
     </div>
   );
 }

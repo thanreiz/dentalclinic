@@ -35,13 +35,13 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <Link href="/patients" className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-slate-900">
+      <Link href="/patients" className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium text-ink-muted hover:text-ink">
         <ArrowLeft className="size-4" /> Patients
       </Link>
       <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{patient.fullName}</h1>
-          <p className="mt-1 text-sm text-slate-600">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{patient.fullName}</h1>
+          <p className="mt-1 text-sm text-ink-muted">
             {formatContact(patient.contactNumber)} · {ageOn(patient.birthdate, today)} yrs · Patient #{patient.patientId}
           </p>
         </div>
@@ -67,7 +67,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] text-left text-sm">
               <caption className="sr-only">Appointment history for {patient.fullName}</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide text-slate-600 uppercase">
+              <thead className="border-b border-rule text-[13px] font-medium text-ink-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3">Date</th>
                   <th scope="col" className="px-4 py-3">Service</th>
@@ -78,31 +78,31 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
                   <th scope="col" className="px-4 py-3">Dentist note</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 align-top">
+              <tbody className="divide-y divide-rule align-top">
                 {history.map((h) => (
-                  <tr key={h.appointmentId} className="hover:bg-slate-50">
+                  <tr key={h.appointmentId} className="hover:bg-canvas">
                     <td className="px-4 py-3 whitespace-nowrap">
                       <Link href={`/appointments/${h.appointmentId}`} className="font-semibold text-brand-800 hover:underline">
                         {formatDateHuman(h.date)}
                       </Link>
-                      <span className="block text-xs text-slate-500">
+                      <span className="block text-xs text-ink-muted">
                         {formatTime12(h.start)} – {formatTime12(h.end)}
                       </span>
-                      {h.rescheduledFromId && <span className="block text-xs text-slate-500">Rescheduled from #{h.rescheduledFromId}</span>}
+                      {h.rescheduledFromId && <span className="block text-xs text-ink-muted">Rescheduled from #{h.rescheduledFromId}</span>}
                     </td>
-                    <td className="px-4 py-3 text-slate-800">{h.serviceName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-800">{h.dentistName}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-700">{h.chairName ?? <span className="text-slate-400">—</span>}</td>
+                    <td className="px-4 py-3 text-ink">{h.serviceName}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink">{h.dentistName}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink">{h.chairName ?? <span className="text-line-strong">—</span>}</td>
                     <td className="px-4 py-3">
                       <StatusBadge status={h.status} />
                     </td>
                     <td className="px-4 py-3">
                       <ChannelBadge channel={h.channel} />
                     </td>
-                    <td className="max-w-72 px-4 py-3 whitespace-pre-wrap text-slate-700">
-                      {h.dentistNote || <span className="text-slate-400">—</span>}
+                    <td className="max-w-72 px-4 py-3 whitespace-pre-wrap text-ink">
+                      {h.dentistNote || <span className="text-line-strong">—</span>}
                       {h.patientNote && (
-                        <span className={cx('mt-1 block text-xs', h.patientNote.startsWith(MISMATCH_PREFIX) ? 'font-medium text-amber-800' : 'text-slate-500')}>
+                        <span className={cx('mt-1 block text-xs', h.patientNote.startsWith(MISMATCH_PREFIX) ? 'font-medium text-amber-800' : 'text-ink-muted')}>
                           Patient: {h.patientNote}
                         </span>
                       )}
@@ -120,9 +120,9 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'red' }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-xs">
-      <p className="text-xs font-medium text-slate-600">{label}</p>
-      <p className={`mt-0.5 text-2xl font-semibold tabular-nums ${tone === 'red' ? 'text-red-700' : 'text-slate-900'}`}>{value}</p>
+    <div className="rounded-lg border border-rule bg-white px-4 py-3">
+      <p className="text-xs font-medium text-ink-muted">{label}</p>
+      <p className={`mt-0.5 text-2xl font-semibold tabular-nums ${tone === 'red' ? 'text-red-700' : 'text-ink'}`}>{value}</p>
     </div>
   );
 }

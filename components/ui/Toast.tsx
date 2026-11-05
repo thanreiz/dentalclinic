@@ -42,7 +42,7 @@ const TONES: Record<ToastTone, { box: string; icon: typeof CheckIcon; iconCls: s
   success: { box: 'border-green-200', icon: CheckIcon, iconCls: 'bg-green-100 text-green-800' },
   error: { box: 'border-red-200', icon: AlertIcon, iconCls: 'bg-red-100 text-red-800' },
   warning: { box: 'border-amber-300', icon: AlertIcon, iconCls: 'bg-amber-100 text-amber-900' },
-  info: { box: 'border-slate-200', icon: InfoIcon, iconCls: 'bg-slate-100 text-slate-700' },
+  info: { box: 'border-rule', icon: InfoIcon, iconCls: 'bg-brand-50 text-ink' },
 };
 
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
@@ -65,13 +65,13 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-slate-900">{toast.title}</p>
-        {toast.description && <p className="mt-0.5 text-sm text-slate-600">{toast.description}</p>}
+        <p className="text-sm font-semibold text-ink">{toast.title}</p>
+        {toast.description && <p className="mt-0.5 text-sm text-ink-muted">{toast.description}</p>}
       </div>
       <button
         type="button"
         onClick={onDismiss}
-        className="-m-1 grid size-8 shrink-0 place-items-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+        className="-m-1 grid size-8 shrink-0 place-items-center rounded-md text-ink-muted hover:bg-brand-50 hover:text-ink"
         aria-label="Dismiss notification"
       >
         <XIcon className="size-4" />

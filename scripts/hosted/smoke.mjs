@@ -1,11 +1,24 @@
-// node scripts/hosted/smoke.mjs [https://your-app.vercel.app]
+// node scripts/hosted/smoke.mjs --live-write [https://your-app.vercel.app]
 // Live end-to-end check on the deployed app: public request -> staff login -> confirm (confirmation email
-// to the demo Gmail) -> staff booking for tomorrow -> reminder cron twice (expect sent 1, then sent 0).
-// Creates test rows on the hosted DB; run `node scripts/hosted/seed.mjs` afterwards to clear them.
+// to the demo Gmail) -> staff booking -> reminder cron twice (expect sent 1, then sent 0).
+// WRITES to the hosted DB (2 appointments, 2 patients, real emails) and runs the reminder cron, which
+// can email real patients. It refuses to run without --live-write.
+// Do NOT run `node scripts/hosted/seed.mjs` to clean up: that reseeds the whole hosted database.
+// Remove the "Smoke Test Patient" / "Smoke Reminder Patient" rows by hand instead.
 import { loadHostedEnv } from "./load-env.mjs";
 
+const args = process.argv.slice(2);
+if (!args.includes("--live-write")) {
+  console.error(
+    "Refusing to run: this script creates test appointments and patients on the LIVE database, sends real emails\n" +
+      "and runs the reminder cron. Re-run with --live-write if that is what you want:\n" +
+      "  node scripts/hosted/smoke.mjs --live-write [https://your-app.vercel.app]",
+  );
+  process.exit(1);
+}
+
 const v = loadHostedEnv();
-const U = (process.argv[2] || "https://dentalclinic-sooty.vercel.app").replace(/\/$/, "");
+const U = (args.find((a) => !a.startsWith("--")) || "https://molarandco.vercel.app").replace(/\/$/, "");
 const H = { "Content-Type": "application/json", Origin: U };
 
 const json = async (r) => {

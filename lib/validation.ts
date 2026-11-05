@@ -138,6 +138,8 @@ export const bookingRequestSchema = z.object({
   patientNote: patientNoteSchema.optional(),
   consent: z.literal(true, { error: 'Please agree to the Data Privacy Act consent to continue' }),
   website: z.string().max(500).optional(),
+  /** Signed token from the Messenger bot link; marks the request as channel 'chat'. */
+  chatRef: z.string().max(200).optional(),
 });
 export type BookingRequestInput = z.input<typeof bookingRequestSchema>;
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;
@@ -195,10 +197,16 @@ export const staffBookingSchema = z
     chairId: idSchema,
     channel: staffChannelSchema,
     patientNote: patientNoteSchema.optional(),
+    /** Follow-up visit: the attended appointment this one follows (needs `patientId`). */
+    followUpOf: idSchema.optional(),
   })
   .refine((v) => (v.patientId === undefined) !== (v.newPatient === undefined), {
     message: 'Pick an existing patient or enter a new one',
     path: ['patientId'],
+  })
+  .refine((v) => v.followUpOf === undefined || v.patientId !== undefined, {
+    message: 'A follow-up must be booked for the existing patient',
+    path: ['followUpOf'],
   });
 export type StaffBookingInput = z.input<typeof staffBookingSchema>;
 export type StaffBooking = z.infer<typeof staffBookingSchema>;

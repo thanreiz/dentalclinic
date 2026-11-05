@@ -42,20 +42,42 @@ const CONFLICT_REASONS: Record<string, string> = {
   outside_hours: "The time is no longer inside the dentist's working hours.",
 };
 
-export default function AppointmentActions({ appointment: a, dentists, today }: { appointment: Appt; dentists: DentistOpt[]; today: string }) {
+export default function AppointmentActions({
+  appointment: a,
+  dentists,
+  today,
+  followUpHref,
+}: {
+  appointment: Appt;
+  dentists: DentistOpt[];
+  today: string;
+  followUpHref?: string;
+}) {
   if (a.status === 'pending') return <PendingActions a={a} today={today} />;
   if (a.status === 'scheduled') return <ScheduledActions a={a} dentists={dentists} today={today} />;
   return (
+    <div className="flex flex-col gap-5">
+    {followUpHref && (
+      <Card>
+        <CardHeader title="Follow-up" description="Book the next visit for this patient. Patient, dentist and service are prefilled; the usual overlap and hours checks apply." />
+        <div className="px-4 py-4 sm:px-5">
+          <Link href={followUpHref} className={buttonClasses('primary', 'md')}>
+            Book follow-up
+          </Link>
+        </div>
+      </Card>
+    )}
     <Card>
       <CardHeader title="Actions" />
-      <div className="flex items-start gap-3 px-4 py-4 text-sm text-slate-700 sm:px-5">
-        <InfoIcon className="mt-0.5 size-5 shrink-0 text-slate-400" />
+      <div className="flex items-start gap-3 px-4 py-4 text-sm text-ink sm:px-5">
+        <InfoIcon className="mt-0.5 size-5 shrink-0 text-line-strong" />
         <p>
           This appointment is <StatusBadge status={a.status} />. That status is final, so there is nothing more to change. You can still edit the dentist
           note.
         </p>
       </div>
     </Card>
+    </div>
   );
 }
 
@@ -276,8 +298,8 @@ function ScheduledActions({ a, dentists, today }: { a: Appt; dentists: DentistOp
             </Button>
           ))}
           {lockedUntilStart && (
-            <p className="flex items-start gap-2 text-sm text-slate-600">
-              <InfoIcon className="mt-0.5 size-4 shrink-0 text-slate-400" />
+            <p className="flex items-start gap-2 text-sm text-ink-muted">
+              <InfoIcon className="mt-0.5 size-4 shrink-0 text-line-strong" />
               Attended and No-show unlock once the start time ({formatTime12(a.start)}, {formatDateHuman(a.date)}) has passed.
             </p>
           )}

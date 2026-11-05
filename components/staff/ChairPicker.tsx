@@ -25,10 +25,10 @@ export function ChairPicker({
 }) {
   return (
     <fieldset>
-      <legend className="mb-1.5 text-sm font-medium text-slate-800">Chair (free at that time)</legend>
+      <legend className="mb-1.5 text-sm font-medium text-ink">Chair (free at that time)</legend>
       <div aria-live="polite">
-        {disabledReason && <p className="text-sm text-slate-500">{disabledReason}</p>}
-        {!disabledReason && state === 'loading' && <div className="h-10 w-full animate-pulse rounded-md bg-slate-200/70" />}
+        {disabledReason && <p className="text-sm text-ink-muted">{disabledReason}</p>}
+        {!disabledReason && state === 'loading' && <div className="h-10 w-full animate-pulse rounded-md bg-brand-100/70" />}
         {!disabledReason && state === 'error' && (
           <p className="text-sm text-red-700">
             Could not load chairs.{' '}
@@ -53,7 +53,7 @@ export function ChairPicker({
                 className={cx(
                   'flex h-10 cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors',
                   'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
-                  checked ? 'bg-brand-700 text-white shadow-sm' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50',
+                  checked ? 'bg-brand-700 text-white' : 'bg-white text-ink ring-1 ring-line-strong hover:bg-brand-50',
                 )}
               >
                 <input type="radio" name={name} value={c.chairId} aria-label={c.chairName} className="sr-only" checked={checked} onChange={() => onChange(c.chairId)} />

@@ -46,8 +46,8 @@ export default async function RequestsPage() {
               <Link
                 href={`/appointments/${r.appointmentId}`}
                 className={cx(
-                  'group flex items-stretch gap-4 rounded-lg border bg-white p-4 shadow-xs transition-colors hover:border-brand-300 hover:bg-brand-50/30',
-                  r.startPassed ? 'border-red-200' : 'border-slate-200',
+                  'group flex items-stretch gap-4 rounded-lg border bg-white p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/30',
+                  r.startPassed ? 'border-red-200' : 'border-rule',
                 )}
               >
                 <div className="hidden w-28 shrink-0 flex-col justify-center rounded-md bg-amber-50 px-3 py-2 text-center ring-1 ring-amber-200 sm:flex">
@@ -56,30 +56,30 @@ export default async function RequestsPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <p className="text-base font-semibold text-slate-900">{r.patientName}</p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-base font-semibold text-ink">{r.patientName}</p>
+                    <p className="text-sm text-ink-muted">
                       {r.serviceName} · {r.dentistName}
                     </p>
                   </div>
-                  <p className="mt-1 text-sm font-medium text-slate-800 sm:hidden">
+                  <p className="mt-1 text-sm font-medium text-ink sm:hidden">
                     {formatDateHuman(r.date)}, {formatTime12(r.start)}
                   </p>
-                  <p className="mt-0.5 hidden text-sm text-slate-700 sm:block">
+                  <p className="mt-0.5 hidden text-sm text-ink sm:block">
                     Requested time: {formatDateHuman(r.date)}, {formatTime12(r.start)} – {formatTime12(r.end)}
                   </p>
-                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-ink-muted">
                     <span className="inline-flex items-center gap-1.5">
-                      <PhoneIcon className="size-4 text-slate-400" />
+                      <PhoneIcon className="size-4 text-line-strong" />
                       {formatContact(r.contactNumber)}
                     </span>
                     {r.email && (
                       <span className="inline-flex min-w-0 items-center gap-1.5">
-                        <MailIcon className="size-4 shrink-0 text-slate-400" />
+                        <MailIcon className="size-4 shrink-0 text-line-strong" />
                         <span className="truncate">{r.email}</span>
                       </span>
                     )}
                     <span className="inline-flex items-center gap-1.5">
-                      <ClockIcon className="size-4 text-slate-400" />
+                      <ClockIcon className="size-4 text-line-strong" />
                       Sent {formatDateTimeHuman(r.requestedAt)}
                     </span>
                   </div>
@@ -89,8 +89,8 @@ export default async function RequestsPage() {
                       <>
                         {flag && <DetailsDifferFlag flag={flag} className="mt-2.5" />}
                         {note && (
-                          <p className="mt-2.5 rounded-md bg-slate-50 px-3 py-2 text-sm whitespace-pre-wrap text-slate-700 ring-1 ring-slate-200">
-                            <span className="font-medium text-slate-900">Patient note: </span>
+                          <p className="mt-2.5 rounded-md bg-canvas px-3 py-2 text-sm whitespace-pre-wrap text-ink ring-1 ring-rule">
+                            <span className="font-medium text-ink">Patient note: </span>
                             {note}
                           </p>
                         )}
@@ -103,7 +103,7 @@ export default async function RequestsPage() {
                     </p>
                   )}
                 </div>
-                <ChevronRight className="size-5 shrink-0 self-center text-slate-400 group-hover:text-brand-700" />
+                <ChevronRight className="size-5 shrink-0 self-center text-line-strong group-hover:text-brand-700" />
               </Link>
             </li>
           ))}

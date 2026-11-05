@@ -16,13 +16,18 @@ const vars = {
   SMTP_USER: hosted.SMTP_USER,
   SMTP_PASS: hosted.SMTP_PASS,
   MAIL_FROM: hosted.MAIL_FROM,
-  CLINIC_NAME: hosted.CLINIC_NAME || "G4 Dental Clinic",
+  CLINIC_NAME: hosted.CLINIC_NAME || "Molar & Co.",
   CLINIC_PHONE: hosted.CLINIC_PHONE || "0917 000 0000",
   SLOT_INTERVAL_MINUTES: hosted.SLOT_INTERVAL_MINUTES || "30",
   NO_SHOW_THRESHOLD: hosted.NO_SHOW_THRESHOLD || "2",
   // Shared venue Wi-Fi at the defense (docs/DEPLOY.md, QA-2). Remove after the defense.
   REQUEST_LIMIT_PER_IP: hosted.REQUEST_LIMIT_PER_IP || "30",
 };
+
+// Messenger bot: only pushed when filled in, so an empty line never overwrites a working value.
+for (const k of ["MESSENGER_PAGE_TOKEN", "MESSENGER_APP_SECRET", "MESSENGER_VERIFY_TOKEN", "APP_URL"]) {
+  if (hosted[k]) vars[k] = hosted[k];
+}
 
 let failed = 0;
 for (const [name, value] of Object.entries(vars)) {

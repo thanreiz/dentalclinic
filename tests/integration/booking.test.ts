@@ -8,7 +8,7 @@ import { createOnlineRequest } from '@/lib/services/booking';
 import { ServiceError } from '@/lib/services/errors';
 import { addDays, todayManila } from '@/lib/time';
 import { bookingRequestSchema } from '@/lib/validation';
-import { bookingBody, EXTRACTION, FILLING, insertAppt, LIM, newContact, PROPHY, req, REYES, staffCookie, sundayAhead, workday } from './api-helpers';
+import { bookingBody, EXTRACTION, FILLING, CRUZ, insertAppt, LIM, newContact, PROPHY, req, REYES, staffCookie, sundayAhead, workday } from './api-helpers';
 import { resetTestDb } from './helpers';
 
 beforeAll(async () => {
@@ -40,8 +40,8 @@ describe('GET /api/slots', () => {
     const date = workday(0);
     const res = await getSlotsRoute(req('GET', `/api/slots?date=${date}&serviceId=${EXTRACTION}&dentistId=any`));
     const { slots } = await res.json();
-    expect(slots.find((s: { start: string }) => s.start === '10:00').dentistIds).toEqual([LIM]);
-    expect(slots.find((s: { start: string }) => s.start === '09:00').dentistIds).toEqual([REYES, LIM]);
+    expect(slots.find((s: { start: string }) => s.start === '10:00').dentistIds).toEqual([LIM, CRUZ]);
+    expect(slots.find((s: { start: string }) => s.start === '09:00').dentistIds).toEqual([REYES, LIM, CRUZ]);
   });
 
   it('Sunday -> no slots; past date, >60 days, bad params -> 400', async () => {
@@ -120,6 +120,43 @@ describe('POST /api/requests', () => {
     expect(Number(n!.n)).toBe(1);
   });
 
+  it('the same person sending the same request again -> 409 duplicate_request, nothing saved', async () => {
+    const date = workday(9);
+    const contactNumber = newContact();
+    const first = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', serviceId: FILLING, contactNumber })));
+    expect(first.status).toBe(201);
+    const before = await countAppts();
+    // Same link submitted again: same slot, then the same time with the other dentist, then an overlapping time.
+    for (const extra of [{ start: '10:00' }, { start: '10:00', dentistId: LIM }, { start: '10:30' }]) {
+      const res = await postRequest(req('POST', '/api/requests', bookingBody({ date, serviceId: FILLING, contactNumber, ...extra })));
+      expect(res.status).toBe(409);
+      const body = await res.json();
+      expect(body.error).toBe('duplicate_request');
+      expect(body.slots).toBeUndefined();
+    }
+    expect(await countAppts()).toBe(before);
+  });
+
+  it('a different time or day is still allowed, and so is another person at the same time', async () => {
+    const date = workday(9);
+    const contactNumber = newContact();
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '15:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date: workday(10), start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    // A stranger asking for the taken time is still "slot taken", not a duplicate.
+    const other = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, dentistId: REYES })));
+    expect([201, 409]).toContain(other.status);
+    if (other.status === 409) expect((await other.json()).error).not.toBe('duplicate_request');
+  });
+
+  it('a declined or cancelled request does not block sending it again', async () => {
+    const date = workday(11);
+    const contactNumber = newContact();
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    await query("UPDATE appointments SET status = 'declined' WHERE appointment_date = ? AND start_time = '11:00:00'", [date]);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+  });
+
   it('slot taken -> 409 slot_taken with fresh slots; off-grid / outside hours / Sunday -> 409', async () => {
     const date = workday(2); // Reyes 09:00 pending from the previous test
     const res = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '09:00' })));
@@ -140,15 +177,17 @@ describe('POST /api/requests', () => {
     await insertAppt({ date, start: '10:00', end: '10:30', status: 'scheduled', dentistId: REYES });
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(201);
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '11:00', dentistId: 'any' })))).status).toBe(201);
+    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(201);
     const rows = await query<{ start_time: string; dentist_id: number }>(
-      "SELECT start_time, dentist_id FROM appointments WHERE appointment_date = ? AND status = 'pending' ORDER BY start_time",
+      "SELECT start_time, dentist_id FROM appointments WHERE appointment_date = ? AND status = 'pending' ORDER BY start_time, dentist_id",
       [date],
     );
     expect(rows).toEqual([
       { start_time: '10:00:00', dentist_id: LIM },
+      { start_time: '10:00:00', dentist_id: CRUZ },
       { start_time: '11:00:00', dentist_id: REYES },
     ]);
-    // both busy at 10:00 now -> 409
+    // all three busy at 10:00 now -> 409
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '10:00', dentistId: 'any' })))).status).toBe(409);
   });
 
@@ -163,12 +202,12 @@ describe('POST /api/requests', () => {
     expect(Number(n!.n)).toBe(1);
   });
 
-  it('10 concurrent "any" requests via the service -> exactly 2 (one per dentist)', async () => {
+  it('10 concurrent "any" requests via the service -> exactly 3 (one per dentist)', async () => {
     const date = workday(4);
     const input = () => bookingRequestSchema.parse(bookingBody({ date, start: '15:00', dentistId: 'any' }));
     const settled = await Promise.allSettled(Array.from({ length: 10 }, () => createOnlineRequest(input())));
     const ok = settled.filter((s) => s.status === 'fulfilled') as PromiseFulfilledResult<{ dentistId: number }>[];
-    expect(ok.map((s) => s.value.dentistId).sort()).toEqual([REYES, LIM]);
+    expect(ok.map((s) => s.value.dentistId).sort()).toEqual([REYES, LIM, CRUZ]);
     const rejected = settled.filter((s) => s.status === 'rejected') as PromiseRejectedResult[];
     expect(rejected.every((r) => r.reason instanceof ServiceError && r.reason.code === 'slot_taken')).toBe(true);
   });

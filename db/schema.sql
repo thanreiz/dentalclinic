@@ -1,6 +1,9 @@
 -- Dental Clinic Appointment System schema.
 -- Below the DROP block is Listing 3.2 from the paper (docs/PRD.md "Data Model"), copied exactly.
 -- Do not edit the CREATE TABLE statements: the paper is the contract (NF02).
+-- Approved additions to Listing 3.2 (update the paper's ERD/data dictionary to match):
+--   patients.messenger_psid          (Messenger notifications)
+--   appointments.follow_up_of_id     (follow-up visits link back to the attended visit they follow)
 -- The DROP block only exists so `npm run db:reset` can rebuild from scratch (reverse FK order).
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -28,6 +31,7 @@ CREATE TABLE patients (
   contact_number  VARCHAR(20)  NOT NULL,
   email           VARCHAR(150) NULL,
   birthdate       DATE         NOT NULL,
+  messenger_psid  VARCHAR(40)  NULL,
   CONSTRAINT pk_patients PRIMARY KEY (patient_id),
   CONSTRAINT uq_patients_contact UNIQUE (contact_number)
 );
@@ -85,6 +89,7 @@ CREATE TABLE appointments (
   dentist_note         TEXT         NULL,
   reminder_sent_at     DATETIME     NULL,
   rescheduled_from_id  INT UNSIGNED NULL,
+  follow_up_of_id      INT UNSIGNED NULL,
   CONSTRAINT pk_appointments PRIMARY KEY (appointment_id),
   CONSTRAINT fk_appt_patient FOREIGN KEY (patient_id)
     REFERENCES patients (patient_id) ON UPDATE CASCADE ON DELETE RESTRICT,
@@ -95,6 +100,8 @@ CREATE TABLE appointments (
   CONSTRAINT fk_appt_chair FOREIGN KEY (chair_id)
     REFERENCES chairs (chair_id) ON UPDATE CASCADE ON DELETE RESTRICT,
   CONSTRAINT fk_appt_rescheduled FOREIGN KEY (rescheduled_from_id)
+    REFERENCES appointments (appointment_id) ON DELETE RESTRICT,
+  CONSTRAINT fk_appt_follow_up FOREIGN KEY (follow_up_of_id)
     REFERENCES appointments (appointment_id) ON DELETE RESTRICT,
   CONSTRAINT chk_appt_times CHECK (end_time > start_time)
 );

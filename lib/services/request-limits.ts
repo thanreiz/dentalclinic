@@ -32,7 +32,7 @@ export const tooManyFromDeviceMessage = () =>
 export const tooManyRequests = (message: string, extra: Record<string, unknown> = {}) =>
   new ServiceError(429, 'too_many_requests', message, extra);
 
-/** Clinic-wide caps on online requests created in the last hour / day. */
+/** Clinic-wide caps on online and chat (Messenger) requests created in the last hour / day. */
 export async function assertGlobalRequestCaps(conn: Queryable): Promise<void> {
   const perHour = requestLimitPerHour();
   const perDay = requestLimitPerDay();
@@ -40,7 +40,7 @@ export async function assertGlobalRequestCaps(conn: Queryable): Promise<void> {
   const r = await queryOne<{ lastHour: number | string | null; lastDay: number | string | null }>(
     `SELECT SUM(requested_at >= NOW() - INTERVAL 1 HOUR) AS lastHour, COUNT(*) AS lastDay
        FROM appointments
-      WHERE channel = 'online' AND requested_at >= NOW() - INTERVAL 1 DAY`,
+      WHERE channel IN ('online', 'chat') AND requested_at >= NOW() - INTERVAL 1 DAY`,
     [],
     conn,
   );
@@ -57,7 +57,7 @@ export async function assertContactRequestCap(conn: Queryable, patientId: number
   if (max <= 0) return;
   const r = await queryOne<{ n: number | string }>(
     `SELECT COUNT(*) AS n FROM appointments
-      WHERE patient_id = ? AND channel = 'online' AND status = 'pending' AND appointment_date >= CURDATE()`,
+      WHERE patient_id = ? AND channel IN ('online', 'chat') AND status = 'pending' AND appointment_date >= CURDATE()`,
     [patientId],
     conn,
   );

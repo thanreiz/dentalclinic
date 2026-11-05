@@ -31,18 +31,18 @@ export default function PatientSearchBox({ initial }: { initial: string }) {
       <label htmlFor="patient-q" className="sr-only">
         Search patients by name or contact number
       </label>
-      <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-slate-400" />
+      <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-line-strong" />
       <input
         id="patient-q"
         name="q"
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by name or contact number"
+        placeholder="Search name or number"
         autoComplete="off"
-        className={cx(controlBase, 'h-11 border-slate-300 pr-10 pl-10')}
+        className={cx(controlBase, 'h-11 border-line-strong pr-10 pl-10')}
       />
-      {isPending && <Spinner className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-slate-400" />}
+      {isPending && <Spinner className="absolute top-1/2 right-3 size-4 -translate-y-1/2 text-line-strong" />}
     </form>
   );
 }

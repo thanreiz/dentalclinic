@@ -206,7 +206,7 @@ describe('requests, appointment detail, patients, setup', () => {
 
   it('setup lists', async () => {
     const d = await listDentistsWithSchedules();
-    expect(d.map((x) => x.dentistName)).toEqual(['Dr. Reyes', 'Dr. Lim']);
+    expect(d.map((x) => x.dentistName)).toEqual(['Dr. Reyes', 'Dr. Lim', 'Dr. Cruz']);
     expect(d[0].schedules).toHaveLength(6);
     expect(d[0].week[0]).toBeNull();
     expect(d[0].week[1]).toEqual({ start: '09:00', end: '17:00' });
@@ -215,6 +215,15 @@ describe('requests, appointment detail, patients, setup', () => {
       ['Oral prophylaxis', 30],
       ['Tooth filling', 60],
       ['Tooth extraction', 45],
+      ['Exam and X-ray', 30],
+      ['Wisdom tooth removal', 60],
+      ['Root canal treatment', 90],
+      ['Crown preparation', 90],
+      ['Braces fitting', 120],
+      ['Braces adjustment', 30],
+      ['Braces removal', 60],
+      ['Teeth whitening', 60],
+      ['Dental implant', 90],
     ]);
     expect((await listChairs()).map((c) => c.chairName)).toEqual(['Chair 1', 'Chair 2']);
   });

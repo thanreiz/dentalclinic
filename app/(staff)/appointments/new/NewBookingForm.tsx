@@ -32,6 +32,7 @@ type Props = {
     date?: string;
     start?: string;
     channel?: StaffChannel;
+    followUpOf?: number;
   };
 };
 
@@ -161,6 +162,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
       chairId: effectiveChair,
       channel,
       patientNote: note,
+      ...(initial.followUpOf && mode === 'search' && patient?.patientId === initial.patient?.patientId ? { followUpOf: initial.followUpOf } : {}),
     };
     const r = await api<{ appointmentId?: number; id?: number; patientId?: number }>('/api/appointments', { body });
     setSaving(false);
@@ -211,7 +213,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
             description="Search by name or contact number first, so the patient keeps one record."
             actions={
               !patient && (
-                <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5" role="group" aria-label="Patient source">
+                <div className="inline-flex rounded-lg border border-line-strong bg-white p-0.5" role="group" aria-label="Patient source">
                   {(['search', 'new'] as const).map((m) => (
                     <button
                       key={m}
@@ -221,7 +223,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                         setMode(m);
                         clearError('patient');
                       }}
-                      className={cx('h-8 rounded-md px-3 text-sm font-medium', mode === m ? 'bg-brand-700 text-white' : 'text-slate-700 hover:bg-slate-100')}
+                      className={cx('h-8 rounded-md px-3 text-sm font-medium', mode === m ? 'bg-brand-700 text-white' : 'text-ink hover:bg-brand-50')}
                     >
                       {m === 'search' ? 'Existing patient' : 'New patient'}
                     </button>
@@ -234,8 +236,8 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
             {patient ? (
               <div className="flex items-start justify-between gap-3 rounded-lg border border-brand-200 bg-brand-50 p-3">
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-900">{patient.fullName}</p>
-                  <p className="text-sm text-slate-700">
+                  <p className="font-semibold text-ink">{patient.fullName}</p>
+                  <p className="text-sm text-ink">
                     {formatContact(patient.contactNumber)}
                     {patient.email ? ` · ${patient.email}` : ''}
                     {patient.birthdate ? ` · born ${formatDateHuman(patient.birthdate)}` : ''}
@@ -254,18 +256,18 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     role="searchbox"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Name or contact number, e.g. Maria or 0917 555"
+                    placeholder="Name or number"
                     autoComplete="off"
                     className="pl-10"
                     error={errors.patient ?? errors.patientId}
                     autoFocus={!initial.patient}
                   />
-                  <SearchIcon className="pointer-events-none absolute top-[2.35rem] left-3 size-5 text-slate-400" />
-                  {searching && <Spinner className="absolute top-[2.45rem] right-3 size-4 text-slate-400" />}
+                  <SearchIcon className="pointer-events-none absolute top-[2.35rem] left-3 size-5 text-line-strong" />
+                  {searching && <Spinner className="absolute top-[2.45rem] right-3 size-4 text-line-strong" />}
                 </div>
                 <div aria-live="polite">
                   {results && results.rows.length === 0 && !searching && (
-                    <div className="mt-3 rounded-lg border border-dashed border-slate-300 px-3 py-3 text-sm text-slate-600">
+                    <div className="mt-3 rounded-lg border border-dashed border-line-strong px-3 py-3 text-sm text-ink-muted">
                       No patient matches &ldquo;{query.trim()}&rdquo;.{' '}
                       <button
                         type="button"
@@ -282,7 +284,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     </div>
                   )}
                   {results && results.rows.length > 0 && (
-                    <ul className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200">
+                    <ul className="mt-3 divide-y divide-rule overflow-hidden rounded-lg border border-rule">
                       {results.rows.slice(0, 8).map((p) => (
                         <li key={p.patientId}>
                           <button
@@ -294,8 +296,8 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                             className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left hover:bg-brand-50 focus-visible:bg-brand-50"
                           >
                             <span className="min-w-0">
-                              <span className="block truncate font-medium text-slate-900">{p.fullName}</span>
-                              <span className="block truncate text-sm text-slate-600">
+                              <span className="block truncate font-medium text-ink">{p.fullName}</span>
+                              <span className="block truncate text-sm text-ink-muted">
                                 {formatContact(p.contactNumber)}
                                 {p.birthdate ? ` · born ${formatDateHuman(p.birthdate)}` : ''}
                               </span>
@@ -306,7 +308,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                       ))}
                     </ul>
                   )}
-                  {results && results.total > 8 && <p className="mt-2 text-xs text-slate-500">Showing 8 of {results.total}. Type more to narrow it down.</p>}
+                  {results && results.total > 8 && <p className="mt-2 text-xs text-ink-muted">Showing 8 of {results.total}. Type more to narrow it down.</p>}
                 </div>
               </div>
             ) : (
@@ -364,8 +366,9 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
         <Card>
           <CardHeader title="2. Visit" description="Only open times and free chairs are shown." />
           <div className="flex flex-col gap-5 px-4 py-4 sm:px-5">
-            <div className="grid gap-4 sm:grid-cols-[1.5fr_1fr_1fr]">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Select
+                wrapperClassName="sm:col-span-2"
                 label="Service"
                 required
                 value={serviceId ?? ''}
@@ -442,7 +445,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
               disabledReason={slot ? undefined : chairCount ? 'Pick a time to see free chairs.' : 'No chairs are set up yet (see Setup).'}
             />
             <fieldset>
-              <legend className="mb-1.5 text-sm font-medium text-slate-800">Channel</legend>
+              <legend className="mb-1.5 text-sm font-medium text-ink">Channel</legend>
               <div className="flex flex-wrap gap-2">
                 {STAFF_CHANNELS.map((c) => (
                   <label
@@ -450,7 +453,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     className={cx(
                       'flex h-10 cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium',
                       'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
-                      channel === c ? 'bg-brand-700 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50',
+                      channel === c ? 'bg-brand-700 text-white' : 'bg-white text-ink ring-1 ring-line-strong hover:bg-brand-50',
                     )}
                   >
                     <input type="radio" name="channel" className="sr-only" checked={channel === c} onChange={() => setChannel(c)} />
@@ -476,13 +479,13 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
             <Row label="When" value={slot && validDate ? `${formatDateHuman(date)}, ${formatTime12(slot.start)} – ${formatTime12(slot.end)}` : null} />
             <Row label="Chair" value={free.chairs?.find((c) => c.chairId === effectiveChair)?.chairName} />
             <div className="flex items-center justify-between gap-3">
-              <dt className="text-slate-500">Channel</dt>
+              <dt className="text-ink-muted">Channel</dt>
               <dd>
                 <ChannelBadge channel={channel} />
               </dd>
             </div>
           </dl>
-          <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 border-t border-rule px-4 py-4 sm:px-5">
             <FormError>{formError}</FormError>
             <Button type="submit" size="lg" className="w-full" loading={saving} loadingText="Saving…">
               <PlusIcon className="size-4" /> Save booking
@@ -497,8 +500,8 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
 function Row({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="flex items-start justify-between gap-3">
-      <dt className="shrink-0 text-slate-500">{label}</dt>
-      <dd className={cx('min-w-0 text-right', value ? 'font-medium text-slate-900' : 'text-slate-400')}>{value || '—'}</dd>
+      <dt className="shrink-0 text-ink-muted">{label}</dt>
+      <dd className={cx('min-w-0 text-right', value ? 'font-medium text-ink' : 'text-line-strong')}>{value || '—'}</dd>
     </div>
   );
 }

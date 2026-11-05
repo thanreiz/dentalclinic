@@ -4,7 +4,7 @@ import { SearchIcon } from '@/components/ui/icons';
 
 export default function StaffNotFound() {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white">
+    <div className="rounded-lg border border-rule bg-white">
       <EmptyState
         icon={<SearchIcon />}
         title="Not found"

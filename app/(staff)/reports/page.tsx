@@ -36,12 +36,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader title="Reports" description="Computed from recorded appointments each time you open this page." actions={<ReportControls month={month} threshold={threshold} />} />
 
-      <h2 className="mb-3 text-lg font-semibold text-slate-900">{monthLabel(month)}</h2>
+      <h2 className="mb-3 text-lg font-semibold text-ink">{monthLabel(month)}</h2>
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Total label="Attended" value={t.attended} cls="text-green-800" />
-        <Total label="Cancelled" value={t.cancelled} cls="text-slate-800" hint="Excludes reschedules" />
+        <Total label="Cancelled" value={t.cancelled} cls="text-ink" hint="Excludes reschedules" />
         <Total label="No-show" value={t.noShow} cls="text-red-700" />
-        <Total label="No-show rate" value={formatRate(t.noShowRate)} cls="text-slate-900" hint="No-show ÷ (attended + no-show)" rate={t.noShowRate} />
+        <Total label="No-show rate" value={formatRate(t.noShowRate)} cls="text-ink" hint="No-show ÷ (attended + no-show)" rate={t.noShowRate} />
       </div>
 
       {t.total === 0 ? (
@@ -107,7 +107,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
               <caption className="sr-only">Patients with at least {threshold} no-shows</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
+              <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">
                 <tr>
                   <th scope="col" className="px-4 py-3">Patient</th>
                   <th scope="col" className="px-4 py-3">Contact number</th>
@@ -115,9 +115,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   <th scope="col" className="px-4 py-3">Last no-show</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-rule">
                 {repeat.map((p) => (
-                  <tr key={p.patientId} className="hover:bg-slate-50">
+                  <tr key={p.patientId} className="hover:bg-canvas">
                     <td className="px-4 py-3">
                       <Link href={`/patients/${p.patientId}`} className="font-semibold text-brand-800 hover:underline">
                         {p.fullName}
@@ -127,7 +127,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <td className="px-4 py-3 text-right">
                       <span className="inline-flex min-w-7 justify-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800 tabular-nums">{p.noShowCount}</span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-slate-700">{formatDateHuman(p.lastNoShowDate)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink">{formatDateHuman(p.lastNoShowDate)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -141,11 +141,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
 function Total({ label, value, cls, hint, rate }: { label: string; value: number | string; cls: string; hint?: string; rate?: number | null }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-4 py-3.5 shadow-xs">
-      <p className="text-sm font-medium text-slate-600">{label}</p>
+    <div className="rounded-lg border border-rule bg-white px-4 py-3.5">
+      <p className="text-sm font-medium text-ink-muted">{label}</p>
       <p className={cx('mt-1 text-3xl font-semibold tabular-nums', cls)}>{value}</p>
       {rate !== undefined && <RateBar rate={rate} className="mt-2" />}
-      {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-ink-muted">{hint}</p>}
     </div>
   );
 }
@@ -153,7 +153,7 @@ function Total({ label, value, cls, hint, rate }: { label: string; value: number
 function RateBar({ rate, className }: { rate: number | null; className?: string }) {
   const pct = rate === null ? 0 : Math.min(100, rate * 100);
   return (
-    <div className={cx('h-2 w-full overflow-hidden rounded-full bg-slate-100', className)} aria-hidden="true">
+    <div className={cx('h-2 w-full overflow-hidden rounded-full bg-brand-50', className)} aria-hidden="true">
       <div className={cx('h-full rounded-full', pct >= 20 ? 'bg-red-600' : pct >= 10 ? 'bg-amber-500' : 'bg-brand-600')} style={{ width: `${pct}%` }} />
     </div>
   );
@@ -166,7 +166,7 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
       <div className="overflow-x-auto">
         <table className="w-full min-w-[520px] text-left text-sm">
           <caption className="sr-only">Attendance {title.toLowerCase()}</caption>
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
+          <thead className="border-b border-rule text-[13px] font-medium whitespace-nowrap text-ink-muted">
             <tr>
               <th scope="col" className="px-4 py-3">{title === 'By dentist' ? 'Dentist' : 'Service'}</th>
               <th scope="col" className="px-3 py-3 text-right">Attended</th>
@@ -175,10 +175,10 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
               <th scope="col" className="w-40 px-4 py-3">No-show rate</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-rule">
             {rows.map((r) => (
               <tr key={r.key}>
-                <th scope="row" className="px-4 py-3 font-medium text-slate-900">{r.name}</th>
+                <th scope="row" className="px-4 py-3 font-medium text-ink">{r.name}</th>
                 <td className="px-3 py-3 text-right tabular-nums">{r.attended}</td>
                 <td className="px-3 py-3 text-right tabular-nums">{r.cancelled}</td>
                 <td className="px-3 py-3 text-right tabular-nums">{r.noShow}</td>
@@ -191,9 +191,9 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
               </tr>
             ))}
           </tbody>
-          <tfoot className="border-t border-slate-200 bg-slate-50 font-semibold">
+          <tfoot className="border-t border-rule bg-canvas font-semibold">
             <tr>
-              <th scope="row" className="px-4 py-3 text-slate-900">Total</th>
+              <th scope="row" className="px-4 py-3 text-ink">Total</th>
               <td className="px-3 py-3 text-right tabular-nums">{totals.attended}</td>
               <td className="px-3 py-3 text-right tabular-nums">{totals.cancelled}</td>
               <td className="px-3 py-3 text-right tabular-nums">{totals.noShow}</td>

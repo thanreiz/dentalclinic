@@ -4,6 +4,7 @@
  */
 import { execute, getPool, queryOne, type Queryable } from '../db';
 import { sendConfirmation } from '../mail';
+import { sendMessengerConfirmation } from './messenger-notify';
 import { checkBookable, freeChairs, lockChair, lockDentist } from '../queries/overlap';
 import { canTransition, hasStarted } from '../rules';
 import { nowManila, toHHMM } from '../time';
@@ -38,7 +39,7 @@ function invalidTransition(from: AppointmentStatus, message: string) {
 // POST /api/appointments/[id]/confirm  (FR2, FR8, FR12; Rules 1–3, 6, 7, 9)
 // ---------------------------------------------------------------------------
 
-export type ConfirmResult = { ok: true; emailSent: boolean; emailError?: string; emailSkipped?: 'no_email' };
+export type ConfirmResult = { ok: true; emailSent: boolean; emailError?: string; emailSkipped?: 'no_email'; messengerSent?: boolean };
 
 /**
  * pending -> scheduled with a chair. Re-checks Rules 1–3 for the slot (excluding the row itself)
@@ -51,7 +52,7 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
   const pre = await peek(id);
   if (pre.status !== 'pending') throw invalidTransition(pre.status, 'Only pending requests can be confirmed');
 
-  let mail: { to: string | null; patientName: string; date: string; start: string; dentist: string; service: string };
+  let mail: { to: string | null; psid: string | null; patientName: string; date: string; start: string; dentist: string; service: string };
   try {
     mail = await transaction(async (conn) => {
       if (!(await lockDentist(conn, pre.dentist_id))) throw notFound('Dentist');
@@ -71,8 +72,8 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
         throw new ServiceError(409, 'slot_unavailable', 'Slot no longer free', { reason });
       }
       await execute("UPDATE appointments SET status = 'scheduled', chair_id = ? WHERE appointment_id = ? AND status = 'pending'", [chairId, id], conn);
-      const info = await queryOne<{ full_name: string; email: string | null; dentist_name: string; service_name: string }>(
-        `SELECT p.full_name, p.email, d.dentist_name, s.service_name
+      const info = await queryOne<{ full_name: string; email: string | null; messenger_psid: string | null; dentist_name: string; service_name: string }>(
+        `SELECT p.full_name, p.email, p.messenger_psid, d.dentist_name, s.service_name
          FROM appointments a JOIN patients p ON p.patient_id = a.patient_id
          JOIN dentists d ON d.dentist_id = a.dentist_id JOIN services s ON s.service_id = a.service_id
          WHERE a.appointment_id = ?`,
@@ -81,6 +82,7 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
       );
       return {
         to: info?.email ?? null,
+        psid: info?.messenger_psid ?? null,
         patientName: info?.full_name ?? '',
         date: a.appointment_date,
         start: toHHMM(a.start_time),
@@ -106,7 +108,15 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
     throw err;
   }
 
-  if (!mail.to) return { ok: true, emailSent: false, emailSkipped: 'no_email' };
+  // Messenger copy for patients who booked through the bot; never blocks the confirm (best effort).
+  let messengerSent: boolean | undefined;
+  if (mail.psid) {
+    const m = await sendMessengerConfirmation(mail.psid, { patientName: mail.patientName, date: mail.date, startTime: mail.start, dentist: mail.dentist, service: mail.service });
+    messengerSent = m.ok;
+    if (!m.ok) console.error(`[confirm] appointment ${id} confirmed but the Messenger message failed: ${m.error}`);
+  }
+
+  if (!mail.to) return { ok: true, emailSent: false, emailSkipped: 'no_email', ...(messengerSent === undefined ? {} : { messengerSent }) };
   const sent = await sendConfirmation({
     to: mail.to,
     patientName: mail.patientName,
@@ -117,9 +127,9 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
   });
   if (!sent.ok) {
     console.error(`[confirm] appointment ${id} confirmed but email failed: ${sent.error}`);
-    return { ok: true, emailSent: false, emailError: EMAIL_FAILED_MESSAGE };
+    return { ok: true, emailSent: false, emailError: EMAIL_FAILED_MESSAGE, ...(messengerSent === undefined ? {} : { messengerSent }) };
   }
-  return { ok: true, emailSent: true };
+  return { ok: true, emailSent: true, ...(messengerSent === undefined ? {} : { messengerSent }) };
 }
 
 // ---------------------------------------------------------------------------
@@ -215,6 +225,7 @@ export async function rescheduleAppointment(
       patientNote: old.patient_note,
       dentistNote: old.dentist_note,
       rescheduledFromId: id,
+      followUpOfId: old.follow_up_of_id,
     });
     return { ok: true as const, newId };
   });
