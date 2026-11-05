@@ -45,7 +45,13 @@ test.describe('FR5 Phase 3: clinic setup', () => {
     await expect(page.getByText('In use by existing appointments')).toBeVisible();
 
     await gotoReady(page, '/setup?tab=dentists');
-    await page.locator('div.rounded-lg, div', { has: page.getByText('Dr. Reyes', { exact: true }) }).getByRole('button', { name: 'Delete' }).last().click();
+    // The seed can hold more than two dentists (Dr. Cruz has no appointments), so target Dr. Reyes's own card:
+    // the closest ancestor of his name that holds a Delete button.
+    await page
+      .getByText('Dr. Reyes', { exact: true })
+      .locator('xpath=ancestor::div[.//button[normalize-space(.)="Delete"]][1]')
+      .getByRole('button', { name: 'Delete' })
+      .click();
     await page.getByRole('dialog').getByRole('button', { name: 'Delete dentist' }).click();
     await expect(page.getByText('In use by existing appointments')).toBeVisible();
   });

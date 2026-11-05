@@ -34,7 +34,8 @@ test.describe('FR1/FR3: form validation and navigation details', () => {
     await loginUi(page);
     const { date, slot } = await findSlot(request, { dentistId: LIM, serviceId: SVC.prophylaxis, fromDays: 14, index: 9, minSlots: 12 });
     await gotoReady(page, `/dashboard?date=${date}`);
-    const lim = page.locator('div', { has: page.getByText('Dr. Lim', { exact: true }) }).getByRole('link', { name: time12(slot.start), exact: true }).last();
+    // Dr. Lim's open-time link for this slot, picked by its href so a third dentist's identical time cannot be hit.
+    const lim = page.locator(`a[href*="dentistId=${LIM}&"][href*="start=${encodeURIComponent(slot.start)}"]`).first();
     await lim.click();
     await expect(page).toHaveURL(/\/appointments\/new\?/);
     await expect(page.getByLabel(/^Dentist/)).toHaveValue(String(LIM));
@@ -49,8 +50,11 @@ test.describe('FR1/FR3: form validation and navigation details', () => {
     void uniqueContact;
   });
 
-  test('public form: phone takes digits only (max 10) and names take no digits', async ({ page }) => {
-    await page.goto('/book');
+  test('public form: phone takes digits only (max 10) and names take no digits', async ({ page, request }) => {
+    // The contact fields are on step 3 of the wizard, so pick a visit and a time first.
+    const { date, slot } = await findSlot(request, { dentistId: LIM, serviceId: SVC.filling, fromDays: 14, index: 7, minSlots: 8 });
+    await bookStepsOneAndTwo(page, { serviceName: /Tooth filling/, dentistName: 'Dr. Lim', date, start: slot.start });
+    await expect(page.getByRole('heading', { name: 'Your details' })).toBeVisible();
     const phone = page.getByLabel('Contact number');
     await phone.fill('abc917-555 0101999');
     await expect(phone).toHaveValue('9175550101');
