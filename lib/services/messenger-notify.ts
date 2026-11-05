@@ -31,3 +31,21 @@ export function reminderText(a: ApptMessenger): string {
 
 export const sendMessengerConfirmation = (psid: string, a: ApptMessenger): Promise<MessengerResult> => sendMessengerMessage(psid, { text: confirmationText(a) });
 export const sendMessengerReminder = (psid: string, a: ApptMessenger): Promise<MessengerResult> => sendMessengerMessage(psid, { text: reminderText(a) });
+
+export type ApptMessengerMoved = ApptMessenger & { oldDate: string; oldStartTime: string };
+
+export function rescheduleText(a: ApptMessengerMoved): string {
+  return `Hi ${firstName(a.patientName)}! Your appointment at ${clinicName()} has been moved.\n\nWas: ${formatDateHuman(a.oldDate)}, ${formatTime12(a.oldStartTime)}\n\nNow:\n${details(a)}\n\nIf the new time does not work for you, contact the clinic at ${clinicPhone()}.`;
+}
+
+export function declineText(a: ApptMessenger): string {
+  return `Hi ${firstName(a.patientName)}! Sorry, ${clinicName()} could not accommodate your request for this time.\n\n${details(a)}\n\nPlease contact the clinic at ${clinicPhone()} or send a new request for another time.`;
+}
+
+export function cancellationText(a: ApptMessenger): string {
+  return `Hi ${firstName(a.patientName)}! Your appointment at ${clinicName()} has been cancelled.\n\n${details(a)}\n\nTo book another time, contact the clinic at ${clinicPhone()}.`;
+}
+
+export const sendMessengerReschedule = (psid: string, a: ApptMessengerMoved): Promise<MessengerResult> => sendMessengerMessage(psid, { text: rescheduleText(a) });
+export const sendMessengerDecline = (psid: string, a: ApptMessenger): Promise<MessengerResult> => sendMessengerMessage(psid, { text: declineText(a) });
+export const sendMessengerCancellation = (psid: string, a: ApptMessenger): Promise<MessengerResult> => sendMessengerMessage(psid, { text: cancellationText(a) });

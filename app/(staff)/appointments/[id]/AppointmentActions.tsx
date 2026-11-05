@@ -149,7 +149,7 @@ function PendingActions({ a, today }: { a: Appt; today: string }) {
     setDeclining(false);
     setDeclineOpen(false);
     if (r.ok) {
-      toast.show({ tone: 'success', title: 'Request declined', description: 'The time slot is free again. No email was sent.' });
+      toast.show({ tone: 'success', title: 'Request declined', description: 'The time slot is free again. The patient is notified by email (and Messenger if they booked there).' });
       router.refresh();
     } else {
       toast.show({ tone: 'error', title: 'Could not decline', description: errorMessage(r) });
@@ -237,8 +237,8 @@ function PendingActions({ a, today }: { a: Appt; today: string }) {
         title="Decline this request?"
         description={
           <>
-            {a.patientName}&apos;s request for {formatDateHuman(a.date)}, {formatTime12(a.start)} will be marked declined. The slot is freed right away and no email
-            is sent. This cannot be undone.
+            {a.patientName}&apos;s request for {formatDateHuman(a.date)}, {formatTime12(a.start)} will be marked declined. The slot is freed right away and the patient is
+            notified. This cannot be undone.
           </>
         }
         confirmLabel="Decline request"

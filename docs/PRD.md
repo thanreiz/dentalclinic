@@ -146,7 +146,7 @@ These come from Chapter 3. Each rule needs one place in the code (`lib/rules.ts`
 9. **Race safety:** run the overlap check and the write inside one transaction. Lock the dentist row first (`SELECT ... FROM dentists WHERE dentist_id = ? FOR UPDATE`), and the chair row too when one is set, so two people can't grab the same slot.
 10. **Any available dentist:** try dentists in `dentist_id` order, locking each in turn; assign the first one that passes rules 1–3 and release the others.
 11. **Reschedule:** only `scheduled` appointments. In one transaction, set the old row to `cancelled` and insert a new row with `status = 'scheduled'`, the same patient, service, and channel, the new date, start, dentist, and chair, `requested_at = NOW()`, `reminder_sent_at = NULL`, both notes copied, and `rescheduled_from_id` = the old id.
-12. **Decline:** sets `declined`, needs no reason, sends no email (the paper defines none), and frees the slot at once because declined rows no longer count in rule 1.
+12. **Decline:** sets `declined`, needs no reason, tells the patient by email and Messenger after the commit (an addition to the paper, see DECISIONS M6), and frees the slot at once because declined rows no longer count in rule 1.
 
 ## Data Model
 

@@ -117,6 +117,46 @@ export function reminderEmail(a: ApptEmail) {
   };
 }
 
+/** Staff moved an appointment: shows the old time and the new details. */
+export type RescheduleEmail = ApptEmail & { oldDate: string; oldStart: string };
+
+export function rescheduleEmail(a: RescheduleEmail) {
+  return {
+    to: a.to,
+    subject: `Appointment moved: ${formatHuman(a.date, a.startTime)}`,
+    text:
+      `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} has been moved.\n\n` +
+      `Was: ${formatHuman(a.oldDate, a.oldStart)}\n\nNow:\n${details(a)}\n\n` +
+      `If the new time does not work for you, please call or message the clinic at ${clinicPhone()}.`,
+  };
+}
+
+/** Staff declined a pending request (Rule 12). */
+export function declineEmail(a: ApptEmail) {
+  return {
+    to: a.to,
+    subject: `Appointment request not available: ${formatHuman(a.date, a.startTime)}`,
+    text:
+      `Hi ${a.patientName},\n\nSorry, ${clinicName()} could not accommodate your request for this time.\n\n${details(a)}\n\n` +
+      `Please call or message the clinic at ${clinicPhone()}, or send a new request for another time.`,
+  };
+}
+
+/** Staff cancelled a scheduled appointment. */
+export function cancellationEmail(a: ApptEmail) {
+  return {
+    to: a.to,
+    subject: `Appointment cancelled: ${formatHuman(a.date, a.startTime)}`,
+    text:
+      `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} has been cancelled.\n\n${details(a)}\n\n` +
+      `To book another time, call or message the clinic at ${clinicPhone()}.`,
+  };
+}
+
+export const sendRescheduleEmail = (a: RescheduleEmail): Promise<MailResult> => sendMail(rescheduleEmail(a));
+export const sendDeclineEmail = (a: ApptEmail): Promise<MailResult> => sendMail(declineEmail(a));
+export const sendCancellationEmail = (a: ApptEmail): Promise<MailResult> => sendMail(cancellationEmail(a));
+
 export async function sendConfirmation(a: ApptEmail): Promise<MailResult> {
   return sendMail(confirmationEmail(a));
 }
