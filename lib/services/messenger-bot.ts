@@ -31,9 +31,23 @@ const MAX_QUICK_REPLIES = 13; // Messenger's limit
 const DATES_TO_OFFER = 6;
 const DAYS_TO_SCAN = 21;
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const RESTART_WORDS = new Set(['start over', 'restart', 'menu']);
+/** "start over", "startover", "restart", "menu", each optionally with please/pls. */
+const RESTART_RE = /^(?:please |pls )?(?:start ?over|restart|menu)(?: please| pls)?$/;
 
-export type BotEvent = { senderId: string; text?: string; payload?: string };
+/** NFKC (full-width letters, ligatures), lower-case, collapsed whitespace, no surrounding punctuation. */
+export function normalizeTyped(text: string): string {
+  return text
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s\u200b-\u200d\ufeff]+/g, ' ')
+    .replace(/^[\s.,!?;:…~*_"'`()\-]+|[\s.,!?;:…~*_"'`()\-]+$/gu, '')
+    .replace(/\p{Extended_Pictographic}|\uFE0F/gu, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+/** `mid` is Meta's message id; a redelivered webhook carries the same one. */
+export type BotEvent = { senderId: string; text?: string; payload?: string; mid?: string };
 
 export type BotDeps = {
   services: () => Promise<{ id: number; name: string }[]>;
@@ -84,7 +98,11 @@ type State = { serviceId: number; dentist: number | 'any'; dentistRaw: string; d
 const STATE_RE = '(\\d{1,9}):(any|\\d{1,9}):(\\d{4}-\\d{2}-\\d{2}):(\\d{2}:\\d{2})';
 const stateKey = (x: Pick<State, 'serviceId' | 'dentistRaw' | 'date' | 'time'>) => `${x.serviceId}:${x.dentistRaw}:${x.date}:${x.time}`;
 
+/** Ids in a payload must be canonical (no leading zeros): the bot only ever writes them that way. */
+const canonical = (v: string) => v === 'any' || String(Number(v)) === v;
+
 function parseState(m: RegExpExecArray, at = 1): State | null {
+  if (!canonical(m[at]) || !canonical(m[at + 1])) return null;
   const dentist = dentistArg(m[at + 1]);
   if (dentist === null) return null;
   return { serviceId: Number(m[at]), dentist, dentistRaw: m[at + 1], date: m[at + 2], time: m[at + 3] };
@@ -150,6 +168,12 @@ async function review(st: State, deps: BotDeps, senderId: string, confirm: boole
     return [await dentistPicker(deps, 'That dentist is no longer available. Please pick again:', (d) => `sum:${redo({ dentistRaw: d })}`, [START_OVER])];
   }
 
+  // Same window the /book form and API enforce: never hand out a link for a day it would reject.
+  const today = deps.today();
+  if (st.date < today || st.date > addDays(today, PUBLIC_BOOKING_WINDOW_DAYS)) {
+    return [await datePicker(deps, st.serviceId, st.dentist, 'That day is not open for booking. Pick another day:', (d) => `sum:${redo({ date: d })}`, [START_OVER])];
+  }
+
   const slots = await deps.slots({ date: st.date, serviceId: st.serviceId, dentistId: st.dentist }).catch(() => []);
   if (!slots.some((s) => s.start === st.time)) {
     if (slots.length > 0) {
@@ -171,6 +195,7 @@ async function review(st: State, deps: BotDeps, senderId: string, confirm: boole
             buttons: [{ type: 'web_url', url: `${deps.baseUrl()}/book?${qs}`, title: 'Enter my details' }],
           },
         },
+        quick_replies: [START_OVER],
       },
     ];
   }
@@ -191,14 +216,18 @@ export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps
   const payload = event.payload ?? '';
   try {
     // Typed "start over" / "restart" / "menu" (a quick-reply tap carries a payload and wins).
-    if (!payload && RESTART_WORDS.has((event.text ?? '').trim().toLowerCase().replace(/[.!]+$/, ''))) return restart(deps);
+    if (!payload && RESTART_RE.test(normalizeTyped(event.text ?? ''))) return restart(deps);
 
     if (payload === 'restart') return restart(deps);
+
+    // Get Started button (first open of the chat): the greeting with the Book button.
+    if (payload === 'GET_STARTED') return [menu()];
 
     if (payload === 'book') return [await servicePicker(deps, 'Which service do you need?', (id) => `svc:${id}`)];
 
     let m = /^svc:(\d{1,9})$/.exec(payload);
     if (m) {
+      if (!canonical(m[1])) return [menu()];
       const serviceId = Number(m[1]);
       if (!(await deps.services()).some((s) => s.id === serviceId)) return [menu()];
       return [await dentistPicker(deps, 'Do you prefer a dentist?', (d) => `den:${serviceId}:${d}`, [START_OVER])];
@@ -206,6 +235,7 @@ export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps
 
     m = /^den:(\d{1,9}):(any|\d{1,9})$/.exec(payload);
     if (m) {
+      if (!m.slice(1, 3).every(canonical)) return [menu()];
       const serviceId = Number(m[1]);
       const dentist = dentistArg(m[2]);
       if (dentist === null) return [menu()];
@@ -214,6 +244,7 @@ export async function botReplies(event: BotEvent, deps: BotDeps = defaultBotDeps
 
     m = /^date:(\d{1,9}):(any|\d{1,9}):(\d{4}-\d{2}-\d{2})$/.exec(payload);
     if (m) {
+      if (!m.slice(1, 3).every(canonical)) return [menu()];
       const serviceId = Number(m[1]);
       const dentist = dentistArg(m[2]);
       const date = m[3];
@@ -282,7 +313,7 @@ const MAX_EVENTS = 50;
 
 export type RawWebhookBody = {
   object?: string;
-  entry?: { messaging?: { sender?: { id?: string }; message?: { text?: string; is_echo?: boolean; quick_reply?: { payload?: string } }; postback?: { payload?: string } }[] }[];
+  entry?: { messaging?: { sender?: { id?: string }; message?: { mid?: string; text?: string; is_echo?: boolean; quick_reply?: { payload?: string } }; postback?: { mid?: string; payload?: string } }[] }[];
 };
 
 /** Pull the user messages and button taps out of Meta's webhook payload (ignores echoes, reads, deliveries). */
@@ -297,10 +328,77 @@ export function extractEvents(body: RawWebhookBody): BotEvent[] {
       const payload = m.postback?.payload ?? m.message?.quick_reply?.payload;
       const text = m.message?.text;
       if (payload === undefined && typeof text !== 'string') continue; // reads, deliveries, attachments
-      out.push({ senderId, payload: typeof payload === 'string' ? payload.slice(0, 200) : undefined, text: typeof text === 'string' ? text.slice(0, 500) : undefined });
+      const mid = m.postback?.mid ?? m.message?.mid;
+      out.push({
+        senderId,
+        payload: typeof payload === 'string' ? payload.slice(0, 200) : undefined,
+        text: typeof text === 'string' ? text.slice(0, 500) : undefined,
+        ...(typeof mid === 'string' && mid.length > 0 && mid.length <= 300 ? { mid } : {}),
+      });
       if (out.length >= MAX_EVENTS) return out;
     }
   }
   return out;
 }
 
+
+// ---------- delivery: concurrency and redelivery ----------
+
+const SEEN_TTL_MS = 10 * 60 * 1000;
+const SEEN_MAX = 5000;
+const seenMids = new Map<string, number>();
+
+/**
+ * True when this Meta message id was already handled in the last 10 minutes (Meta redelivers a
+ * webhook it thinks timed out, and the redelivery carries the same ids). In memory, per server
+ * instance: it covers the common case (a retry hitting the same warm instance) without a table.
+ */
+export function alreadyHandled(mid: string | undefined, now = Date.now()): boolean {
+  if (!mid) return false;
+  const at = seenMids.get(mid);
+  if (at !== undefined && now - at < SEEN_TTL_MS) return true;
+  seenMids.set(mid, now);
+  if (seenMids.size > SEEN_MAX) {
+    for (const [k, t] of seenMids) {
+      if (now - t >= SEEN_TTL_MS || seenMids.size > SEEN_MAX) seenMids.delete(k);
+      if (seenMids.size <= SEEN_MAX * 0.8) break;
+    }
+  }
+  return false;
+}
+
+/** Tests only. */
+export function resetHandledMids(): void {
+  seenMids.clear();
+}
+
+/**
+ * Run `handle` for every event: different Messenger users concurrently (at most `concurrency` at
+ * a time, so a 50-event batch is not 50 sequential Graph calls inside Meta's ~20 s timeout), the
+ * events of one user strictly in order. Events already handled (same `mid`) are skipped.
+ * `handle` must not throw; a throw is contained so one event never stops the rest.
+ */
+export async function processEvents(events: BotEvent[], handle: (event: BotEvent) => Promise<void>, concurrency = 5): Promise<void> {
+  const byUser = new Map<string, BotEvent[]>();
+  for (const e of events) {
+    if (alreadyHandled(e.mid)) continue;
+    const list = byUser.get(e.senderId);
+    if (list) list.push(e);
+    else byUser.set(e.senderId, [e]);
+  }
+  const queues = [...byUser.values()];
+  let next = 0;
+  const worker = async () => {
+    while (next < queues.length) {
+      const queue = queues[next++];
+      for (const e of queue) {
+        try {
+          await handle(e);
+        } catch (err) {
+          console.error('[messenger] event failed:', err instanceof Error ? err.message : err);
+        }
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(concurrency, queues.length) }, worker));
+}

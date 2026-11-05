@@ -12,6 +12,7 @@
  */
 import 'server-only';
 import nodemailer from 'nodemailer';
+import { atPhone, clinicName, endOfSentence } from './clinic';
 import { formatDateHuman, formatHuman, formatTime12 } from './time';
 
 export type ApptEmail = {
@@ -88,10 +89,6 @@ export async function sendMail(msg: { to: string; subject: string; text: string 
   }
 }
 
-const clinicPhone = () => process.env.CLINIC_PHONE || 'the clinic';
-const clinicName = () => process.env.CLINIC_NAME || 'the clinic';
-/** The name at the end of a sentence: "Molar & Co." already ends in a period, so don't add a second one. */
-const endOfSentence = (s: string) => (s.endsWith('.') ? s : `${s}.`);
 
 function details(a: ApptEmail): string {
   return `Date: ${formatDateHuman(a.date)}\nTime: ${formatTime12(a.startTime)}\nDentist: ${a.dentist}\nService: ${a.service}`;
@@ -103,7 +100,7 @@ export function confirmationEmail(a: ApptEmail) {
     subject: `Appointment confirmed: ${formatHuman(a.date, a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} is confirmed.\n\n${details(a)}\n\n` +
-      `To cancel or reschedule, call or message the clinic at ${clinicPhone()}.`,
+      `To cancel or reschedule, call or message the clinic${atPhone()}.`,
   };
 }
 
@@ -113,7 +110,7 @@ export function reminderEmail(a: ApptEmail) {
     subject: `Reminder: your appointment tomorrow at ${formatTime12(a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nThis is a reminder of your appointment tomorrow at ${endOfSentence(clinicName())}\n\n${details(a)}\n\n` +
-      `If you cannot come, please inform the clinic at ${clinicPhone()}.`,
+      `If you cannot come, please inform the clinic${atPhone()}.`,
   };
 }
 
@@ -127,7 +124,7 @@ export function rescheduleEmail(a: RescheduleEmail) {
     text:
       `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} has been moved.\n\n` +
       `Was: ${formatHuman(a.oldDate, a.oldStart)}\n\nNow:\n${details(a)}\n\n` +
-      `If the new time does not work for you, please call or message the clinic at ${clinicPhone()}.`,
+      `If the new time does not work for you, please call or message the clinic${atPhone()}.`,
   };
 }
 
@@ -138,7 +135,7 @@ export function declineEmail(a: ApptEmail) {
     subject: `Appointment request not available: ${formatHuman(a.date, a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nSorry, ${clinicName()} could not accommodate your request for this time.\n\n${details(a)}\n\n` +
-      `Please call or message the clinic at ${clinicPhone()}, or send a new request for another time.`,
+      `Please call or message the clinic${atPhone()}, or send a new request for another time.`,
   };
 }
 
@@ -149,7 +146,7 @@ export function cancellationEmail(a: ApptEmail) {
     subject: `Appointment cancelled: ${formatHuman(a.date, a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} has been cancelled.\n\n${details(a)}\n\n` +
-      `To book another time, call or message the clinic at ${clinicPhone()}.`,
+      `To book another time, call or message the clinic${atPhone()}.`,
   };
 }
 

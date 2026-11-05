@@ -12,7 +12,7 @@
 import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { sendMessengerMessage, verifyMessengerSignature } from '@/lib/messenger';
-import { botReplies, extractEvents, type RawWebhookBody } from '@/lib/services/messenger-bot';
+import { botReplies, extractEvents, processEvents, type RawWebhookBody } from '@/lib/services/messenger-bot';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -54,15 +54,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
 
-  for (const event of extractEvents(body)) {
-    try {
-      for (const message of await botReplies(event)) {
-        const res = await sendMessengerMessage(event.senderId, message);
-        if (!res.ok) console.error(`[messenger] reply failed: ${res.error}`);
-      }
-    } catch (err) {
-      console.error('[messenger] event failed:', err instanceof Error ? err.message : err);
+  // Users in parallel (small limit), one user's events in order; a redelivered message id is skipped.
+  await processEvents(extractEvents(body), async (event) => {
+    for (const message of await botReplies(event)) {
+      const res = await sendMessengerMessage(event.senderId, message);
+      if (!res.ok) console.error(`[messenger] reply failed: ${res.error}`);
     }
-  }
+  });
   return NextResponse.json({ ok: true });
 }

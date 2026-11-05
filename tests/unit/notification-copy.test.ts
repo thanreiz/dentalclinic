@@ -63,3 +63,33 @@ describe('reschedule, decline and cancellation copy', () => {
     expect(declineEmail(email).subject).toContain('not available');
   });
 });
+
+describe('no CLINIC_PHONE / CLINIC_NAME configured', () => {
+  it('reads cleanly in every email and Messenger text, same clinic name in both channels', async () => {
+    const mail = await import('@/lib/mail');
+    const notify = await import('@/lib/services/messenger-notify');
+    const keep = { n: process.env.CLINIC_NAME, p: process.env.CLINIC_PHONE };
+    delete process.env.CLINIC_NAME;
+    delete process.env.CLINIC_PHONE;
+    const moved = { oldDate: '2026-11-05', oldStart: '09:00' };
+    const texts = [
+      mail.confirmationEmail(email).text, mail.reminderEmail(email).text, mail.rescheduleEmail({ ...email, ...moved }).text, mail.declineEmail(email).text, mail.cancellationEmail(email).text,
+      notify.confirmationText(chat), notify.reminderText(chat), notify.rescheduleText({ ...chat, oldDate: '2026-11-05', oldStartTime: '09:00' }), notify.declineText(chat), notify.cancellationText(chat),
+    ];
+    for (const t of texts) {
+      expect(t).not.toMatch(/clinic at the clinic|at the clinic|\.\.|undefined| at \./);
+      expect(t).toContain('the clinic');
+    }
+    expect(mail.confirmationEmail(email).text).toContain('Molar & Co.');
+    expect(notify.confirmationText(chat)).toContain('Molar & Co.');
+    expect(mail.confirmationEmail(email).text).toContain('call or message the clinic.');
+    expect(notify.confirmationText(chat)).toContain('contact the clinic.');
+    process.env.CLINIC_PHONE = '  ';
+    expect(notify.confirmationText(chat)).toContain('contact the clinic.');
+    process.env.CLINIC_PHONE = '0917 000 1111';
+    expect(notify.confirmationText(chat)).toContain('contact the clinic at 0917 000 1111.');
+    if (keep.n !== undefined) process.env.CLINIC_NAME = keep.n;
+    if (keep.p !== undefined) process.env.CLINIC_PHONE = keep.p;
+    else delete process.env.CLINIC_PHONE;
+  });
+});

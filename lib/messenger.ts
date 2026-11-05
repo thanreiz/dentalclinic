@@ -81,7 +81,7 @@ export function verifyChatRefDetail(token: string | undefined | null, nowSeconds
 export type QuickReply = { content_type: 'text'; title: string; payload: string };
 export type OutgoingMessage =
   | { text: string; quick_replies?: QuickReply[] }
-  | { attachment: { type: 'template'; payload: { template_type: 'button'; text: string; buttons: { type: 'web_url'; url: string; title: string }[] } } };
+  | { attachment: { type: 'template'; payload: { template_type: 'button'; text: string; buttons: { type: 'web_url'; url: string; title: string }[] } }; quick_replies?: QuickReply[] };
 
 export type MessengerTransport = {
   send(psid: string, message: OutgoingMessage): Promise<{ ok: true } | { ok: false; error: string }>;
