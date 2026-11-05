@@ -36,7 +36,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       <header className="border-b border-rule bg-white">
         <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-4">
           <BrandLockup className="h-11 shrink-0" />
-          <p className="min-w-0 border-l border-rule pl-3 text-sm leading-snug text-ink-muted">Request an appointment online</p>
+          <h1 className="min-w-0 border-l border-rule pl-3 text-sm leading-snug font-normal text-ink-muted">Request an appointment online</h1>
         </div>
       </header>
       <main className="mx-auto max-w-lg px-4 pt-5 pb-12">
