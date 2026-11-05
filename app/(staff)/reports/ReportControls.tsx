@@ -26,7 +26,7 @@ const href = (month: string, threshold: number) => `/reports?${new URLSearchPara
 export default function ReportControls({ month, threshold }: { month: string; threshold: number }) {
   const router = useRouter();
   return (
-    <div className="flex items-center rounded-lg border border-slate-300 bg-white shadow-sm">
+    <div className="flex items-center rounded-lg border border-slate-300 bg-white">
       <Link href={href(shift(month, -1), threshold)} className="grid size-10 place-items-center rounded-l-lg text-slate-700 hover:bg-slate-50" aria-label="Previous month">
         <LinkPendingIcon>
           <ChevronLeft className="size-5" />

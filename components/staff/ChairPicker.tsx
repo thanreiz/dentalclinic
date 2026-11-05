@@ -53,7 +53,7 @@ export function ChairPicker({
                 className={cx(
                   'flex h-10 cursor-pointer items-center gap-2 rounded-md px-3 text-sm font-medium transition-colors',
                   'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
-                  checked ? 'bg-brand-700 text-white shadow-sm' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50',
+                  checked ? 'bg-brand-700 text-white' : 'bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-brand-50',
                 )}
               >
                 <input type="radio" name={name} value={c.chairId} aria-label={c.chairName} className="sr-only" checked={checked} onChange={() => onChange(c.chairId)} />

@@ -46,7 +46,7 @@ export default async function RequestsPage() {
               <Link
                 href={`/appointments/${r.appointmentId}`}
                 className={cx(
-                  'group flex items-stretch gap-4 rounded-lg border bg-white p-4 shadow-xs transition-colors hover:border-brand-300 hover:bg-brand-50/30',
+                  'group flex items-stretch gap-4 rounded-lg border bg-white p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/30',
                   r.startPassed ? 'border-red-200' : 'border-slate-200',
                 )}
               >

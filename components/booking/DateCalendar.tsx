@@ -105,7 +105,7 @@ export function DateCalendar({ value, onChange, min, max, today, isEnabled, labe
               className={cx(
                 'relative h-11 rounded-lg text-sm font-medium tabular-nums transition-colors',
                 selected
-                  ? 'bg-brand-700 text-white shadow-sm'
+                  ? 'bg-brand-700 text-white'
                   : enabled
                     ? 'bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-brand-50 hover:ring-brand-300'
                     : 'cursor-not-allowed text-slate-300',

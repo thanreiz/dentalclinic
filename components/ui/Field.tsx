@@ -4,7 +4,7 @@ import { useId, type ComponentProps, type ReactNode } from 'react';
 import { cx } from './cx';
 
 export const controlBase =
-  'block w-full rounded-lg border bg-white px-3 text-base text-slate-900 shadow-sm placeholder:text-slate-400 ' +
+  'block w-full rounded-[10px] border bg-white px-3 text-base text-slate-900 placeholder:text-slate-400 ' +
   'transition-colors focus:outline-none focus-visible:outline-none focus:ring-2 focus:ring-brand-600/40 focus:border-brand-600 ' +
   'disabled:bg-slate-100 disabled:text-slate-500 sm:text-sm';
 

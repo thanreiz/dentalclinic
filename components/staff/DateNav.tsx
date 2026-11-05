@@ -13,7 +13,7 @@ export function DateNav({ date, today, basePath, params = {} }: { date: string; 
   const href = (d: string) => `${basePath}?${new URLSearchParams({ ...params, date: d })}`;
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex items-center rounded-lg border border-slate-300 bg-white shadow-sm">
+      <div className="flex items-center rounded-lg border border-slate-300 bg-white">
         <Link href={href(addDays(date, -1))} className="grid size-10 place-items-center rounded-l-lg text-slate-700 hover:bg-slate-50" aria-label="Previous day">
           <LinkPendingIcon>
             <ChevronLeft className="size-5" />

@@ -14,7 +14,7 @@ import { formatDateHuman, formatTime12 } from '../time';
 
 export type ApptMessenger = { patientName: string; date: string; startTime: string; dentist: string; service: string };
 
-const clinicName = () => process.env.CLINIC_NAME || 'G4 Dental Clinic';
+const clinicName = () => process.env.CLINIC_NAME || 'Molar & Co.';
 const clinicPhone = () => process.env.CLINIC_PHONE || 'the clinic';
 const firstName = (full: string) => full.trim().split(/\s+/)[0] || 'there';
 const details = (a: ApptMessenger) => `${a.service} with ${a.dentist}\n${formatDateHuman(a.date)}, ${formatTime12(a.startTime)}`;

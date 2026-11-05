@@ -231,7 +231,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
   if (step === 'done') {
     return (
-      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm" role="status" aria-live="polite">
+      <div className="rounded-xl border border-slate-200 bg-white p-6 text-center" role="status" aria-live="polite">
         <div className="mx-auto grid size-14 place-items-center rounded-full bg-green-100 text-green-700">
           <CheckIcon className="size-7" />
         </div>
@@ -276,7 +276,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
       {step === 1 && (
         <section className="flex flex-col gap-5" aria-labelledby="step1-heading">
-          <h2 id="step1-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+          <h2 id="step1-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-slate-900 outline-none">
             What do you need?
           </h2>
           <fieldset className="flex flex-col gap-2">
@@ -316,7 +316,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       {step === 2 && (
         <section className="flex flex-col gap-5" aria-labelledby="step2-heading">
           <div>
-            <h2 id="step2-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+            <h2 id="step2-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-slate-900 outline-none">
               Pick a date and time
             </h2>
             <p className="mt-1 text-sm text-slate-600">
@@ -329,7 +329,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               {TAKEN_TEXT}
             </div>
           )}
-          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-xs">
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
             <p id="cal-label" className="sr-only">
               Appointment date
             </p>
@@ -384,7 +384,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                           'relative flex h-12 cursor-pointer items-center justify-center rounded-lg text-sm font-semibold tabular-nums transition-colors',
                           'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
                           checked
-                            ? 'bg-brand-700 text-white shadow-sm'
+                            ? 'bg-brand-700 text-white'
                             : 'bg-white text-slate-900 ring-1 ring-slate-300 hover:bg-brand-50 hover:ring-brand-400',
                         )}
                       >
@@ -431,7 +431,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
 
       {step === 3 && (
         <section className="flex flex-col gap-4" aria-labelledby="step3-heading">
-          <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className="text-lg font-semibold text-slate-900 outline-none">
+          <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className="text-[22px] leading-7 font-bold tracking-tight text-slate-900 outline-none">
             Your details
           </h2>
 
@@ -477,7 +477,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="name@example.com"
+            placeholder="name@email.com"
             required
             value={details.email}
             onChange={(e) => setDetail('email', e.target.value)}
@@ -564,7 +564,7 @@ function ChoiceCard({ name, checked, onChange, title, meta }: { name: string; ch
       className={cx(
         'flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border bg-white px-4 py-3 transition-colors',
         'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
-        checked ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600' : 'border-slate-300 hover:border-slate-400',
+        checked ? 'border-brand-600 bg-brand-100/70 ring-1 ring-brand-600' : 'border-slate-300 hover:border-slate-400',
       )}
     >
       <input type="radio" name={name} checked={checked} onChange={onChange} className="size-5 shrink-0 accent-brand-700" />
