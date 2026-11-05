@@ -4,7 +4,7 @@ import { toHHMM } from '../time';
 import type { AppointmentStatus, Channel, PatientHistoryItem, PatientListItem, PatientProfile, PatientRow } from '../types';
 
 /** Escape LIKE wildcards so user text matches literally. */
-function likeEscape(s: string): string {
+export function likeEscape(s: string): string {
   return s.replace(/[\\%_]/g, (c) => `\\${c}`);
 }
 

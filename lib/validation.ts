@@ -4,7 +4,7 @@
  * Output field names are camelCase; map to snake_case columns in lib/queries.
  */
 import { z } from 'zod';
-import { normalizeMobile, STAFF_CHANNELS, STAFF_SET_STATUSES } from './rules';
+import { APPOINTMENT_STATUSES, CHANNELS, normalizeMobile, STAFF_CHANNELS, STAFF_SET_STATUSES } from './rules';
 import { isValidDate, isValidTime, todayManila, toMinutes } from './time';
 
 // No `new Function` JIT: the CSP (next.config.ts) has no 'unsafe-eval' in production, and Zod's
@@ -362,4 +362,20 @@ export function fieldErrors(err: z.ZodError): Record<string, string> {
     if (!(key in out)) out[key] = issue.message;
   }
   return out;
+}
+
+
+// ---------- staff appointments list filters (query string; bad values are ignored) ----------
+
+/** /appointments?channel&status&from&to&q&page. Anything invalid becomes "no filter". */
+export function parseAppointmentFilters(sp: Record<string, string | string[] | undefined>) {
+  const one = (k: string) => (typeof sp[k] === 'string' ? (sp[k] as string) : '');
+  const channel = (CHANNELS as readonly string[]).includes(one('channel')) ? (one('channel') as (typeof CHANNELS)[number]) : undefined;
+  const status = (APPOINTMENT_STATUSES as readonly string[]).includes(one('status')) ? (one('status') as (typeof APPOINTMENT_STATUSES)[number]) : undefined;
+  const from = isValidDate(one('from')) ? one('from') : undefined;
+  const to = isValidDate(one('to')) ? one('to') : undefined;
+  const q = one('q').trim().slice(0, 100) || undefined;
+  const pageRaw = Number(one('page'));
+  const page = Number.isInteger(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  return { filters: { channel, status, from, to, q }, page };
 }

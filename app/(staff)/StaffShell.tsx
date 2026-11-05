@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
-import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, MenuIcon, PlusIcon, UsersIcon, XIcon } from '@/components/ui/icons';
+import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, ListIcon, MenuIcon, PlusIcon, UsersIcon, XIcon } from '@/components/ui/icons';
 import { BrandIcon, BrandLockup } from '@/components/ui/BrandLogo';
 import { LinkPendingIcon } from '@/components/ui/LinkPending';
 import LogoutButton from './LogoutButton';
@@ -17,6 +17,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
     items: [
       { href: '/dashboard', label: 'Schedule', icon: CalendarIcon },
       { href: '/requests', label: 'Requests', icon: InboxIcon, badge: true },
+      { href: '/appointments', label: 'All appointments', icon: ListIcon },
       { href: '/appointments/new', label: 'New booking', icon: PlusIcon },
     ],
   },
@@ -32,6 +33,7 @@ const GROUPS: { label: string; items: NavItem[] }[] = [
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/appointments/new') return pathname === href;
+  if (href === '/appointments') return pathname === href || /^\/appointments\/\d+/.test(pathname);
   if (href === '/requests') return pathname.startsWith('/requests');
   return pathname === href || pathname.startsWith(`${href}/`);
 }

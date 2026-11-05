@@ -60,7 +60,7 @@ export function StatusBadge({ status, className }: { status: AppointmentStatus; 
   );
 }
 
-const CHANNEL_LABEL: Record<Channel, string> = { online: 'Online', phone: 'Phone', chat: 'Chat', 'walk-in': 'Walk-in' };
+export const CHANNEL_LABEL: Record<Channel, string> = { online: 'Online', phone: 'Phone', chat: 'Chat', 'walk-in': 'Walk-in' };
 const CHANNEL_ICON = { online: GlobeIcon, phone: PhoneIcon, chat: ChatIcon, 'walk-in': WalkIcon } as const;
 
 export function ChannelBadge({ channel, className }: { channel: Channel; className?: string }) {

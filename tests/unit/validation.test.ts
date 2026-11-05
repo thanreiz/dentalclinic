@@ -5,6 +5,7 @@ import {
   honeypotTripped,
   loginSchema,
   noteSchema,
+  parseAppointmentFilters,
   patientPatchSchema,
   rescheduleSchema,
   scheduleCreateSchema,
@@ -155,5 +156,21 @@ describe('optional fields', () => {
     expect(r.newPatient?.email).toBeNull();
     expect(patientPatchSchema.parse({ fullName: 'Ana Cruz' }).email).toBeUndefined();
     expect(patientPatchSchema.parse({ email: '' }).email).toBeNull();
+  });
+});
+
+describe('parseAppointmentFilters (/appointments query string)', () => {
+  it('keeps valid values', () => {
+    const r = parseAppointmentFilters({ channel: 'chat', status: 'pending', from: '2026-10-01', to: '2026-10-31', q: ' Maria ', page: '3' });
+    expect(r).toEqual({ filters: { channel: 'chat', status: 'pending', from: '2026-10-01', to: '2026-10-31', q: 'Maria' }, page: 3 });
+  });
+
+  it('ignores anything invalid instead of failing', () => {
+    const r = parseAppointmentFilters({ channel: 'fax', status: 'x', from: '2026-13-45', to: 'soon', q: '   ', page: '-2' });
+    expect(r).toEqual({ filters: { channel: undefined, status: undefined, from: undefined, to: undefined, q: undefined }, page: 1 });
+  });
+
+  it('ignores repeated (array) params', () => {
+    expect(parseAppointmentFilters({ channel: ['chat', 'phone'] }).filters.channel).toBeUndefined();
   });
 });

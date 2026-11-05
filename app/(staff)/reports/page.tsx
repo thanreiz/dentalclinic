@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireStaffPage } from '@/lib/auth';
-import { getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
+import { getChannelReport, getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
 import { defaultNoShowThreshold, formatContact, formatRate } from '@/lib/rules';
 import { formatDateHuman, monthOf, todayManila } from '@/lib/time';
 import type { ReportCounts } from '@/lib/types';
 import { monthSchema } from '@/lib/validation';
 import { Card, CardHeader, PageHeader } from '@/components/ui/Card';
+import { ChannelBadge } from '@/components/ui/Badges';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ChartIcon, CheckIcon } from '@/components/ui/icons';
@@ -28,7 +29,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const tRaw = typeof sp.threshold === 'string' ? Number(sp.threshold) : NaN;
   const threshold = Number.isInteger(tRaw) && tRaw >= 1 && tRaw <= 100 ? tRaw : defaultNoShowThreshold();
 
-  const [report, repeat] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold)]);
+  const [report, repeat, channels] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold), getChannelReport(month)]);
   const t = report.totals;
 
   return (
@@ -53,6 +54,46 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <BreakdownTable title="By service" rows={report.byService.map((r) => ({ key: r.serviceId, name: r.serviceName, ...r }))} totals={t} />
         </div>
       )}
+
+      <Card className="mb-5 overflow-hidden">
+        <CardHeader title="Bookings by channel" description={`${channels.total} booking${channels.total === 1 ? '' : 's'} in ${monthLabel(month)} from every channel. Declined requests and reschedule moves are not counted.`} />
+        {channels.total === 0 ? (
+          <EmptyState icon={<ChartIcon />} title={`No bookings in ${monthLabel(month)}`} description="Bookings appear here once appointments exist for the month." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <caption className="sr-only">Bookings by channel</caption>
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-semibold tracking-wide whitespace-nowrap text-slate-600 uppercase">
+                <tr>
+                  <th scope="col" className="px-4 py-3">Channel</th>
+                  <th scope="col" className="px-3 py-3 text-right">Bookings</th>
+                  <th scope="col" className="w-48 px-4 py-3">Share</th>
+                  <th scope="col" className="px-3 py-3 text-right">Attended</th>
+                  <th scope="col" className="px-3 py-3 text-right">No-show</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {channels.rows.map((r) => (
+                  <tr key={r.channel}>
+                    <th scope="row" className="px-4 py-3 font-medium"><ChannelBadge channel={r.channel} /></th>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.bookings}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-12 shrink-0 text-right font-semibold tabular-nums">{formatRate(r.share)}</span>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100" aria-hidden="true">
+                          <div className="h-full rounded-full bg-brand-600" style={{ width: `${Math.min(100, (r.share ?? 0) * 100)}%` }} />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.attended}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{r.noShow}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       <Card className="overflow-hidden">
         <CardHeader
