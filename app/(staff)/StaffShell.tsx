@@ -171,7 +171,7 @@ export default function StaffShell({
   );
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden bg-canvas lg:flex-row">
+    <div id="staff-shell" className="relative flex h-dvh flex-col overflow-hidden bg-canvas lg:flex-row">
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-white focus:px-3 focus:py-2"
@@ -180,7 +180,7 @@ export default function StaffShell({
       </a>
 
       {/* Desktop: sidebar on the ground */}
-      <aside className="hidden min-h-0 w-60 shrink-0 flex-col justify-between overflow-y-auto border-r border-rule px-3 py-5 lg:flex">
+      <aside className="hidden min-h-0 w-60 shrink-0 flex-col justify-between overflow-y-auto overscroll-none border-r border-rule px-3 py-5 lg:flex">
         <div className="flex flex-col gap-8">
           <div className="px-1">{mark}</div>
           {nav}
