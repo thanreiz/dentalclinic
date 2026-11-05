@@ -38,17 +38,17 @@ export function PhoneInput({ label, value, onValueChange, error, hint, optional,
   const described = error ? `${fid}-error` : `${fid}-hint`;
   return (
     <div className={cx('flex flex-col gap-1.5', wrapperClassName)}>
-      <label htmlFor={fid} className="text-sm font-medium text-slate-800">
+      <label htmlFor={fid} className="text-sm font-medium text-ink">
         {label}
         {required && (
           <span className="ml-0.5 text-red-700" aria-hidden="true">
             *
           </span>
         )}
-        {optional && <span className="ml-1.5 font-normal text-slate-500">(optional)</span>}
+        {optional && <span className="ml-1.5 font-normal text-ink-muted">(optional)</span>}
       </label>
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 px-3 text-base text-slate-600 sm:text-sm">
+        <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center rounded-l-lg border border-r-0 border-line-strong bg-brand-50 px-3 text-base text-ink-muted sm:text-sm">
           +63
         </span>
         <input
@@ -60,7 +60,7 @@ export function PhoneInput({ label, value, onValueChange, error, hint, optional,
           required={required}
           aria-invalid={error ? true : undefined}
           aria-describedby={described}
-          className={cx(controlBase, error ? 'border-red-600' : 'border-slate-300', 'h-11 pl-16', className)}
+          className={cx(controlBase, error ? 'border-red-600' : 'border-line-strong', 'h-11 pl-16', className)}
           value={value}
           onChange={(e) => onValueChange(cleanMobileDigits(e.target.value))}
           onKeyDown={(e) => {
@@ -76,7 +76,7 @@ export function PhoneInput({ label, value, onValueChange, error, hint, optional,
           {error}
         </p>
       ) : (
-        <p id={`${fid}-hint`} className="text-xs text-slate-500">
+        <p id={`${fid}-hint`} className="text-xs text-ink-muted">
           {help}
         </p>
       )}

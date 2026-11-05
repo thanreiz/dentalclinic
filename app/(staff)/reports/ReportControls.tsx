@@ -26,8 +26,8 @@ const href = (month: string, threshold: number) => `/reports?${new URLSearchPara
 export default function ReportControls({ month, threshold }: { month: string; threshold: number }) {
   const router = useRouter();
   return (
-    <div className="flex items-center rounded-lg border border-slate-300 bg-white">
-      <Link href={href(shift(month, -1), threshold)} className="grid size-10 place-items-center rounded-l-lg text-slate-700 hover:bg-slate-50" aria-label="Previous month">
+    <div className="flex items-center rounded-lg border border-line-strong bg-white">
+      <Link href={href(shift(month, -1), threshold)} className="grid size-10 place-items-center rounded-l-lg text-ink hover:bg-canvas" aria-label="Previous month">
         <LinkPendingIcon>
           <ChevronLeft className="size-5" />
         </LinkPendingIcon>
@@ -42,9 +42,9 @@ export default function ReportControls({ month, threshold }: { month: string; th
         onChange={(e) => {
           if (/^\d{4}-\d{2}$/.test(e.target.value)) router.push(href(e.target.value, threshold));
         }}
-        className="h-10 border-x border-slate-200 px-2 text-sm text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
+        className="h-10 border-x border-rule px-2 text-sm text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40"
       />
-      <Link href={href(shift(month, 1), threshold)} className="grid size-10 place-items-center rounded-r-lg text-slate-700 hover:bg-slate-50" aria-label="Next month">
+      <Link href={href(shift(month, 1), threshold)} className="grid size-10 place-items-center rounded-r-lg text-ink hover:bg-canvas" aria-label="Next month">
         <LinkPendingIcon>
           <ChevronRight className="size-5" />
         </LinkPendingIcon>
@@ -67,7 +67,7 @@ export function ThresholdInput({ month, threshold }: { month: string; threshold:
   const invalid = value !== '' && (!Number.isInteger(Number(value)) || Number(value) < 1 || Number(value) > 100);
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="threshold" className="text-sm font-medium text-slate-700">
+      <label htmlFor="threshold" className="text-sm font-medium text-ink">
         Threshold
       </label>
       <input
@@ -81,7 +81,7 @@ export function ThresholdInput({ month, threshold }: { month: string; threshold:
         onChange={(e) => setValue(e.target.value)}
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? 'threshold-error' : undefined}
-        className="h-9 w-20 rounded-lg border border-slate-300 px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none aria-[invalid]:border-red-600"
+        className="h-9 w-20 rounded-lg border border-line-strong px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none aria-[invalid]:border-red-600"
       />
       {invalid && (
         <span id="threshold-error" className="text-xs text-red-700" role="alert">

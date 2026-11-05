@@ -59,7 +59,7 @@ export default function SetupTabs({
 
   return (
     <div>
-      <div role="tablist" aria-label="Setup sections" className="mb-5 flex gap-1 border-b border-slate-200">
+      <div role="tablist" aria-label="Setup sections" className="mb-5 flex gap-1 border-b border-rule">
         {TABS.map((t, i) => (
           <button
             key={t.id}
@@ -75,11 +75,11 @@ export default function SetupTabs({
             onKeyDown={(e) => onKey(e, i)}
             className={cx(
               '-mb-px flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-medium',
-              tab === t.id ? 'border-brand-700 text-brand-800' : 'border-transparent text-slate-600 hover:text-slate-900',
+              tab === t.id ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-muted hover:text-ink',
             )}
           >
             {t.label}
-            <span className={cx('rounded-full px-1.5 text-xs tabular-nums', tab === t.id ? 'bg-brand-50 text-brand-800' : 'bg-slate-100 text-slate-600')}>
+            <span className={cx('rounded-full px-1.5 text-xs tabular-nums', tab === t.id ? 'bg-brand-50 text-brand-800' : 'bg-brand-50 text-ink-muted')}>
               {counts[t.id]}
             </span>
           </button>
@@ -164,9 +164,9 @@ function DentistsPanel({ dentists }: { dentists: DentistWithSchedules[] }) {
           <Card key={d.dentistId}>
             <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-5">
               <div className="min-w-0">
-                <p className="text-base font-semibold text-slate-900">{d.dentistName}</p>
-                <p className="mt-0.5 text-sm text-slate-600">{summarizeWeek(d.week)}</p>
-                <p className="mt-0.5 text-xs text-slate-500">
+                <p className="text-base font-semibold text-ink">{d.dentistName}</p>
+                <p className="mt-0.5 text-sm text-ink-muted">{summarizeWeek(d.week)}</p>
+                <p className="mt-0.5 text-xs text-ink-muted">
                   {d.appointmentCount} appointment{d.appointmentCount === 1 ? '' : 's'} on record
                 </p>
               </div>
@@ -214,19 +214,19 @@ function DentistsPanel({ dentists }: { dentists: DentistWithSchedules[] }) {
 
 function WeekStrip({ week }: { week: ({ start: string; end: string } | null)[] }) {
   return (
-    <div className="grid grid-cols-7 border-t border-slate-100 text-center text-xs">
+    <div className="grid grid-cols-7 border-t border-rule text-center text-xs">
       {DAYS_OF_WEEK.map((day, i) => {
         const w = week[i];
         return (
-          <div key={day} className={cx('px-1 py-2', i > 0 && 'border-l border-slate-100', !w && 'bg-slate-50')}>
-            <p className="font-semibold text-slate-700">{day.slice(0, 3)}</p>
+          <div key={day} className={cx('px-1 py-2', i > 0 && 'border-l border-rule', !w && 'bg-canvas')}>
+            <p className="font-semibold text-ink">{day.slice(0, 3)}</p>
             {w ? (
-              <p className="mt-0.5 text-slate-600 tabular-nums">
+              <p className="mt-0.5 text-ink-muted tabular-nums">
                 <span className="block">{formatTime12(w.start)}</span>
                 <span className="block">{formatTime12(w.end)}</span>
               </p>
             ) : (
-              <p className="mt-0.5 text-slate-400">Off</p>
+              <p className="mt-0.5 text-line-strong">Off</p>
             )}
           </div>
         );
@@ -303,7 +303,7 @@ function DentistEditor({ dentist, onDone }: { dentist?: DentistWithSchedules; on
       <form onSubmit={save} noValidate className="flex flex-col gap-4 px-4 py-4 sm:px-5">
         <Input label="Name" required value={name} onChange={(e) => setName(e.target.value)} error={errors.dentistName} placeholder="Dr. Santos" maxLength={100} wrapperClassName="max-w-sm" autoFocus />
         <fieldset>
-          <legend className="mb-2 flex w-full flex-wrap items-center justify-between gap-2 text-sm font-medium text-slate-800">
+          <legend className="mb-2 flex w-full flex-wrap items-center justify-between gap-2 text-sm font-medium text-ink">
             Weekly hours
             <span className="flex gap-1.5">
               <button
@@ -313,19 +313,19 @@ function DentistEditor({ dentist, onDone }: { dentist?: DentistWithSchedules; on
               >
                 Mon–Sat 9–5
               </button>
-              <button type="button" className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50" onClick={() => setWeek(emptyWeek())}>
+              <button type="button" className="rounded-md px-2 py-1 text-xs font-semibold text-ink ring-1 ring-rule hover:bg-canvas" onClick={() => setWeek(emptyWeek())}>
                 Clear all
               </button>
             </span>
           </legend>
-          <div className="overflow-hidden rounded-lg border border-slate-200">
+          <div className="overflow-hidden rounded-lg border border-rule">
             {DAYS_OF_WEEK.map((day, i) => {
               const r = week[i];
               const off = !r.start && !r.end;
               const err = errors[`day${i}`];
               return (
-                <div key={day} className={cx('grid grid-cols-[6.5rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[7rem_1fr_auto]', i > 0 && 'border-t border-slate-100', err && 'bg-red-50/60')}>
-                  <span className="text-sm font-medium text-slate-800">{day}</span>
+                <div key={day} className={cx('grid grid-cols-[6.5rem_1fr] items-center gap-x-3 gap-y-1 px-3 py-2 sm:grid-cols-[7rem_1fr_auto]', i > 0 && 'border-t border-rule', err && 'bg-red-50/60')}>
+                  <span className="text-sm font-medium text-ink">{day}</span>
                   <div className="flex items-center gap-2">
                     <label className="sr-only" htmlFor={`d-${i}-start`}>
                       {day} start time
@@ -338,9 +338,9 @@ function DentistEditor({ dentist, onDone }: { dentist?: DentistWithSchedules; on
                       onChange={(e) => setRow(i, { start: e.target.value })}
                       aria-invalid={err ? true : undefined}
                       aria-describedby={err ? `d-${i}-err` : undefined}
-                      className="h-10 w-32 rounded-md border border-slate-300 px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none"
+                      className="h-10 w-32 rounded-md border border-line-strong px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none"
                     />
-                    <span className="text-slate-400" aria-hidden="true">
+                    <span className="text-line-strong" aria-hidden="true">
                       to
                     </span>
                     <label className="sr-only" htmlFor={`d-${i}-end`}>
@@ -354,14 +354,14 @@ function DentistEditor({ dentist, onDone }: { dentist?: DentistWithSchedules; on
                       onChange={(e) => setRow(i, { end: e.target.value })}
                       aria-invalid={err ? true : undefined}
                       aria-describedby={err ? `d-${i}-err` : undefined}
-                      className="h-10 w-32 rounded-md border border-slate-300 px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none"
+                      className="h-10 w-32 rounded-md border border-line-strong px-2 text-sm tabular-nums focus:border-brand-600 focus:ring-2 focus:ring-brand-600/40 focus:outline-none"
                     />
                   </div>
                   <div className="col-start-2 sm:col-start-3">
                     {off ? (
-                      <span className="text-xs font-medium text-slate-500">Off</span>
+                      <span className="text-xs font-medium text-ink-muted">Off</span>
                     ) : (
-                      <button type="button" className="text-xs font-semibold text-slate-600 underline hover:text-slate-900" onClick={() => setRow(i, { start: '', end: '' })}>
+                      <button type="button" className="text-xs font-semibold text-ink-muted underline hover:text-ink" onClick={() => setRow(i, { start: '', end: '' })}>
                         Set off
                       </button>
                     )}
@@ -448,14 +448,14 @@ function SimpleEntityPanel({ entity, singular, items, withDuration = false }: { 
         }
       />
       {editing === 'new' && (
-        <div className="border-b border-slate-100 bg-brand-50/40">
+        <div className="border-b border-rule bg-brand-50/40">
           <SimpleEditor entity={entity} singular={singular} withDuration={withDuration} onDone={() => setEditing(null)} />
         </div>
       )}
       {items.length === 0 && editing !== 'new' ? (
         <EmptyState icon={<CogIcon />} title={`No ${entity} yet`} description={`Add a ${singular} to start booking.`} />
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-rule">
           {items.map((it) => (
             <li key={it.id}>
               {editing === it.id ? (
@@ -464,11 +464,11 @@ function SimpleEntityPanel({ entity, singular, items, withDuration = false }: { 
                 <div className="px-4 py-3 sm:px-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900">
+                      <p className="font-medium text-ink">
                         {it.name}
-                        {withDuration && <span className="ml-2 text-sm font-normal text-slate-600">{it.duration} min</span>}
+                        {withDuration && <span className="ml-2 text-sm font-normal text-ink-muted">{it.duration} min</span>}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-ink-muted">
                         {it.count} appointment{it.count === 1 ? '' : 's'} on record
                       </p>
                     </div>

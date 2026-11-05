@@ -68,7 +68,7 @@ export function ChannelBadge({ channel, className }: { channel: Channel; classNa
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 whitespace-nowrap',
+        'inline-flex items-center gap-1 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-medium text-ink whitespace-nowrap',
         className,
       )}
     >
