@@ -71,6 +71,7 @@ export type AppointmentRow = {
   dentist_note: string | null;
   reminder_sent_at: string | null;
   rescheduled_from_id: number | null;
+  follow_up_of_id: number | null;
 };
 export type Appointment = AppointmentRow;
 
@@ -185,6 +186,10 @@ export type AppointmentDetailView = {
   rescheduledFromId: number | null;
   /** The row that replaced this one (whose rescheduled_from_id = this id), if any. */
   replacedById: number | null;
+  /** This visit is a follow-up of that attended visit. */
+  followUpOfId: number | null;
+  /** Follow-up visits booked from this one (ascending id). */
+  followUpIds: number[];
   /** Statuses reachable now (Rule 7, Manila now). 'scheduled' = Confirm, 'declined' = Decline. */
   allowedTransitions: AppointmentStatus[];
   startPassed: boolean;

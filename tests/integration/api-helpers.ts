@@ -6,6 +6,7 @@ import { addDays, dayOfWeek, todayManila } from '@/lib/time';
 
 export const REYES = 1;
 export const LIM = 2;
+export const CRUZ = 3;
 export const PROPHY = 1; // 30 min
 export const FILLING = 2; // 60 min
 export const EXTRACTION = 3; // 45 min

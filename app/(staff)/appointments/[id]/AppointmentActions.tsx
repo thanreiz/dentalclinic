@@ -42,10 +42,31 @@ const CONFLICT_REASONS: Record<string, string> = {
   outside_hours: "The time is no longer inside the dentist's working hours.",
 };
 
-export default function AppointmentActions({ appointment: a, dentists, today }: { appointment: Appt; dentists: DentistOpt[]; today: string }) {
+export default function AppointmentActions({
+  appointment: a,
+  dentists,
+  today,
+  followUpHref,
+}: {
+  appointment: Appt;
+  dentists: DentistOpt[];
+  today: string;
+  followUpHref?: string;
+}) {
   if (a.status === 'pending') return <PendingActions a={a} today={today} />;
   if (a.status === 'scheduled') return <ScheduledActions a={a} dentists={dentists} today={today} />;
   return (
+    <div className="flex flex-col gap-5">
+    {followUpHref && (
+      <Card>
+        <CardHeader title="Follow-up" description="Book the next visit for this patient. Patient, dentist and service are prefilled; the usual overlap and hours checks apply." />
+        <div className="px-4 py-4 sm:px-5">
+          <Link href={followUpHref} className={buttonClasses('primary', 'md')}>
+            Book follow-up
+          </Link>
+        </div>
+      </Card>
+    )}
     <Card>
       <CardHeader title="Actions" />
       <div className="flex items-start gap-3 px-4 py-4 text-sm text-slate-700 sm:px-5">
@@ -56,6 +77,7 @@ export default function AppointmentActions({ appointment: a, dentists, today }: 
         </p>
       </div>
     </Card>
+    </div>
   );
 }
 

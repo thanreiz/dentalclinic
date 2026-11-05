@@ -45,6 +45,32 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         <ChannelBadge channel={a.channel} />
       </div>
 
+      {(a.followUpOfId || a.followUpIds.length > 0) && (
+        <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-950">
+          {a.followUpOfId && (
+            <p>
+              Follow-up of{' '}
+              <Link href={`/appointments/${a.followUpOfId}`} className="font-semibold underline">
+                #{a.followUpOfId}
+              </Link>
+            </p>
+          )}
+          {a.followUpIds.length > 0 && (
+            <p>
+              Follow-up booked:{' '}
+              {a.followUpIds.map((fid, i) => (
+                <span key={fid}>
+                  {i > 0 && ', '}
+                  <Link href={`/appointments/${fid}`} className="font-semibold underline">
+                    #{fid}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          )}
+        </div>
+      )}
+
       {(a.rescheduledFromId || a.replacedById) && (
         <div className="mb-5 flex flex-wrap gap-x-6 gap-y-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-950">
           {a.rescheduledFromId && (
@@ -155,6 +181,11 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
             }}
             dentists={dentists.map((d) => ({ id: d.dentistId, name: d.dentistName }))}
             today={today}
+            followUpHref={
+              a.status === 'attended'
+                ? `/appointments/new?patientId=${a.patient.id}&serviceId=${a.service.id}&dentistId=${a.dentist.id}&followUpOf=${a.appointmentId}${a.channel === 'online' ? '' : `&channel=${a.channel}`}`
+                : undefined
+            }
           />
         </div>
       </div>

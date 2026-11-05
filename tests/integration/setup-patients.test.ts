@@ -30,8 +30,8 @@ describe('/api/setup/[entity]', () => {
   });
 
   it('GET lists', async () => {
-    expect((await call(list, 'GET', 'dentists')).body.items).toHaveLength(2);
-    expect((await call(list, 'GET', 'services')).body.items).toHaveLength(3);
+    expect((await call(list, 'GET', 'dentists')).body.items).toHaveLength(3);
+    expect((await call(list, 'GET', 'services')).body.items).toHaveLength(12);
     expect((await call(list, 'GET', 'chairs')).body.items).toHaveLength(2);
     expect((await call(list, 'GET', 'schedules', undefined, '?dentistId=1')).body.items).toHaveLength(6);
   });

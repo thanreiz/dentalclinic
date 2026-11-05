@@ -14,6 +14,7 @@ type Row = AppointmentRow & {
   duration_minutes: number;
   chair_name: string | null;
   replaced_by_id: number | null;
+  follow_up_ids: string | null;
 };
 
 export async function getAppointmentDetail(
@@ -23,7 +24,9 @@ export async function getAppointmentDetail(
   const r = await queryOne<Row>(
     `SELECT a.*, p.full_name, p.contact_number, p.email AS patient_email, p.birthdate,
             d.dentist_name, s.service_name, s.duration_minutes, c.chair_name,
-            (SELECT MIN(n.appointment_id) FROM appointments n WHERE n.rescheduled_from_id = a.appointment_id) AS replaced_by_id
+            (SELECT MIN(n.appointment_id) FROM appointments n WHERE n.rescheduled_from_id = a.appointment_id) AS replaced_by_id,
+            (SELECT GROUP_CONCAT(f.appointment_id ORDER BY f.appointment_id) FROM appointments f
+              WHERE f.follow_up_of_id = a.appointment_id AND f.status <> 'cancelled') AS follow_up_ids
      FROM appointments a
      JOIN patients p ON p.patient_id = a.patient_id
      JOIN dentists d ON d.dentist_id = a.dentist_id
@@ -51,6 +54,8 @@ export async function getAppointmentDetail(
     reminderSentAt: r.reminder_sent_at,
     rescheduledFromId: r.rescheduled_from_id,
     replacedById: r.replaced_by_id === null ? null : Number(r.replaced_by_id),
+    followUpOfId: r.follow_up_of_id,
+    followUpIds: r.follow_up_ids ? String(r.follow_up_ids).split(',').map(Number) : [],
     allowedTransitions: allowedTransitions(r.status, { startPassed }),
     startPassed,
   };

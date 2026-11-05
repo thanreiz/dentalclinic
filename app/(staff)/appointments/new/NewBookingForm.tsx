@@ -32,6 +32,7 @@ type Props = {
     date?: string;
     start?: string;
     channel?: StaffChannel;
+    followUpOf?: number;
   };
 };
 
@@ -161,6 +162,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
       chairId: effectiveChair,
       channel,
       patientNote: note,
+      ...(initial.followUpOf && mode === 'search' && patient?.patientId === initial.patient?.patientId ? { followUpOf: initial.followUpOf } : {}),
     };
     const r = await api<{ appointmentId?: number; id?: number; patientId?: number }>('/api/appointments', { body });
     setSaving(false);

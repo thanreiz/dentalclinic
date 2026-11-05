@@ -76,7 +76,7 @@ describe('POST /api/messenger', () => {
     sent.length = 0;
     await webhookPost(signed(event('111', { postback: { payload: 'book' } })));
     const m = sent[0].message as { quick_replies: { title: string }[] };
-    expect(m.quick_replies.map((q) => q.title)).toEqual(['Oral prophylaxis', 'Tooth filling', 'Tooth extraction']);
+    expect(m.quick_replies.map((q) => q.title)).toEqual(['Oral prophylaxis', 'Tooth filling', 'Tooth extraction', 'Exam and X-ray', 'Wisdom tooth removal', 'Root canal treatment', 'Crown preparation', 'Braces fitting', 'Braces adjustment', 'Braces removal', 'Teeth whitening', 'Dental implant']);
   });
 
   it('walks to a prefilled /book link carrying a verifiable token (real slots from the database)', async () => {
