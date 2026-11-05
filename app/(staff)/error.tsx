@@ -20,7 +20,7 @@ export default function StaffError({ error, reset }: { error: Error & { digest?:
       {error.digest && <p className="mt-2 font-mono text-xs text-line-strong">Ref: {error.digest}</p>}
       <div className="mt-6 flex justify-center gap-2">
         <Button onClick={reset}>Try again</Button>
-        <ButtonLink href="/dashboard">Go to dashboard</ButtonLink>
+        <ButtonLink href="/dashboard">Go to the schedule</ButtonLink>
       </div>
     </div>
   );

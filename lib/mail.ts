@@ -90,6 +90,8 @@ export async function sendMail(msg: { to: string; subject: string; text: string 
 
 const clinicPhone = () => process.env.CLINIC_PHONE || 'the clinic';
 const clinicName = () => process.env.CLINIC_NAME || 'the clinic';
+/** The name at the end of a sentence: "Molar & Co." already ends in a period, so don't add a second one. */
+const endOfSentence = (s: string) => (s.endsWith('.') ? s : `${s}.`);
 
 function details(a: ApptEmail): string {
   return `Date: ${formatDateHuman(a.date)}\nTime: ${formatTime12(a.startTime)}\nDentist: ${a.dentist}\nService: ${a.service}`;
@@ -110,7 +112,7 @@ export function reminderEmail(a: ApptEmail) {
     to: a.to,
     subject: `Reminder: your appointment tomorrow at ${formatTime12(a.startTime)}`,
     text:
-      `Hi ${a.patientName},\n\nThis is a reminder of your appointment tomorrow at ${clinicName()}.\n\n${details(a)}\n\n` +
+      `Hi ${a.patientName},\n\nThis is a reminder of your appointment tomorrow at ${endOfSentence(clinicName())}\n\n${details(a)}\n\n` +
       `If you cannot come, please inform the clinic at ${clinicPhone()}.`,
   };
 }

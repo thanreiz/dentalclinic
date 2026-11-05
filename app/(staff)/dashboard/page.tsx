@@ -15,7 +15,7 @@ import { CalendarIcon, PlusIcon } from '@/components/ui/icons';
 import { DateNav } from '@/components/staff/DateNav';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Dashboard' };
+export const metadata: Metadata = { title: 'Schedule' };
 
 const ROW_MINUTES = 30;
 const ROW_PX = 52;

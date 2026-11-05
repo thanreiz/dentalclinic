@@ -10,7 +10,7 @@ export default function NotFound() {
       <p className="mt-2 max-w-sm text-sm text-ink-muted">The page or record you are looking for does not exist or was removed.</p>
       <div className="mt-6 flex flex-wrap justify-center gap-2">
         <ButtonLink href="/dashboard" variant="primary">
-          Go to dashboard
+          Go to the schedule
         </ButtonLink>
         <ButtonLink href="/book">Book an appointment</ButtonLink>
       </div>
