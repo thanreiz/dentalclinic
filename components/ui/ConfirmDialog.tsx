@@ -16,7 +16,10 @@ type Props = {
   children?: ReactNode;
 };
 
-/** Modal confirmation built on native <dialog> (focus trap, Esc to close, inert background). */
+/**
+ * Modal confirmation built on native <dialog> (focus trap, Esc to close, inert background).
+ * Initial focus is the cancel button, the least destructive choice, so a stray Enter never confirms.
+ */
 export function ConfirmDialog({
   open,
   title,
@@ -65,10 +68,10 @@ export function ConfirmDialog({
         )}
         {children}
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button variant="secondary" onClick={onCancel} disabled={loading}>
+          <Button variant="secondary" onClick={onCancel} disabled={loading} autoFocus>
             {cancelLabel}
           </Button>
-          <Button variant={tone} onClick={onConfirm} loading={loading} autoFocus>
+          <Button variant={tone} onClick={onConfirm} loading={loading}>
             {confirmLabel}
           </Button>
         </div>
