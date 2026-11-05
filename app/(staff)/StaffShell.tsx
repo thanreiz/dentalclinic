@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cx } from '@/components/ui/cx';
 import { CalendarIcon, ChartIcon, CogIcon, InboxIcon, MenuIcon, PlusIcon, UsersIcon, XIcon } from '@/components/ui/icons';
 import { BrandIcon, BrandLockup } from '@/components/ui/BrandLogo';
@@ -59,17 +59,44 @@ export default function StaffShell({
 }) {
   const pathname = usePathname() ?? '';
   const [open, setOpen] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => setOpen(false), [pathname]);
+  // Menu sheet as a real modal: focus moves in, Tab stays inside, Esc closes, focus returns to the trigger.
   useEffect(() => {
     if (!open) return;
+    const trigger = triggerRef.current;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    closeRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = Array.from(
+        sheetRef.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
+      );
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !sheetRef.current?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (active === last || !sheetRef.current?.contains(active))) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
     return () => {
       document.body.style.overflow = prev;
       window.removeEventListener('keydown', onKey);
+      trigger?.focus();
     };
   }, [open]);
 
@@ -163,10 +190,11 @@ export default function StaffShell({
       </aside>
 
       {/* Below 1024 px: 48 px bar + menu sheet */}
-      <header className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-rule bg-canvas px-4 lg:hidden">
+      <header inert={open} className="sticky top-0 z-30 flex h-12 items-center gap-3 border-b border-rule bg-canvas px-4 lg:hidden">
         <BrandIcon className="h-8 shrink-0" />
         <p className="min-w-0 flex-1 truncate text-[15px] font-bold text-ink">{current}</p>
         <button
+          ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
           aria-label={pendingCount > 0 ? `Open menu, ${pendingCount} pending requests` : 'Open menu'}
@@ -179,10 +207,11 @@ export default function StaffShell({
       </header>
 
       {open && (
-        <div className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-canvas lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div ref={sheetRef} className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-canvas lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-rule px-4">
             {mark}
             <button
+              ref={closeRef}
               type="button"
               onClick={() => setOpen(false)}
               aria-label="Close menu"
@@ -201,7 +230,7 @@ export default function StaffShell({
         </div>
       )}
 
-      <main id="main" className="min-w-0 flex-1 px-4 py-6 md:px-8 lg:px-10 lg:py-9">
+      <main id="main" inert={open} className="min-w-0 flex-1 px-4 py-6 md:px-8 lg:px-10 lg:py-9">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
     </div>
