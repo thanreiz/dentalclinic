@@ -108,7 +108,7 @@ function PendingActions({ a, today }: { a: Appt; today: string }) {
     setChairError(null);
     setFormError(null);
     setConfirming(true);
-    const r = await api<{ emailSent?: boolean; emailError?: string; emailSkipped?: string; slots?: Slot[]; freeChairs?: FreeChair[]; reason?: string }>(
+    const r = await api<{ noticeQueued?: boolean; emailSent?: boolean; emailError?: string; emailSkipped?: string; slots?: Slot[]; freeChairs?: FreeChair[]; reason?: string }>(
       `/api/appointments/${a.id}/confirm`,
       { body: { chairId: effectiveChair } },
     );
@@ -116,8 +116,8 @@ function PendingActions({ a, today }: { a: Appt; today: string }) {
     if (r.ok) {
       if (r.data.emailError) {
         toast.show({ tone: 'warning', title: 'Confirmed, but the email could not be sent.', description: 'The appointment is scheduled. Let the patient know by phone.' });
-      } else if (r.data.emailSent) {
-        toast.show({ tone: 'success', title: 'Request confirmed', description: `Confirmation email sent to ${a.patientEmail ?? 'the patient'}.` });
+      } else if (r.data.emailSent || (r.data.noticeQueued && r.data.emailSkipped !== 'no_email')) {
+        toast.show({ tone: 'success', title: 'Request confirmed', description: r.data.noticeQueued ? `Confirmation email is on its way to ${a.patientEmail ?? 'the patient'}.` : `Confirmation email sent to ${a.patientEmail ?? 'the patient'}.` });
       } else {
         toast.show({ tone: 'success', title: 'Request confirmed', description: 'The patient has no email on file, so no confirmation was sent.' });
       }

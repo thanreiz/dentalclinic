@@ -1,10 +1,10 @@
 /**
- * POST /api/appointments/[id]/confirm { chairId } (staff). pending -> scheduled; email after commit.
- * 200 { ok, emailSent, emailError?, emailSkipped? } | 409 slot_unavailable { reason, slots, freeChairs }
+ * POST /api/appointments/[id]/confirm { chairId } (staff). pending -> scheduled; patient notice after the response.
+ * 200 { ok, noticeQueued, emailSkipped? } (email / Messenger go out after the response) | 409 slot_unavailable { reason, slots, freeChairs }
  * | 409 invalid_transition | 404.
  */
 import { NextResponse } from 'next/server';
-import { parseIdParam, parseJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
+import { deferNotice, parseIdParam, parseJsonBody, requireStaffApi, type IdRouteContext } from '@/lib/http';
 import { confirmAppointment } from '@/lib/services/appointments';
 import { errorResponse } from '@/lib/services/errors';
 import { confirmSchema } from '@/lib/validation';
@@ -20,7 +20,7 @@ export async function POST(req: Request, ctx: IdRouteContext) {
   const parsed = await parseJsonBody(req, confirmSchema);
   if (!parsed.ok) return parsed.response;
   try {
-    return NextResponse.json(await confirmAppointment(id.id, parsed.data.chairId));
+    return NextResponse.json(await confirmAppointment(id.id, parsed.data.chairId, { defer: deferNotice }));
   } catch (err) {
     return errorResponse(err, 'POST /api/appointments/[id]/confirm');
   }
