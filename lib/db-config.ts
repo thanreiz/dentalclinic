@@ -105,6 +105,13 @@ export function buildPoolOptions(url: string, extra: Partial<PoolOptions> = {}):
     dateStrings: true,
     namedPlaceholders: true,
     decimalNumbers: true,
+    // Serverless: Vercel freezes idle instances, so sockets go stale. Keepalive and short idle
+    // recycling stop the first request after a quiet period from hitting a dead connection.
+    enableKeepAlive: true,
+    keepAliveInitialDelay: 10_000,
+    maxIdle: 2,
+    idleTimeout: 60_000,
+    connectTimeout: 10_000,
     ...extra,
   };
 }
