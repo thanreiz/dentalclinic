@@ -8,9 +8,10 @@ import { Spinner } from './icons';
  * Loading feedback for staff navigation (QA-1). Place inside a next/link <Link>: while that link's
  * navigation is pending, the icon is swapped for a spinner (after 150 ms, so fast loads don't flicker).
  *
- * This replaces app/(staff)/loading.tsx on purpose: a loading.tsx (or any <Suspense>) around a staff
- * page made same-page navigations (?month=, ?date=) intermittently hang in Next 15.5 and turned
- * notFound() into a 200 soft 404. useLinkStatus adds no Suspense boundary.
+ * Do NOT add a route-level loading.tsx under app/(staff): re-tested on a production build, it made
+ * same-page navigations (?month=, ?date=) intermittently hang and turned notFound() on [id] routes into a
+ * 200 soft 404. Dashboard and Reports instead wrap only their data section in <Suspense key={query}>
+ * (tests/e2e/14-link-navigation.spec.ts guards both). useLinkStatus adds no Suspense boundary.
  */
 export function LinkPendingIcon({ children, className = 'size-5' }: { children: ReactNode; className?: string }) {
   const { pending } = useLinkStatus();
