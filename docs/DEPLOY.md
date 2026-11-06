@@ -62,11 +62,12 @@ Keep the hosted values in `.env.hosted` (gitignored, never auto-loaded). Never n
 
 ## Upgrading an existing hosted database
 
-`db:reset` wipes data, so never use it on a database with real bookings. Two additive migrations exist; run each once, BEFORE deploying the code that reads the column (safe to re-run):
+`db:reset` wipes data, so never use it on a database with real bookings. Three additive migrations exist; run each once (safe to re-run). The two column scripts go BEFORE deploying the code that reads the column; the index script can run any time and only speeds queries up:
 
 ```bash
 node scripts/hosted/add-messenger-column.mjs   # patients.messenger_psid
 node scripts/hosted/add-follow-up-column.mjs   # appointments.follow_up_of_id (+ FK)
+node scripts/hosted/add-indexes.mjs            # performance indexes on appointments and patients
 ```
 
 New services are added in Setup (see docs/SERVICE-DURATIONS.md for the 12-service list). `scripts/hosted/smoke.mjs` needs `--live-write` and leaves test rows on the live database.

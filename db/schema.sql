@@ -4,6 +4,8 @@
 -- Approved additions to Listing 3.2 (update the paper's ERD/data dictionary to match):
 --   patients.messenger_psid          (Messenger notifications)
 --   appointments.follow_up_of_id     (follow-up visits link back to the attended visit they follow)
+-- Performance indexes (appended after the tables; the CREATE TABLEs above are unchanged):
+--   ix_appt_date_dentist, ix_appt_status_date, ix_appt_channel_requested, ix_patients_psid
 -- The DROP block only exists so `npm run db:reset` can rebuild from scratch (reverse FK order).
 
 SET FOREIGN_KEY_CHECKS = 0;
@@ -105,3 +107,10 @@ CREATE TABLE appointments (
     REFERENCES appointments (appointment_id) ON DELETE RESTRICT,
   CONSTRAINT chk_appt_times CHECK (end_time > start_time)
 );
+
+-- Performance indexes. Additive, not part of the paper's Listing 3.2. Hosted databases get the same
+-- statements from scripts/hosted/add-indexes.mjs.
+CREATE INDEX ix_appt_date_dentist ON appointments (appointment_date, dentist_id, status, start_time);
+CREATE INDEX ix_appt_status_date ON appointments (status, appointment_date);
+CREATE INDEX ix_appt_channel_requested ON appointments (channel, requested_at);
+CREATE INDEX ix_patients_psid ON patients (messenger_psid);
