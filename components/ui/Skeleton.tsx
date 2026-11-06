@@ -1,6 +1,10 @@
 import { cx } from './cx';
 
-/** Grey placeholder block for route-level loading.tsx files. Decorative: the wrapper carries the status. */
+export function Skeleton({ className }: { className?: string }) {
+  return <div className={cx('animate-pulse rounded-md bg-brand-100/70', className)} aria-hidden="true" />;
+}
+
+/** Grey placeholder block for Suspense fallbacks. Decorative: the wrapper carries the status. */
 export function SkeletonBlock({ className }: { className?: string }) {
   return <div className={cx('animate-pulse rounded-lg bg-brand-100/70 motion-reduce:animate-none', className)} aria-hidden="true" />;
 }
