@@ -14,6 +14,7 @@ import { conflictError, endTimeOrThrow, freshSlots, insertAppointment } from './
 import { notFound, ServiceError } from './errors';
 import { getServiceOrThrow } from './lookups';
 import { transaction } from './tx';
+import { invalidatePendingCount } from '../queries/requests';
 
 type Now = { date: string; time: string };
 
@@ -126,6 +127,8 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
     throw err;
   }
 
+  invalidatePendingCount();
+
   // Patient notice after the commit: email + Messenger copy, in parallel, never blocking the confirm
   // (FR12). With `defer` it runs after the response, so the result only says it was queued.
   const info: NoticeInfo = mail;
@@ -222,6 +225,7 @@ export async function declineAppointment(id: number, opts: { now?: Now; defer?: 
     await execute("UPDATE appointments SET status = 'declined' WHERE appointment_id = ?", [id], conn);
     return noticeInfo(conn, id);
   });
+  invalidatePendingCount();
   await runNotice(opts.defer, () => notifyPatient('decline', id, info, { email: sendDeclineEmail, messenger: sendMessengerDecline }));
 }
 
@@ -249,6 +253,7 @@ export async function setAppointmentStatus(
     // A cancel after the start time is a record correction, not news for the patient (QA finding L1).
     return { info: to === 'cancelled' && !startPassed ? await noticeInfo(conn, id) : null };
   });
+  invalidatePendingCount();
   // Cancelled by staff before the start: tell the patient (attended / no-show / late cancels are record-keeping, no notice).
   if (info) await runNotice(opts.defer, () => notifyPatient('cancel', id, info, { email: sendCancellationEmail, messenger: sendMessengerCancellation }));
   return { status: to };
@@ -311,6 +316,7 @@ export async function rescheduleAppointment(
     return { newId, info: await noticeInfo(conn, newId), oldDate: old.appointment_date, oldStart: toHHMM(old.start_time) };
   });
 
+  invalidatePendingCount();
   // Tell the patient after the commit (a retry finds the old row cancelled and throws above, so
   // the notice is never sent twice). The new row has reminder_sent_at NULL, so its day-before
   // reminder still goes out.

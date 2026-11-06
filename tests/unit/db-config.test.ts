@@ -17,6 +17,10 @@ describe('DATABASE_URL parsing', () => {
     expect(o.ssl).toBeUndefined();
     expect(buildPoolOptions('mysql://u:p@h:1/d?ssl-mode=REQUIRED').ssl).toBeTruthy();
   });
+  it('pool keeps idle sockets healthy on serverless', () => {
+    const o = buildPoolOptions('mysql://root@127.0.0.1:3307/dental');
+    expect(o).toMatchObject({ enableKeepAlive: true, keepAliveInitialDelay: 10_000, maxIdle: 2, idleTimeout: 60_000, connectTimeout: 10_000 });
+  });
   it('rejects non-mysql URLs', () => {
     expect(() => parseDatabaseUrl('postgres://x@y/z')).toThrow();
   });

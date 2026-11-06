@@ -12,8 +12,8 @@ export const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
 /** Connection options (single connection, multi-statement for the DDL file). */
 function connectionOptions(url: string, withDatabase: boolean): mysql.ConnectionOptions {
-  const { connectionLimit: _cl, waitForConnections: _w, queueLimit: _q, ...opts } = buildPoolOptions(url);
-  void _cl; void _w; void _q;
+  const { connectionLimit: _cl, waitForConnections: _w, queueLimit: _q, maxIdle: _mi, idleTimeout: _it, ...opts } = buildPoolOptions(url);
+  void _cl; void _w; void _q; void _mi; void _it;
   return { ...opts, database: withDatabase ? opts.database : undefined, multipleStatements: true, namedPlaceholders: false };
 }
 

@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
-import { listDentistsWithSchedules, listServices } from '@/lib/queries/setup';
+import { listPublicDentists, listPublicServices } from '@/lib/queries/setup';
 import { addDays, dayOfWeek, isValidDate, isValidTime, todayManila } from '@/lib/time';
 import { BrandLockup } from '@/components/ui/BrandLogo';
 import { InfoIcon, PhoneIcon } from '@/components/ui/icons';
@@ -16,7 +16,7 @@ const DEMO_BANNER = 'Demo system: please use sample details, not your real infor
 /** Public online request form (FR1). Mobile-first; must work at 360 px (NF01). */
 export default async function BookPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const clinicPhone = process.env.CLINIC_PHONE || undefined;
-  const [services, dentists] = await Promise.all([listServices(), listDentistsWithSchedules()]);
+  const [services, dentists] = await Promise.all([listPublicServices(), listPublicDentists()]);
   const today = todayManila();
   const sp = await searchParams;
   const prefill = parsePrefill(sp, {

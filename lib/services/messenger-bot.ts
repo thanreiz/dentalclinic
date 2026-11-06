@@ -21,7 +21,7 @@
  * validation, Data Privacy consent, spam caps), because a Messenger text reply carries no state.
  * Pure of I/O except `deps`, so it is testable without Meta.
  */
-import { listDentistsWithSchedules, listServices } from '../queries/setup';
+import { listPublicDentists, listPublicServices } from '../queries/setup';
 import { signChatRef, type OutgoingMessage, type QuickReply } from '../messenger';
 import { addDays, dayOfWeek, formatDateHuman, formatTime12, nowManila, todayManila } from '../time';
 import { PUBLIC_BOOKING_WINDOW_DAYS, getSlots } from './slots';
@@ -59,8 +59,8 @@ export type BotDeps = {
 };
 
 export const defaultBotDeps: BotDeps = {
-  services: async () => (await listServices()).map((s) => ({ id: s.serviceId, name: s.serviceName })),
-  dentists: async () => (await listDentistsWithSchedules()).map((d) => ({ id: d.dentistId, name: d.dentistName })),
+  services: async () => (await listPublicServices()).map((s) => ({ id: s.serviceId, name: s.serviceName })),
+  dentists: async () => (await listPublicDentists()).map((d) => ({ id: d.dentistId, name: d.dentistName })),
   slots: (input) => getSlots(input, { now: nowManila() }),
   today: todayManila,
   baseUrl: () => (process.env.APP_URL || 'https://molarandco.vercel.app').replace(/\/+$/, ''),
