@@ -6,8 +6,9 @@
  *   CHECK (ER_CHECK_CONSTRAINT_VIOLATED)  -> 400 check_violation
  * Changing hours or durations never touches existing appointments (end_time is stored, Rule 4).
  */
+import { revalidateTag } from 'next/cache';
 import { execute, query, queryOne, type Queryable } from '../db';
-import { listChairs, listDentistsWithSchedules, listServices } from '../queries/setup';
+import { listChairs, listDentistsWithSchedules, listServices, SETUP_TAG } from '../queries/setup';
 import { toHHMM, toHHMMSS } from '../time';
 import type { ScheduleRow } from '../types';
 import {
@@ -38,6 +39,12 @@ function isRestrict(err: unknown) {
 function dup(err: unknown, code: string, message: string, field: string): never {
   if (mysqlCode(err) === 'ER_DUP_ENTRY') throw new ServiceError(409, code, message, { issues: { [field]: message } });
   throw err;
+}
+
+/** Drop the cached public pickers (/book, bot) after a dentist/schedule/service write. No-op outside Next. */
+function bustSetupCache() {
+  if (!process.env.NEXT_RUNTIME) return;
+  revalidateTag(SETUP_TAG);
 }
 
 // ---------- GET ----------
@@ -82,11 +89,13 @@ async function replaceWeek(conn: Queryable, dentistId: number, rows: ScheduleEnt
 
 export async function createDentist(input: DentistCreate): Promise<number> {
   const week = input.schedules ?? (input.week ? weekToSchedules(input.week) : []);
-  return transaction(async (conn) => {
+  const id = await transaction(async (conn) => {
     const r = await execute('INSERT INTO dentists (dentist_name) VALUES (?)', [input.dentistName], conn);
     await replaceWeek(conn, r.insertId, week);
     return r.insertId;
   });
+  bustSetupCache();
+  return id;
 }
 
 export async function updateDentist(input: DentistUpdate): Promise<void> {
@@ -99,6 +108,7 @@ export async function updateDentist(input: DentistUpdate): Promise<void> {
     }
     if (week) await replaceWeek(conn, input.id, week);
   });
+  bustSetupCache();
 }
 
 /** Deletes the dentist's hours too; refused (409) if any appointment references the dentist. */
@@ -110,6 +120,7 @@ export async function deleteDentist(id: number): Promise<void> {
       await execute('DELETE FROM dentist_schedules WHERE dentist_id = ?', [id], conn);
       await execute('DELETE FROM dentists WHERE dentist_id = ?', [id], conn);
     });
+    bustSetupCache();
   } catch (err) {
     if (isRestrict(err)) throw IN_USE();
     throw err;
@@ -129,6 +140,7 @@ export async function createSchedule(input: ScheduleCreate): Promise<number> {
       'INSERT INTO dentist_schedules (dentist_id, day_of_week, start_time, end_time) VALUES (?, ?, ?, ?)',
       [input.dentistId, input.dayOfWeek, toHHMMSS(input.startTime), toHHMMSS(input.endTime)],
     );
+    bustSetupCache();
     return r.insertId;
   } catch (err) {
     dup(err, 'duplicate_day', DUP_DAY, 'dayOfWeek');
@@ -142,6 +154,7 @@ export async function updateSchedule(input: ScheduleUpdate): Promise<void> {
     input.id,
   ]);
   if (r.affectedRows === 0) throw notFound('Schedule');
+  bustSetupCache();
 }
 
 /** PUT-like: replace a dentist's whole week (7-entry `week` with null = off, or `schedules` rows). */
@@ -152,11 +165,13 @@ export async function replaceSchedules(input: ScheduleReplace): Promise<void> {
     if (!row) throw notFound('Dentist');
     await replaceWeek(conn, input.dentistId, rows);
   });
+  bustSetupCache();
 }
 
 export async function deleteSchedule(id: number): Promise<void> {
   const r = await execute('DELETE FROM dentist_schedules WHERE schedule_id = ?', [id]);
   if (r.affectedRows === 0) throw notFound('Schedule');
+  bustSetupCache();
 }
 
 // ---------- services ----------
@@ -166,6 +181,7 @@ const DUP_SERVICE = 'A service with that name already exists';
 export async function createService(input: ServiceCreate): Promise<number> {
   try {
     const r = await execute('INSERT INTO services (service_name, duration_minutes) VALUES (?, ?)', [input.serviceName, input.durationMinutes]);
+    bustSetupCache();
     return r.insertId;
   } catch (err) {
     dup(err, 'duplicate_name', DUP_SERVICE, 'serviceName');
@@ -187,6 +203,7 @@ export async function updateService(input: ServiceUpdate): Promise<void> {
   if (cols.length === 0) return;
   try {
     await execute(`UPDATE services SET ${cols.join(', ')} WHERE service_id = ?`, [...vals, input.id]);
+    bustSetupCache();
   } catch (err) {
     dup(err, 'duplicate_name', DUP_SERVICE, 'serviceName');
   }
@@ -196,6 +213,7 @@ export async function deleteService(id: number): Promise<void> {
   try {
     const r = await execute('DELETE FROM services WHERE service_id = ?', [id]);
     if (r.affectedRows === 0) throw notFound('Service');
+    bustSetupCache();
   } catch (err) {
     if (isRestrict(err)) throw IN_USE();
     throw err;
