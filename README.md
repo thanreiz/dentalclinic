@@ -17,7 +17,7 @@
   <img alt="Tailwind CSS" src="https://img.shields.io/badge/Tailwind-4-38BDF8?style=flat-square&logo=tailwindcss&logoColor=white" />
   <img alt="Zod" src="https://img.shields.io/badge/Zod-4-3068B7?style=flat-square" />
   <img alt="Vercel" src="https://img.shields.io/badge/Vercel-Deployed-000000?style=flat-square&logo=vercel&logoColor=white" />
-  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-465_tests-6DA544?style=flat-square&logo=vitest&logoColor=white" />
+  <img alt="Vitest" src="https://img.shields.io/badge/Vitest-492_tests-6DA544?style=flat-square&logo=vitest&logoColor=white" />
   <img alt="Playwright" src="https://img.shields.io/badge/Playwright-33_e2e-2EAD33?style=flat-square&logo=playwright&logoColor=white" />
   <img alt="Requirements" src="https://img.shields.io/badge/Requirements-16_FR_%C2%B7_10_NF-478A84?style=flat-square" />
   <img alt="Tables" src="https://img.shields.io/badge/Tables-7-94C2BC?style=flat-square&labelColor=1B3736" />
