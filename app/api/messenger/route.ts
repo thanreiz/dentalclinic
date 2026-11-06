@@ -6,10 +6,10 @@
  * POST Meta's event delivery. The X-Hub-Signature-256 header is checked against MESSENGER_APP_SECRET
  *      BEFORE the body is parsed; anything unsigned or wrongly signed gets 403 and is ignored.
  *
- * Always answers 200 quickly for signed events (Meta retries otherwise); a failure to reply to one
+ * Answers 200 right after the signature check; the replies are sent in `after()`. A failure to reply to one
  * message is logged and never fails the delivery. Unconfigured (no secret) -> 503, never open.
  */
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import { sendMessengerMessage, verifyMessengerSignature } from '@/lib/messenger';
 import { botReplies, extractEvents, processEvents, type RawWebhookBody } from '@/lib/services/messenger-bot';
@@ -54,12 +54,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'invalid_json' }, { status: 400 });
   }
 
-  // Users in parallel (small limit), one user's events in order; a redelivered message id is skipped.
-  await processEvents(extractEvents(body), async (event) => {
-    for (const message of await botReplies(event)) {
-      const res = await sendMessengerMessage(event.senderId, message);
-      if (!res.ok) console.error(`[messenger] reply failed: ${res.error}`);
-    }
-  });
+  // Signed and parsed: answer Meta now and do the (slow) replies after the response. Users run in
+  // parallel (small limit), one user's events in order; a redelivered message id is skipped.
+  const events = extractEvents(body);
+  const work = () =>
+    processEvents(events, async (event) => {
+      for (const message of await botReplies(event)) {
+        const res = await sendMessengerMessage(event.senderId, message);
+        if (!res.ok) console.error(`[messenger] reply failed: ${res.error}`);
+      }
+    }).catch((err) => console.error('[messenger] processing failed:', err instanceof Error ? err.message : err));
+  try {
+    after(work);
+  } catch {
+    await work(); // outside a request scope (tests calling the handler directly)
+  }
   return NextResponse.json({ ok: true });
 }

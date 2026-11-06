@@ -3,7 +3,7 @@
  *
  * Selection: appointment_date = tomorrow (Manila) AND status = 'scheduled'
  *            AND reminder_sent_at IS NULL AND the patient has an email.
- * Sends one at a time; sets reminder_sent_at = NOW() only after a successful send, with a
+ * Sends in batches of 5 in parallel; sets reminder_sent_at = NOW() only after a successful send, with a
  * conditional UPDATE (… AND reminder_sent_at IS NULL) so re-runs record nothing twice.
  * A MySQL advisory lock (GET_LOCK) keeps two overlapping runs from emailing the same patient.
  */
@@ -28,6 +28,63 @@ ORDER BY a.start_time, a.appointment_id`;
 
 const LOCK_NAME = 'dental_reminders_cron';
 
+/** Reminders sent at once (email + Messenger each). Small, so the SMTP server and DB pool are not flooded. */
+export const REMINDER_BATCH_SIZE = 5;
+
+type DueReminder = {
+  appointment_id: number;
+  appointment_date: string;
+  start_time: string;
+  full_name: string;
+  email: string | null;
+  messenger_psid: string | null;
+  dentist_name: string;
+  service_name: string;
+};
+
+async function sendOne(a: DueReminder): Promise<'sent' | 'failed' | 'skipped'> {
+  try {
+    // Still due? (staff may have cancelled/rescheduled it while earlier emails were sending)
+    const still = await query(
+      "SELECT 1 AS x FROM appointments WHERE appointment_id = ? AND status = 'scheduled' AND reminder_sent_at IS NULL",
+      [a.appointment_id],
+    );
+    if (still.length === 0) return 'skipped';
+    const appt = {
+      patientName: a.full_name,
+      date: a.appointment_date,
+      startTime: toHHMM(a.start_time),
+      dentist: a.dentist_name,
+      service: a.service_name,
+    };
+    // Email (the reliable channel) and the Messenger copy for chat patients go out together. The
+    // reminder counts as sent when at least one channel delivered; a Messenger refusal (for example
+    // outside Meta's 24-hour window) is only logged.
+    const [emailRes, messengerRes] = await Promise.all([
+      a.email ? sendReminder({ to: a.email, ...appt }) : null,
+      a.messenger_psid ? sendMessengerReminder(a.messenger_psid, appt) : null,
+    ]);
+    const delivered = !!emailRes?.ok || !!messengerRes?.ok;
+    let lastError = emailRes && !emailRes.ok ? emailRes.error : '';
+    if (messengerRes && !messengerRes.ok) {
+      lastError ||= messengerRes.error;
+      console.error(`[cron:reminders] appointment ${a.appointment_id}: Messenger: ${messengerRes.error}`);
+    }
+    if (!delivered) {
+      console.error(`[cron:reminders] appointment ${a.appointment_id}: ${lastError}`);
+      return 'failed';
+    }
+    await execute(
+      "UPDATE appointments SET reminder_sent_at = NOW() WHERE appointment_id = ? AND reminder_sent_at IS NULL AND status = 'scheduled'",
+      [a.appointment_id],
+    );
+    return 'sent';
+  } catch (err) {
+    console.error(`[cron:reminders] appointment ${a.appointment_id}:`, err instanceof Error ? err.message : err);
+    return 'failed';
+  }
+}
+
 export type ReminderRunResult = { sent: number; failed: number; date: string; skipped?: 'already_running' };
 
 export async function runReminders(opts: { now?: { date: string; time: string } } = {}): Promise<ReminderRunResult> {
@@ -40,61 +97,18 @@ export async function runReminders(opts: { now?: { date: string; time: string } 
       return { sent: 0, failed: 0, date: tomorrow, skipped: 'already_running' };
     }
 
-    const due = await query<{
-      appointment_id: number;
-      appointment_date: string;
-      start_time: string;
-      full_name: string;
-      email: string | null;
-      messenger_psid: string | null;
-      dentist_name: string;
-      service_name: string;
-    }>(REMINDER_SELECTION_SQL, { tomorrow });
+    const due = await query<DueReminder>(REMINDER_SELECTION_SQL, { tomorrow });
 
     let sent = 0;
     let failed = 0;
-    for (const a of due) {
-      // Still due? (staff may have cancelled/rescheduled it while earlier emails were sending)
-      const still = await query(
-        "SELECT 1 AS x FROM appointments WHERE appointment_id = ? AND status = 'scheduled' AND reminder_sent_at IS NULL",
-        [a.appointment_id],
-      );
-      if (still.length === 0) continue;
-      const appt = {
-        patientName: a.full_name,
-        date: a.appointment_date,
-        startTime: toHHMM(a.start_time),
-        dentist: a.dentist_name,
-        service: a.service_name,
-      };
-      // Email first (the reliable channel), then the Messenger copy for chat patients. The reminder
-      // counts as sent when at least one channel delivered; a Messenger refusal (for example outside
-      // Meta's 24-hour window) is only logged.
-      let delivered = false;
-      let lastError = '';
-      if (a.email) {
-        const res = await sendReminder({ to: a.email, ...appt });
-        if (res.ok) delivered = true;
-        else lastError = res.error;
+    // Small batches sent in parallel: a slow mail server delays a few reminders, not all of them.
+    // Each reminder is its own idempotent unit (re-check still due, send, conditional UPDATE).
+    for (let i = 0; i < due.length; i += REMINDER_BATCH_SIZE) {
+      const results = await Promise.all(due.slice(i, i + REMINDER_BATCH_SIZE).map((a) => sendOne(a)));
+      for (const r of results) {
+        if (r === 'sent') sent++;
+        else if (r === 'failed') failed++;
       }
-      if (a.messenger_psid) {
-        const m = await sendMessengerReminder(a.messenger_psid, appt);
-        if (m.ok) delivered = true;
-        else {
-          lastError ||= m.error;
-          console.error(`[cron:reminders] appointment ${a.appointment_id}: Messenger: ${m.error}`);
-        }
-      }
-      if (!delivered) {
-        failed++;
-        console.error(`[cron:reminders] appointment ${a.appointment_id}: ${lastError}`);
-        continue;
-      }
-      await execute(
-        "UPDATE appointments SET reminder_sent_at = NOW() WHERE appointment_id = ? AND reminder_sent_at IS NULL AND status = 'scheduled'",
-        [a.appointment_id],
-      );
-      sent++;
     }
     return { sent, failed, date: tomorrow };
   } finally {

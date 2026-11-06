@@ -49,7 +49,7 @@ describe('POST /api/appointments/[id]/confirm', () => {
     const id = await pendingRequest({ date, start: '09:00', email: 'ana.p@example.com', fullName: 'Ana P' });
     const res = await confirm(req('POST', `/api/appointments/${id}/confirm`, { chairId: 1 }, cookie), idCtx(id));
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true, emailSent: true });
+    expect(await res.json()).toEqual({ ok: true, noticeQueued: true });
     expect(await queryOne('SELECT status, chair_id FROM appointments WHERE appointment_id = ?', [id])).toEqual({ status: 'scheduled', chair_id: 1 });
     const m = mail.current!.sent.at(-1)!;
     expect(m.to).toBe('ana.p@example.com');
@@ -63,14 +63,14 @@ describe('POST /api/appointments/[id]/confirm', () => {
     const id = await pendingRequest({ date: workday(0), start: '10:00', email: 'fail.me@example.com' });
     mail.current!.failFor.add('fail.me@example.com');
     const res = await confirm(req('POST', `/api/appointments/${id}/confirm`, { chairId: 1 }, cookie), idCtx(id));
-    expect(await res.json()).toEqual({ ok: true, emailSent: false, emailError: 'Confirmed, but the email could not be sent.' });
+    expect(await res.json()).toEqual({ ok: true, noticeQueued: true }); // the failure is logged after the response; it never blocks the confirm
     expect(await statusOf(id)).toBe('scheduled');
   });
 
   it('patient without email -> confirmed, emailSkipped', async () => {
     const id = await insertAppt({ patientId: 6, date: workday(0), start: '13:00', end: '13:30', status: 'pending', chairId: null, channel: 'online' });
     const res = await confirm(req('POST', `/api/appointments/${id}/confirm`, { chairId: 2 }, cookie), idCtx(id));
-    expect(await res.json()).toEqual({ ok: true, emailSent: false, emailSkipped: 'no_email' });
+    expect(await res.json()).toEqual({ ok: true, noticeQueued: true, emailSkipped: 'no_email' });
   });
 
   it('re-check: chair taken -> 409 slot_unavailable with slots + freeChairs; stays pending', async () => {

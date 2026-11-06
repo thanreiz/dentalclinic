@@ -55,7 +55,10 @@ function invalidTransition(from: AppointmentStatus, message: string) {
 // POST /api/appointments/[id]/confirm  (FR2, FR8, FR12; Rules 1–3, 6, 7, 9)
 // ---------------------------------------------------------------------------
 
-export type ConfirmResult = { ok: true; emailSent: boolean; emailError?: string; emailSkipped?: 'no_email'; messengerSent?: boolean };
+export type ConfirmResult =
+  | { ok: true; emailSent: boolean; emailError?: string; emailSkipped?: 'no_email'; messengerSent?: boolean }
+  // `defer` given (the route): the notice goes out after the response, so no sent / error fields.
+  | { ok: true; noticeQueued: true; emailSkipped?: 'no_email' };
 
 /**
  * pending -> scheduled with a chair. Re-checks Rules 1–3 for the slot (excluding the row itself)
@@ -63,7 +66,7 @@ export type ConfirmResult = { ok: true; emailSent: boolean; emailError?: string;
  * email). A mail failure never rolls back the confirm (FR12).
  * 409 slot_unavailable { reason, slots, freeChairs } when the slot or chair is gone.
  */
-export async function confirmAppointment(id: number, chairId: number, opts: { now?: Now } = {}): Promise<ConfirmResult> {
+export async function confirmAppointment(id: number, chairId: number, opts: { now?: Now; defer?: Defer } = {}): Promise<ConfirmResult> {
   const now = opts.now ?? nowManila();
   const pre = await peek(id);
   if (pre.status !== 'pending') throw invalidTransition(pre.status, 'Only pending requests can be confirmed');
@@ -126,28 +129,18 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
 
   invalidatePendingCount();
 
-  // Messenger copy for patients who booked through the bot; never blocks the confirm (best effort).
-  let messengerSent: boolean | undefined;
-  if (mail.psid) {
-    const m = await sendMessengerConfirmation(mail.psid, { patientName: mail.patientName, date: mail.date, startTime: mail.start, dentist: mail.dentist, service: mail.service });
-    messengerSent = m.ok;
-    if (!m.ok) console.error(`[confirm] appointment ${id} confirmed but the Messenger message failed: ${m.error}`);
+  // Patient notice after the commit: email + Messenger copy, in parallel, never blocking the confirm
+  // (FR12). With `defer` it runs after the response, so the result only says it was queued.
+  const info: NoticeInfo = mail;
+  if (opts.defer) {
+    await runNotice(opts.defer, () => notifyPatient('confirm', id, info, CONFIRM_SENDERS));
+    return { ok: true, noticeQueued: true, ...(info.to ? {} : { emailSkipped: 'no_email' as const }) };
   }
-
-  if (!mail.to) return { ok: true, emailSent: false, emailSkipped: 'no_email', ...(messengerSent === undefined ? {} : { messengerSent }) };
-  const sent = await sendConfirmation({
-    to: mail.to,
-    patientName: mail.patientName,
-    date: mail.date,
-    startTime: mail.start,
-    dentist: mail.dentist,
-    service: mail.service,
-  });
-  if (!sent.ok) {
-    console.error(`[confirm] appointment ${id} confirmed but email failed: ${sent.error}`);
-    return { ok: true, emailSent: false, emailError: EMAIL_FAILED_MESSAGE, ...(messengerSent === undefined ? {} : { messengerSent }) };
-  }
-  return { ok: true, emailSent: true, ...(messengerSent === undefined ? {} : { messengerSent }) };
+  const r = await notifyPatient('confirm', id, info, CONFIRM_SENDERS);
+  const tail = r.messengerSent === undefined ? {} : { messengerSent: r.messengerSent };
+  if (r.emailSkipped) return { ok: true, emailSent: false, emailSkipped: 'no_email', ...tail };
+  if (!r.emailSent) return { ok: true, emailSent: false, emailError: EMAIL_FAILED_MESSAGE, ...tail };
+  return { ok: true, emailSent: true, ...tail };
 }
 
 // ---------------------------------------------------------------------------
@@ -183,28 +176,39 @@ async function notifyPatient(
   },
 ): Promise<NoticeResult> {
   const base = { patientName: info.patientName, date: info.date, startTime: info.start, dentist: info.dentist, service: info.service };
-  let messengerSent: boolean | undefined;
-  if (info.psid) {
-    try {
-      const m = await send.messenger(info.psid, base);
-      messengerSent = m.ok;
-      if (!m.ok) console.error(`[${label}] appointment ${id}: the Messenger message failed: ${m.error}`);
-    } catch (err) {
-      messengerSent = false;
-      console.error(`[${label}] appointment ${id}: the Messenger message threw:`, err instanceof Error ? err.message : err);
-    }
-  }
+  // Both channels at once: the slower one no longer delays the other, and neither can throw out.
+  const [messengerSent, emailRes] = await Promise.all([
+    info.psid
+      ? send.messenger(info.psid, base).then(
+          (m) => {
+            if (!m.ok) console.error(`[${label}] appointment ${id}: the Messenger message failed: ${m.error}`);
+            return m.ok;
+          },
+          (err) => {
+            console.error(`[${label}] appointment ${id}: the Messenger message threw:`, err instanceof Error ? err.message : err);
+            return false;
+          },
+        )
+      : Promise.resolve<boolean | undefined>(undefined),
+    info.to
+      ? send.email({ ...base, to: info.to }).then(
+          (sent) => {
+            if (!sent.ok) console.error(`[${label}] appointment ${id}: the email failed: ${sent.error}`);
+            return sent.ok;
+          },
+          (err) => {
+            console.error(`[${label}] appointment ${id}: the email threw:`, err instanceof Error ? err.message : err);
+            return false;
+          },
+        )
+      : Promise.resolve<boolean | undefined>(undefined),
+  ]);
   const tail = messengerSent === undefined ? {} : { messengerSent };
-  if (!info.to) return { emailSent: false, emailSkipped: 'no_email', ...tail };
-  try {
-    const sent = await send.email({ ...base, to: info.to });
-    if (!sent.ok) console.error(`[${label}] appointment ${id}: the email failed: ${sent.error}`);
-    return { emailSent: sent.ok, ...tail };
-  } catch (err) {
-    console.error(`[${label}] appointment ${id}: the email threw:`, err instanceof Error ? err.message : err);
-    return { emailSent: false, ...tail };
-  }
+  if (emailRes === undefined) return { emailSent: false, emailSkipped: 'no_email', ...tail };
+  return { emailSent: emailRes, ...tail };
 }
+
+const CONFIRM_SENDERS = { email: sendConfirmation, messenger: sendMessengerConfirmation };
 
 // ---------------------------------------------------------------------------
 // POST /api/appointments/[id]/decline (Rule 12): pending -> declined. Patient notice after commit.
