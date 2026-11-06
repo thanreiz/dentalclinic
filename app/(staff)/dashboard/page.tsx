@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { requireStaffPage } from '@/lib/auth';
 import { getDashboardSummary, getDaySchedule } from '@/lib/queries/dashboard';
@@ -12,6 +13,7 @@ import { Card, PageHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CalendarIcon, PlusIcon } from '@/components/ui/icons';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 import { DateNav } from '@/components/staff/DateNav';
 
 export const dynamic = 'force-dynamic';
@@ -40,6 +42,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const date = parsed.success && parsed.data.date ? parsed.data.date : today;
   const view = parsed.success ? parsed.data.view : 'dentist';
 
+  // Only the data section suspends, keyed by the query: a route-level loading.tsx made same-page ?date= links hang
+  // (components/ui/LinkPending.tsx). The key remounts the boundary so each day shows the skeleton while it loads.
+  return (
+    <Suspense key={`${date}:${view}`} fallback={<PageSkeleton label="schedule" stats={3} rows={8} />}>
+      <DayView date={date} view={view} today={today} />
+    </Suspense>
+  );
+}
+
+async function DayView({ date, view, today }: { date: string; view: 'dentist' | 'chair'; today: string }) {
   const [day, summary] = await Promise.all([getDaySchedule(date), getDashboardSummary(today)]);
   const now = nowManila();
 

@@ -17,6 +17,7 @@ import { createPatientStrict, findPatientIdByContact, matchOrCreatePatient, setM
 import { assertContactRequestCap, assertGlobalRequestCaps } from './request-limits';
 import { getSlots } from './slots';
 import { transaction } from './tx';
+import { invalidatePendingCount } from '../queries/requests';
 
 type Now = { date: string; time: string };
 
@@ -174,7 +175,7 @@ export async function createOnlineRequest(
   const interval = slotIntervalMinutes();
 
   try {
-    return await transaction(async (conn) => {
+    const created = await transaction(async (conn) => {
       const used = await usedChatLink(conn, input, opts);
       if (used) return used;
       await assertNoDuplicateRequest(conn, input, end);
@@ -236,6 +237,8 @@ export async function createOnlineRequest(
       });
       return { appointmentId, dentistId: chosen, patientId };
     });
+    invalidatePendingCount();
+    return created;
   } catch (err) {
     if (err instanceof ServiceError && err.code === 'slot_taken') {
       err.extra.slots = await freshSlots({ date: input.date, serviceId: input.serviceId, dentistId: input.dentistId }, now);

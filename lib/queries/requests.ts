@@ -1,4 +1,5 @@
 /** Pending online requests queue (/requests, FR2). Oldest request first. */
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { query, queryOne } from '../db';
 import { hasStarted } from '../rules';
 import { nowManila, toHHMM } from '../time';
@@ -54,7 +55,28 @@ export async function listPendingRequests(now: { date: string; time: string } = 
   }));
 }
 
+/** Uncached count. Use this inside transactions and tests; never the cached badge value. */
 export async function countPending(): Promise<number> {
   const r = await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM appointments WHERE status = 'pending'");
   return Number(r?.n ?? 0);
+}
+
+export const PENDING_TAG = 'pending';
+
+/**
+ * Sidebar badge count, cached for 15 s (tag `pending`). The layout runs on every staff navigation, so
+ * this keeps it off the DB; writes call invalidatePendingCount() so the badge updates at once.
+ */
+export const countPendingCached = unstable_cache(countPending, ['pending-count'], { revalidate: 15, tags: [PENDING_TAG] });
+
+/**
+ * Call AFTER a request is created, confirmed, declined, cancelled or rescheduled has committed.
+ * Outside a Next request (vitest, scripts) there is no cache to bust, so the throw is swallowed.
+ */
+export function invalidatePendingCount(): void {
+  try {
+    revalidateTag(PENDING_TAG);
+  } catch {
+    /* no Next runtime */
+  }
 }

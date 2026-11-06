@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { requireStaffPage } from '@/lib/auth';
 import { getChannelReport, getLatestReportMonth, getMonthlyReport, getRepeatNoShows } from '@/lib/queries/reports';
 import { defaultNoShowThreshold, formatContact, formatRate } from '@/lib/rules';
@@ -12,6 +13,7 @@ import { ButtonLink } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ChartIcon, CheckIcon } from '@/components/ui/icons';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 import ReportControls, { ThresholdInput } from './ReportControls';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,15 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const tRaw = typeof sp.threshold === 'string' ? Number(sp.threshold) : NaN;
   const threshold = Number.isInteger(tRaw) && tRaw >= 1 && tRaw <= 100 ? tRaw : defaultNoShowThreshold();
 
+  // Only the data section suspends, keyed by the query (see dashboard/page.tsx for why not loading.tsx).
+  return (
+    <Suspense key={`${month}:${threshold}`} fallback={<PageSkeleton label="reports" stats={4} rows={5} />}>
+      <ReportData month={month} threshold={threshold} />
+    </Suspense>
+  );
+}
+
+async function ReportData({ month, threshold }: { month: string; threshold: number }) {
   const [report, repeat, channels, latestMonth] = await Promise.all([getMonthlyReport(month), getRepeatNoShows(threshold), getChannelReport(month), getLatestReportMonth()]);
   // Phone stays out of this card, so totals and shares are over the rows shown and add up to 100%.
   const shownRows = channels.rows.filter((r) => r.channel !== 'phone');

@@ -1,5 +1,5 @@
 import { requireStaffPage } from '@/lib/auth';
-import { countPending } from '@/lib/queries/requests';
+import { countPendingCached } from '@/lib/queries/requests';
 import { ToastProvider } from '@/components/ui/Toast';
 import StaffShell from './StaffShell';
 
@@ -7,8 +7,8 @@ import StaffShell from './StaffShell';
 export const dynamic = 'force-dynamic';
 
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
-  const user = await requireStaffPage();
-  const pendingCount = await countPending();
+  // Independent queries: run together so the shell waits for the slower one, not the sum.
+  const [user, pendingCount] = await Promise.all([requireStaffPage(), countPendingCached()]);
   const clinicName = process.env.CLINIC_NAME || 'Molar & Co.';
   return (
     <ToastProvider>
