@@ -34,6 +34,7 @@ test.describe('FR1/NF01/NF03: public booking form at 360x740', () => {
     await submit.click();
 
     await expect(page.getByText('Request received. The clinic will email you once it is confirmed.')).toBeVisible();
+    await expect(page.getByTestId('spam-notice')).toContainText('Check your spam folder');
     const rows = await sql<{ status: string; channel: string; chair_id: number | null }>(
       `SELECT a.status, a.channel, a.chair_id FROM appointments a JOIN patients p USING (patient_id) WHERE p.contact_number = ?`,
       [contact],

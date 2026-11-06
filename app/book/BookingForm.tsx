@@ -328,6 +328,9 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           {date && start && <SummaryRow label="When" value={`${formatDateHuman(date)}, ${formatTime12(start)}`} />}
           <SummaryRow label="Email" value={details.email} />
         </dl>
+        <p className="mt-4 rounded-xl border border-rule bg-brand-50 px-4 py-3 text-sm text-ink" data-testid="spam-notice">
+          <span className="font-semibold">Check your spam folder.</span> Our emails can land in Spam or Junk. If you see one from us, mark it as &ldquo;Not spam&rdquo; so the confirmation reaches your inbox.
+        </p>
         <h3 className="mt-6 text-sm font-semibold text-ink">What happens next</h3>
         <ol className="mt-3 space-y-3 text-sm text-ink">
           {['The clinic reviews your request.', 'You get an email once the time is confirmed.', 'You come in at your time. We send a reminder the day before.'].map((t, i) => (
