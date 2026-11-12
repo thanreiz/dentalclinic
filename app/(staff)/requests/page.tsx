@@ -9,6 +9,7 @@ import { formatDateTimeHuman } from '@/components/format';
 import { Card, PageHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { AutoRefresh } from '@/components/staff/AutoRefresh';
 import { DetailsDifferFlag } from '@/components/staff/DetailsDifferFlag';
 import { AlertIcon, ChevronRight, ClockIcon, InboxIcon, MailIcon, PhoneIcon } from '@/components/ui/icons';
 
@@ -23,6 +24,7 @@ export default async function RequestsPage() {
 
   return (
     <>
+      <AutoRefresh />
       <PageHeader
         title="Pending requests"
         description={
