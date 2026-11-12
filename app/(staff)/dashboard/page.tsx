@@ -82,7 +82,7 @@ async function DayView({ date, view, today }: { date: string; view: 'dentist' | 
   const isToday = date === today;
 
   return (
-    <>
+    <div className="motion-fade">
       <PageHeader
         title="Schedule"
         description={
@@ -174,7 +174,7 @@ async function DayView({ date, view, today }: { date: string; view: 'dentist' | 
           <OpenSlotsPanel day={day} date={date} past={date < today} />
         </div>
       )}
-    </>
+    </div>
   );
 }
 

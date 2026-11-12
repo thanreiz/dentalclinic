@@ -7,7 +7,8 @@ export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'dangerGhost' | 
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-[10px] font-medium transition-colors select-none ' +
+  'inline-flex items-center justify-center gap-2 rounded-[10px] font-medium select-none ' +
+  'transition-[color,background-color,border-color,transform] duration-150 ease-out enabled:active:scale-[0.97] motion-reduce:enabled:active:scale-100 ' +
   'disabled:cursor-not-allowed disabled:opacity-55 whitespace-nowrap';
 
 const variants: Record<ButtonVariant, string> = {

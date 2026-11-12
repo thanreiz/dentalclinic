@@ -55,8 +55,7 @@ export const dentistChoiceSchema = z.union([z.literal('any'), idSchema]);
 
 /** Letters (incl. ñ and accents), then letters/marks/space/period/hyphen/apostrophe. No digits. */
 export const NAME_RE = /^\p{L}[\p{L}\p{M} .'\u2019-]*$/u;
-/** Live input filter: drops every character a name may not contain. */
-export const stripNameChars = (v: string) => v.replace(/\u2019/g, "'").replace(/[^\p{L}\p{M} .'-]/gu, '');
+export { stripNameChars } from './name';
 
 export const fullNameSchema = z
   .string()

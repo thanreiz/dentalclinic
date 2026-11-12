@@ -134,7 +134,7 @@ export default function StaffShell({
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
                     className={cx(
-                      'flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm lg:h-9',
+                      'flex h-10 items-center gap-3 rounded-[10px] px-3 text-sm transition-colors duration-150 lg:h-9',
                       active ? 'bg-brand-100 font-semibold text-brand-900' : 'font-medium text-ink hover:bg-brand-50 hover:text-ink',
                     )}
                   >
@@ -210,7 +210,7 @@ export default function StaffShell({
       </header>
 
       {open && (
-        <div ref={sheetRef} className="fixed inset-0 z-40 flex flex-col overflow-y-auto bg-canvas lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
+        <div ref={sheetRef} className="motion-slide fixed inset-0 z-40 flex flex-col overflow-y-auto bg-canvas lg:hidden" role="dialog" aria-modal="true" aria-label="Menu">
           <div className="flex h-12 shrink-0 items-center justify-between border-b border-rule px-4">
             {mark}
             <button

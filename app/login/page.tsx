@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const nextPath = safeNextPath(Array.isArray(next) ? next[0] : next);
   return (
     <main className="flex min-h-dvh items-center justify-center bg-canvas px-4 py-10">
-      <div className="w-full max-w-sm">
+      <div className="motion-page w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
           <BrandLockup className="h-14" />
           <h1 className="mt-4 text-2xl font-bold tracking-tight text-ink">Staff login</h1>

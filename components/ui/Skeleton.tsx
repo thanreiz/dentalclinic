@@ -12,7 +12,7 @@ export function SkeletonBlock({ className }: { className?: string }) {
 /** Page-shaped skeleton: a header, optional stat row, then `rows` list rows. Announced once as "Loading". */
 export function PageSkeleton({ label, stats = 0, rows = 6 }: { label: string; stats?: number; rows?: number }) {
   return (
-    <div role="status" aria-busy="true" aria-live="polite">
+    <div role="status" aria-busy="true" aria-live="polite" className="motion-fade">
       <span className="sr-only">Loading {label}</span>
       <div className="mb-6 flex items-center justify-between gap-4">
         <div className="space-y-2">

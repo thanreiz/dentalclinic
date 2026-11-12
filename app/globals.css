@@ -94,28 +94,109 @@ dialog::backdrop {
   background: rgb(15 23 42 / 0.45);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+/*
+ * Motion. Everything here animates only opacity and transform (compositor-only, cheap on old devices),
+ * runs 150-260 ms with ease-out, and is plain CSS: no JS library, no per-frame JS.
+ * Entrance animations run once when an element is inserted into the DOM. router.refresh() (AutoRefresh)
+ * reuses existing DOM nodes, so a refresh never replays them; only genuinely new rows animate in.
+ * `backwards` fill keeps the element at its start state during the stagger delay, then releases it
+ * (no lingering transform/stacking context after the animation ends).
+ */
+@keyframes motion-fade {
+  from {
+    opacity: 0;
   }
+}
+@keyframes motion-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+}
+@keyframes motion-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes motion-slide {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+/* Page or section enters: fade + small rise. */
+.motion-page {
+  animation: motion-rise 240ms ease-out backwards;
+}
+/* Tab panel / secondary content: fade only. */
+.motion-fade {
+  animation: motion-fade 160ms ease-out backwards;
+}
+/* Booking step swap. */
+.motion-step {
+  animation: motion-rise 200ms ease-out backwards;
+}
+/* Cards, dialogs, confirmation. */
+.motion-pop {
+  animation: motion-pop 180ms ease-out backwards;
+}
+/* Menu sheet. */
+.motion-slide {
+  animation: motion-slide 200ms ease-out backwards;
+}
+
+/* Staggered children: 40 ms apart, capped so a long list never waits more than ~0.3 s. */
+.motion-stagger > * {
+  animation: motion-rise 220ms ease-out backwards;
+}
+.motion-stagger > :nth-child(2) { animation-delay: 40ms; }
+.motion-stagger > :nth-child(3) { animation-delay: 80ms; }
+.motion-stagger > :nth-child(4) { animation-delay: 120ms; }
+.motion-stagger > :nth-child(5) { animation-delay: 160ms; }
+.motion-stagger > :nth-child(6) { animation-delay: 200ms; }
+.motion-stagger > :nth-child(n + 7) { animation-delay: 240ms; }
+
+/* Native <dialog>: enter only (removing it from the top layer on close cannot be animated without newer CSS). */
+dialog[open] {
+  animation: motion-pop 180ms ease-out;
+}
+dialog[open]::backdrop {
+  animation: motion-fade 180ms ease-out;
 }
 
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 8px, 0);
   }
 }
-
 .animate-toast-in {
-  animation: toast-in 160ms ease-out;
+  animation: toast-in 200ms ease-out;
+}
+
+/* Reduced motion: no entrance, no movement, instant state changes. The spinner keeps turning (it is a
+   status indicator, not decoration); link-pending timing uses delays only and is left alone. */
+@media (prefers-reduced-motion: reduce) {
+  .motion-page,
+  .motion-fade,
+  .motion-step,
+  .motion-pop,
+  .motion-slide,
+  .motion-stagger > *,
+  .animate-toast-in,
+  dialog[open],
+  dialog[open]::backdrop,
+  .animate-pulse {
+    animation: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* LinkPendingIcon: show the spinner only if a navigation takes longer than 150 ms. */
