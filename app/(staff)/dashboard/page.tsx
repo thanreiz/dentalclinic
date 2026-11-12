@@ -14,6 +14,7 @@ import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CalendarIcon, PlusIcon } from '@/components/ui/icons';
 import { PageSkeleton } from '@/components/ui/Skeleton';
+import { AutoRefresh } from '@/components/staff/AutoRefresh';
 import { DateNav } from '@/components/staff/DateNav';
 
 export const dynamic = 'force-dynamic';
@@ -45,9 +46,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Only the data section suspends, keyed by the query: a route-level loading.tsx made same-page ?date= links hang
   // (components/ui/LinkPending.tsx). The key remounts the boundary so each day shows the skeleton while it loads.
   return (
-    <Suspense key={`${date}:${view}`} fallback={<PageSkeleton label="schedule" stats={3} rows={8} />}>
-      <DayView date={date} view={view} today={today} />
-    </Suspense>
+    <>
+      <AutoRefresh />
+      <Suspense key={`${date}:${view}`} fallback={<PageSkeleton label="schedule" stats={3} rows={8} />}>
+        <DayView date={date} view={view} today={today} />
+      </Suspense>
+    </>
   );
 }
 
