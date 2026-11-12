@@ -112,7 +112,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
                     <th scope="col" className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-rule">
+                <tbody className="motion-stagger divide-y divide-rule">
                   {rows.map((a) => (
                     <tr key={a.appointmentId} className="hover:bg-canvas">
                       <td className="px-4 py-3 whitespace-nowrap">

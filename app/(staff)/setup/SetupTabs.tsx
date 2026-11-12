@@ -74,7 +74,7 @@ export default function SetupTabs({
             onClick={() => select(t.id)}
             onKeyDown={(e) => onKey(e, i)}
             className={cx(
-              '-mb-px flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-medium',
+              '-mb-px flex h-11 items-center gap-2 border-b-2 px-4 text-sm font-medium transition-colors duration-150',
               tab === t.id ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-muted hover:text-ink',
             )}
           >
@@ -85,7 +85,7 @@ export default function SetupTabs({
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+      <div key={tab} role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="motion-fade">
         {tab === 'dentists' && <DentistsPanel dentists={dentists} />}
         {tab === 'services' && <ServicesPanel services={services} />}
         {tab === 'chairs' && <ChairsPanel chairs={chairs} />}

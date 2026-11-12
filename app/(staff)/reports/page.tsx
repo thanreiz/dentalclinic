@@ -48,7 +48,7 @@ async function ReportData({ month, threshold }: { month: string; threshold: numb
   const t = report.totals;
 
   return (
-    <>
+    <div className="motion-fade">
       <PageHeader title="Reports" description="Computed from recorded appointments each time you open this page." actions={<ReportControls month={month} threshold={threshold} />} />
 
       <h2 className="mb-3 text-lg font-semibold text-ink">{monthLabel(month)}</h2>
@@ -161,7 +161,7 @@ async function ReportData({ month, threshold }: { month: string; threshold: numb
           </div>
         )}
       </Card>
-    </>
+    </div>
   );
 }
 

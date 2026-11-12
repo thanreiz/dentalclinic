@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from 'react';
 import { formatContact, normalizeMobile, STAFF_CHANNELS, type StaffChannel } from '@/lib/rules';
 import { dayOfWeek, formatDateHuman, formatTime12 } from '@/lib/time';
 import type { Slot } from '@/lib/types';
-import { fieldErrors, newPatientSchema, stripNameChars } from '@/lib/validation';
+import { stripNameChars } from '@/lib/name';
+import type { NewPatient } from '@/lib/validation';
 import { api, errorMessage } from '@/components/api';
 import { ChairPicker } from '@/components/staff/ChairPicker';
 import { useFreeChairs, useOpenSlots } from '@/components/staff/hooks';
@@ -133,8 +134,9 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setFormError(null);
+    const { fieldErrors, newPatientSchema } = await import('@/lib/validation');
     const errs: Record<string, string> = {};
-    let newPatientData: ReturnType<typeof newPatientSchema.parse> | undefined;
+    let newPatientData: NewPatient | undefined;
     if (mode === 'search' && !patient) errs.patient = 'Search and pick a patient, or add a new one';
     if (mode === 'new') {
       const p = newPatientSchema.safeParse(newPatient);

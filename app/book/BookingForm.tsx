@@ -11,7 +11,10 @@ import { BrandIcon } from '@/components/ui/BrandLogo';
 import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, PhoneIcon, SearchIcon } from '@/components/ui/icons';
 import { dayOfWeek, formatDateHuman, formatTime12 } from '@/lib/time';
 import type { Slot } from '@/lib/types';
-import { bookingRequestSchema, fieldErrors, stripNameChars } from '@/lib/validation';
+import { stripNameChars } from '@/lib/name';
+
+// Zod (~40 kB) is only needed once someone edits or submits a field, so it loads after first paint instead of with the page.
+const loadValidation = () => import('@/lib/validation');
 
 export type BookService = { id: number; name: string; durationMinutes: number };
 export type BookDentist = { id: number; name: string; workingDays: number[] };
@@ -131,6 +134,12 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     return new Set(list.flatMap((d) => d.workingDays));
   }, [dentists, dentistId]);
 
+  // Warm the validation chunk once the page is idle so the first blur/submit does not wait on the network.
+  useEffect(() => {
+    const id = window.setTimeout(() => void loadValidation(), 2000);
+    return () => window.clearTimeout(id);
+  }, []);
+
   // Move focus to the step heading on step change (screen readers + keyboard users).
   useEffect(() => {
     if (firstRender.current) {
@@ -188,12 +197,14 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     // Once a field shows an error, re-check as the person types: the message clears the moment the value is
     // valid, not on blur (blur removed the message mid-tap and moved the submit button out from under a finger).
     if (errors[key]) {
-      const r = bookingRequestSchema.shape[key].safeParse(value);
-      setErrors((e) => {
-        const next = { ...e };
-        if (r.success) delete next[key];
-        else next[key] = r.error.issues[0]?.message ?? 'Check this field';
-        return next;
+      void loadValidation().then(({ bookingRequestSchema }) => {
+        const r = bookingRequestSchema.shape[key].safeParse(value);
+        setErrors((e) => {
+          const next = { ...e };
+          if (r.success) delete next[key];
+          else next[key] = r.error.issues[0]?.message ?? 'Check this field';
+          return next;
+        });
       });
     }
   }
@@ -202,12 +213,14 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   function validateField(key: DetailKey) {
     const value = details[key];
     if (!value && !errors[key]) return;
-    const r = bookingRequestSchema.shape[key].safeParse(value);
-    setErrors((e) => {
-      const next = { ...e };
-      if (r.success) delete next[key];
-      else next[key] = r.error.issues[0]?.message ?? 'Check this field';
-      return next;
+    void loadValidation().then(({ bookingRequestSchema }) => {
+      const r = bookingRequestSchema.shape[key].safeParse(value);
+      setErrors((e) => {
+        const next = { ...e };
+        if (r.success) delete next[key];
+        else next[key] = r.error.issues[0]?.message ?? 'Check this field';
+        return next;
+      });
     });
   }
 
@@ -230,6 +243,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     };
     const { website, ...toCheck } = payload;
     // toCheck (validated and sent) includes chatRef; the server verifies the token itself.
+    const { bookingRequestSchema, fieldErrors } = await loadValidation();
     const parsed = bookingRequestSchema.safeParse(toCheck);
     if (!parsed.success) {
       const errs = fieldErrors(parsed.error);
@@ -310,7 +324,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   if (step === 'done') {
     return (
       <div id="book-content" ref={scrollerRef} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-6 outline-none lg:py-10 [@media(max-height:640px)]:overflow-visible">
-      <div className="mx-auto w-full max-w-xl rounded-2xl border border-rule bg-white p-6 sm:p-8" role="status" aria-live="polite">
+      <div className="motion-pop mx-auto w-full max-w-xl rounded-2xl border border-rule bg-white p-6 sm:p-8" role="status" aria-live="polite">
         <div className="flex items-center gap-4">
           <div className="grid size-12 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-800">
             <CheckIcon className="size-6" />
@@ -361,7 +375,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         <label
           key={s.start}
           className={cx(
-            'relative flex h-12 cursor-pointer items-center justify-center rounded-[10px] text-[15px] font-semibold tabular-nums transition-colors',
+            'relative flex h-12 cursor-pointer items-center justify-center rounded-[10px] text-[15px] font-semibold tabular-nums transition-[color,background-color,box-shadow,transform] duration-150 active:scale-[0.97] motion-reduce:active:scale-100',
             'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-brand-600',
             checked ? 'bg-brand-700 text-white' : 'bg-white text-ink ring-1 ring-line-strong hover:bg-brand-50 hover:ring-brand-500',
           )}
@@ -394,7 +408,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                 <span className="flex items-center gap-2 whitespace-nowrap">
                   <span
                     className={cx(
-                      'grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-bold tabular-nums',
+                      'grid size-7 shrink-0 place-items-center rounded-full text-[13px] font-bold tabular-nums transition-colors duration-200',
                       active ? 'bg-brand-700 text-white' : done ? 'bg-brand-100 text-brand-900' : 'bg-white text-ink-muted ring-1 ring-line-strong',
                     )}
                     aria-hidden="true"
@@ -406,7 +420,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                     {label}
                   </span>
                 </span>
-                {i < STEPS.length - 1 && <span className={cx('mx-2 h-px min-w-2 flex-1 sm:mx-3', done ? 'bg-brand-600' : 'bg-rule')} aria-hidden="true" />}
+                {i < STEPS.length - 1 && <span className={cx('mx-2 h-px min-w-2 flex-1 transition-colors duration-200 sm:mx-3', done ? 'bg-brand-600' : 'bg-rule')} aria-hidden="true" />}
               </li>
             );
           })}
@@ -419,7 +433,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
           className="-mx-2 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain scroll-pb-4 px-2 pt-3 pb-6 outline-none [@media(max-height:640px)]:overflow-visible"
         >
         {step === 1 && (
-          <section className="flex flex-col gap-7" aria-labelledby="step1-heading">
+          <section className="motion-step flex flex-col gap-7" aria-labelledby="step1-heading">
             <div>
               <p className={eyebrow}>Step 1 of 3</p>
               <h2 id="step1-heading" ref={headingRef} tabIndex={-1} className={cx(h2Class, 'mt-1')}>
@@ -476,7 +490,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         )}
 
         {step === 2 && (
-          <section className="flex flex-col gap-6" aria-labelledby="step2-heading">
+          <section className="motion-step flex flex-col gap-6" aria-labelledby="step2-heading">
             <div>
               <p className={eyebrow}>Step 2 of 3</p>
               <h2 id="step2-heading" ref={headingRef} tabIndex={-1} className={cx(h2Class, 'mt-1')}>
@@ -541,13 +555,13 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
                     {morning.length > 0 && (
                       <div>
                         <p className="mb-2 text-[13px] font-medium text-ink-muted">Morning</p>
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{slotButtons(morning)}</div>
+                        <div className="motion-stagger grid grid-cols-3 gap-2 sm:grid-cols-4">{slotButtons(morning)}</div>
                       </div>
                     )}
                     {afternoon.length > 0 && (
                       <div>
                         <p className="mb-2 text-[13px] font-medium text-ink-muted">Afternoon</p>
-                        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">{slotButtons(afternoon)}</div>
+                        <div className="motion-stagger grid grid-cols-3 gap-2 sm:grid-cols-4">{slotButtons(afternoon)}</div>
                       </div>
                     )}
                   </div>
@@ -569,7 +583,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
         )}
 
         {step === 3 && (
-          <section className="flex flex-col gap-5" aria-labelledby="step3-heading">
+          <section className="motion-step flex flex-col gap-5" aria-labelledby="step3-heading">
             <div>
               <p className={eyebrow}>Step 3 of 3</p>
               <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className={cx(h2Class, 'mt-1')}>

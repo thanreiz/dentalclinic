@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PhoneInput, toMobileDigits } from '@/components/ui/PhoneInput';
 import type { PatientProfile } from '@/lib/types';
-import { fieldErrors, patientPatchSchema, stripNameChars } from '@/lib/validation';
+import { stripNameChars } from '@/lib/name';
 import { api, errorMessage } from '@/components/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader } from '@/components/ui/Card';
@@ -45,6 +45,7 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
     e.preventDefault();
     setFormError(null);
     const patch = Object.fromEntries(changed.map((k) => [k, values[k]]));
+    const { fieldErrors, patientPatchSchema } = await import('@/lib/validation');
     const parsed = patientPatchSchema.safeParse(patch);
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error));

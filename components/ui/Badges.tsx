@@ -49,12 +49,12 @@ export function StatusBadge({ status, className }: { status: AppointmentStatus; 
   return (
     <span
       className={cx(
-        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap transition-colors duration-200',
         s.badge,
         className,
       )}
     >
-      <span className={cx('size-1.5 rounded-full', s.dot)} aria-hidden="true" />
+      <span className={cx('size-1.5 rounded-full transition-colors duration-200', s.dot)} aria-hidden="true" />
       {s.label}
     </span>
   );

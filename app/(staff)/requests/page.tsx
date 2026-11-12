@@ -42,7 +42,7 @@ export default async function RequestsPage() {
           />
         </Card>
       ) : (
-        <ul className="flex flex-col gap-3">
+        <ul className="motion-stagger flex flex-col gap-3">
           {requests.map((r) => (
             <li key={r.appointmentId}>
               <Link

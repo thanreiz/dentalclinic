@@ -62,7 +62,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
                     <th scope="col" className="hidden px-4 py-3 whitespace-nowrap sm:table-cell">Last attended</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-rule">
+                <tbody className="motion-stagger divide-y divide-rule">
                   {rows.map((p) => (
                     <tr key={p.patientId} className="hover:bg-brand-50/50">
                       <td className="px-4 py-3 whitespace-nowrap">
