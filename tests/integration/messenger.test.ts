@@ -197,12 +197,12 @@ describe('POST /api/requests with a Messenger token', () => {
 
   it('chat requests count toward the per-contact pending cap', async () => {
     const contact = bookingBody().contactNumber;
-    const day = workday(1);
-    for (const start of ['09:00', '09:30', '10:00']) {
-      const r = await postRequest(req('POST', '/api/requests', bookingBody({ contactNumber: contact, date: day, start, chatRef: signChatRef('777') })));
+    // Separate days (one visit per day per patient).
+    for (const [i, start] of ['09:00', '09:30', '10:00'].entries()) {
+      const r = await postRequest(req('POST', '/api/requests', bookingBody({ contactNumber: contact, date: workday(1 + i), start, chatRef: signChatRef('777') })));
       expect(r.status).toBe(201);
     }
-    const fourth = await postRequest(req('POST', '/api/requests', bookingBody({ contactNumber: contact, date: day, start: '10:30', chatRef: signChatRef('777') })));
+    const fourth = await postRequest(req('POST', '/api/requests', bookingBody({ contactNumber: contact, date: workday(4), start: '10:30', chatRef: signChatRef('777') })));
     expect(fourth.status).toBe(429);
   });
 });

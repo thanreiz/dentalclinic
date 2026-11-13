@@ -192,6 +192,14 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
         setFormError(`${what} already belongs to a patient. Search for them instead of adding a new record.`);
         return;
       }
+      if (code === 'patient_same_day') {
+        // One visit per patient per day: point staff at the booking that already exists.
+        const other = (r.data as { existingAppointmentId?: number }).existingAppointmentId;
+        setFormError(
+          `${r.data.message ?? 'This patient already has a booking on that day.'} ${other ? `See appointment #${other}, or pick another date.` : 'Pick another date.'}`,
+        );
+        return;
+      }
       setFormError(errorMessage(r, 'That time can no longer be booked.') + ' Pick another time.');
       setSlot(null);
       slots.reload();

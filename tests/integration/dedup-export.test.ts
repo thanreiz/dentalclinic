@@ -1,4 +1,4 @@
-/** Panel revisions: duplicate checks on email and name + birthdate, "booking for someone else", report export. */
+/** Panel revisions: one visit per patient per day, duplicate checks on email and name + birthdate, "booking for someone else", report export. */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { POST as staffBook } from '@/app/api/appointments/route';
 import { PATCH as patchPatient } from '@/app/api/patients/[id]/route';
@@ -7,7 +7,8 @@ import { GET as exportRoute } from '@/app/api/reports/export/route';
 import { POST as postRequest } from '@/app/api/requests/route';
 import { queryOne } from '@/lib/db';
 import { splitBookedBy, splitMismatchFlag } from '@/lib/patient-note';
-import { bookingBody, idCtx, newContact, PROPHY, REYES, req, staffCookie, workday } from './api-helpers';
+import { confirmAppointment, rescheduleAppointment } from '@/lib/services/appointments';
+import { bookingBody, FILLING, idCtx, insertAppt, LIM, newContact, PROPHY, REYES, req, staffCookie, workday } from './api-helpers';
 import { resetTestDb } from './helpers';
 
 let cookie = '';
@@ -113,5 +114,41 @@ describe('GET /api/reports/export', () => {
     expect([...raw.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]); // UTF-8 BOM for Excel
     for (const title of ['Summary', 'By dentist', 'By service', 'By channel', 'Repeat no-shows', 'Appointments']) expect(text).toContain(title);
     expect((await exportRoute(req('GET', '/api/reports/export?format=pdf', undefined, cookie))).status).toBe(400);
+  });
+});
+
+describe('one visit per patient per day', () => {
+  // Patient 3 (Ana) gets a clean slate on workday(8)/(9) for these checks.
+  const day = workday(8);
+
+  it('staff booking for a patient who already has one that day -> 409 patient_same_day, nothing saved', async () => {
+    const first = await insertAppt({ patientId: 3, date: day, start: '09:00', end: '09:30', status: 'scheduled' });
+    const r = await staffBook(
+      req('POST', '/api/appointments', { patientId: 3, dentistId: LIM, serviceId: FILLING, chairId: 2, date: day, start: '13:00', channel: 'phone' }, cookie),
+    );
+    expect(r.status).toBe(409);
+    expect(await r.json()).toMatchObject({ error: 'patient_same_day', existingAppointmentId: first });
+    const n = await queryOne<{ n: number }>("SELECT COUNT(*) AS n FROM appointments WHERE patient_id = 3 AND appointment_date = ? AND status IN ('pending','scheduled')", [day]);
+    expect(Number(n!.n)).toBe(1);
+  });
+
+  it('cancelled or declined bookings do not count', async () => {
+    const d = workday(9);
+    await insertAppt({ patientId: 3, date: d, start: '09:00', end: '09:30', status: 'cancelled' });
+    await insertAppt({ patientId: 3, date: d, start: '10:00', end: '10:30', status: 'declined', chairId: null });
+    const r = await staffBook(req('POST', '/api/appointments', { patientId: 3, dentistId: REYES, serviceId: PROPHY, chairId: 1, date: d, start: '11:00', channel: 'walk-in' }, cookie));
+    expect(r.status).toBe(201);
+  });
+
+  it('confirming a second pending request for the same day -> 409', async () => {
+    const pendingId = await insertAppt({ patientId: 3, date: day, start: '15:00', end: '15:30', status: 'pending', chairId: null, channel: 'online' });
+    await expect(confirmAppointment(pendingId, 2)).rejects.toMatchObject({ code: 'patient_same_day' });
+  });
+
+  it('reschedule onto a day with another booking -> 409; within its own day is fine', async () => {
+    const other = await insertAppt({ patientId: 3, date: workday(10), start: '09:00', end: '09:30', status: 'scheduled' });
+    await expect(rescheduleAppointment(other, { date: day, start: '16:00', dentistId: REYES, chairId: 1 })).rejects.toMatchObject({ code: 'patient_same_day' });
+    const moved = await rescheduleAppointment(other, { date: workday(10), start: '11:00', dentistId: REYES, chairId: 1 });
+    expect(moved.ok).toBe(true);
   });
 });

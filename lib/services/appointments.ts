@@ -10,7 +10,7 @@ import { canTransition, hasStarted } from '../rules';
 import { nowManila, toHHMM } from '../time';
 import type { AppointmentRow, AppointmentStatus } from '../types';
 import type { RescheduleInput } from '../validation';
-import { conflictError, endTimeOrThrow, freshSlots, insertAppointment } from './booking';
+import { assertNoSameDayBooking, conflictError, endTimeOrThrow, freshSlots, insertAppointment, lockPatient } from './booking';
 import { notFound, ServiceError } from './errors';
 import { getServiceOrThrow } from './lookups';
 import { transaction } from './tx';
@@ -90,6 +90,9 @@ export async function confirmAppointment(id: number, chairId: number, opts: { no
           check.reason === 'overlap' ? conflictError(check, a.dentist_id).code : check.reason === 'not_working' ? 'outside_hours' : check.reason;
         throw new ServiceError(409, 'slot_unavailable', 'Slot no longer free', { reason });
       }
+      // Requests saved before the one-visit-per-day rule may still pair up on one day.
+      await lockPatient(conn, a.patient_id);
+      await assertNoSameDayBooking(conn, a.patient_id, a.appointment_date, id);
       await execute("UPDATE appointments SET status = 'scheduled', chair_id = ? WHERE appointment_id = ? AND status = 'pending'", [chairId, id], conn);
       const info = await queryOne<{ full_name: string; email: string | null; messenger_psid: string | null; dentist_name: string; service_name: string }>(
         `SELECT p.full_name, p.email, p.messenger_psid, d.dentist_name, s.service_name
@@ -296,6 +299,8 @@ export async function rescheduleAppointment(
       now,
     );
     if (!check.ok) throw conflictError(check, input.dentistId);
+    await lockPatient(conn, old.patient_id);
+    await assertNoSameDayBooking(conn, old.patient_id, input.date, id);
 
     await execute("UPDATE appointments SET status = 'cancelled' WHERE appointment_id = ?", [id], conn);
     const newId = await insertAppointment(conn, {

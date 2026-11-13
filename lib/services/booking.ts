@@ -133,6 +133,50 @@ async function assertNoDuplicateRequest(
     conn,
   );
   if (dup) throw new ServiceError(409, 'duplicate_request', DUPLICATE_REQUEST_MESSAGE);
+  if (await sameDayBooking(conn, patientId, input.date)) throw new ServiceError(409, 'duplicate_request', SAME_DAY_PUBLIC_MESSAGE);
+}
+
+// ---------------------------------------------------------------------------
+// One visit per patient per day (panel revision): a patient may hold at most ONE active booking
+// (pending or scheduled) on a date, whatever the time, dentist, or service. Enforced on every
+// write that creates or moves a booking: public request, staff booking, confirm, reschedule.
+// Callers run it inside their transaction after locking the patient row (lockPatient), so two
+// writers for the same patient serialize and cannot both pass.
+// ---------------------------------------------------------------------------
+
+export const SAME_DAY_PUBLIC_MESSAGE =
+  'You already have a booking on that day. Only one visit per day is allowed. To change it, call the clinic.';
+export const SAME_DAY_STAFF_MESSAGE = 'This patient already has a booking on that day (one visit per day).';
+
+export async function lockPatient(conn: Queryable, patientId: number): Promise<void> {
+  await queryOne('SELECT patient_id FROM patients WHERE patient_id = ? FOR UPDATE', [patientId], conn);
+}
+
+/** The patient's other active booking on `date` (excluding `excludeId`), or null. */
+export async function sameDayBooking(
+  conn: Queryable,
+  patientId: number,
+  date: string,
+  excludeId = 0,
+): Promise<{ appointment_id: number; start_time: string; status: AppointmentStatus } | null> {
+  return queryOne(
+    `SELECT appointment_id, start_time, status FROM appointments
+      WHERE patient_id = ? AND appointment_date = ? AND status IN ('pending', 'scheduled') AND appointment_id <> ?
+      ORDER BY start_time LIMIT 1`,
+    [patientId, date, excludeId],
+    conn,
+  );
+}
+
+/** Staff-side 409 `patient_same_day` with the other booking's id. */
+export async function assertNoSameDayBooking(conn: Queryable, patientId: number, date: string, excludeId = 0): Promise<void> {
+  const other = await sameDayBooking(conn, patientId, date, excludeId);
+  if (other) {
+    throw new ServiceError(409, 'patient_same_day', SAME_DAY_STAFF_MESSAGE, {
+      existingAppointmentId: other.appointment_id,
+      issues: { date: SAME_DAY_STAFF_MESSAGE },
+    });
+  }
 }
 
 export const LINK_USED_MESSAGE =
@@ -224,7 +268,12 @@ export async function createOnlineRequest(
       await assertGlobalRequestCaps(conn);
       const typed = { fullName: input.fullName, email: input.email, birthdate: input.birthdate };
       const { patientId, existing } = await matchOrCreatePatient(conn, { ...typed, contactNumber: input.contactNumber });
-      if (existing) await assertContactRequestCap(conn, patientId);
+      if (existing) {
+        await assertContactRequestCap(conn, patientId);
+        // Re-check under the patient lock (matchOrCreatePatient locked the row): a parallel request
+        // for the same person on the same day may have committed since the first check.
+        if (await sameDayBooking(conn, patientId, input.date)) throw new ServiceError(409, 'duplicate_request', SAME_DAY_PUBLIC_MESSAGE);
+      }
       if (opts.messengerPsid) await setMessengerPsid(conn, patientId, opts.messengerPsid);
 
       // M2: never overwrite the record (B6), but flag a mismatch for staff in patient_note.
@@ -307,6 +356,8 @@ export async function createStaffBooking(
         throw new ServiceError(400, 'unknown_patient', 'That patient does not exist', { issues: { patientId: 'Unknown patient' } });
       }
       patientId = input.patientId;
+      await lockPatient(conn, patientId);
+      await assertNoSameDayBooking(conn, patientId, input.date);
       if (input.followUpOf !== undefined) await assertFollowUpTarget(conn, input.followUpOf, patientId);
     } else {
       patientId = await createPatientStrict(conn, input.newPatient!);
