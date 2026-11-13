@@ -111,13 +111,16 @@ describe('bot flow', () => {
     today: () => '2026-11-08',
     baseUrl: () => 'https://clinic.example',
     signRef: (psid) => `ref-for-${psid}`,
+    upcoming: async () => [],
+    requestReschedule: async () => ({ ok: true, position: 1 }),
+    pendingFor: async () => null,
   };
   const first = async (payload: string | undefined, text?: string) => (await botReplies({ senderId: '77', payload, text }, deps))[0];
 
   it('greets with a menu for free text, unknown or malformed payloads', async () => {
     for (const p of [undefined, 'hello', 'svc:abc', "svc:1'; DROP", 'den:1:xyz', 'time:1:any:2026-11-09:25:99x']) {
       const m = (await first(p, 'hi')) as { text: string; quick_replies: { payload: string }[] };
-      expect(m.quick_replies.map((q) => q.payload)).toEqual(['book']);
+      expect(m.quick_replies.map((q) => q.payload)).toEqual(['book', 'resched']);
     }
   });
 
@@ -182,6 +185,85 @@ describe('bot flow', () => {
   });
 });
 
+describe('bot reschedule', () => {
+  const slot = (start: string): Slot => ({ start, end: start, dentistIds: [3] });
+  const appt = { id: 12, date: '2026-11-20', start: '10:00', dentistId: 3, dentistName: 'Dr. Lim', serviceId: 2, serviceName: 'Tooth filling' };
+  const calls: unknown[][] = [];
+  const mk = (over: Partial<BotDeps> = {}): BotDeps => ({
+    services: async () => [{ id: 2, name: 'Tooth filling' }],
+    dentists: async () => [{ id: 3, name: 'Dr. Lim' }],
+    slots: async ({ date }) => (date === '2026-11-09' ? [slot('09:00'), slot('09:30')] : []),
+    today: () => '2026-11-08',
+    baseUrl: () => 'https://clinic.example',
+    signRef: (p) => p,
+    upcoming: async (psid) => (psid === '77' ? [appt] : []),
+    requestReschedule: async (...a) => (calls.push(a), { ok: true, position: 2 }),
+    pendingFor: async () => null,
+    ...over,
+  });
+  type M = { text: string; quick_replies?: { title: string; payload: string }[] };
+  const run = async (payload: string | undefined, over: Partial<BotDeps> = {}, text?: string, senderId = '77') => (await botReplies({ senderId, payload, text }, mk(over))) as M[];
+  beforeEach(() => { calls.length = 0; });
+
+  it('typed phrases start it', async () => {
+    for (const t of ['Reschedule', 'move appointment', 'Palipat!', 'change schedule', 'resched']) {
+      expect((await run(undefined, {}, t))[0].quick_replies?.[0].payload).toBe('rsd:12:2026-11-09');
+    }
+  });
+
+  it('no appointments gets the clinic message and menu', async () => {
+    const r = await run('resched', {}, undefined, '5');
+    expect(r[0].text).toContain("couldn't find an upcoming confirmed appointment");
+    expect(r[1].quick_replies?.map((q) => q.payload)).toEqual(['book', 'resched']);
+  });
+
+  it('one appointment goes straight to dates; many ask which', async () => {
+    const r = (await run('resched'))[0];
+    expect(r.text).toContain('Tooth filling with Dr. Lim');
+    expect(r.quick_replies?.map((q) => q.payload)).toEqual(['rsd:12:2026-11-09', 'rskeep']);
+    const many = (await run('resched', { upcoming: async () => [appt, { ...appt, id: 13 }] }))[0];
+    expect(many.quick_replies?.map((q) => q.payload)).toEqual(['rs:12', 'rs:13', 'restart']);
+  });
+
+  it('mentions an existing pending request', async () => {
+    const r = (await run('rs:12', { pendingFor: async () => ({ id: 99, date: '2026-11-09', start: '09:00', position: 3 }) }))[0];
+    expect(r.text).toContain('#3 in line');
+    expect(r.text).toContain('replaces it');
+  });
+
+  it('full path: day -> time -> summary -> request', async () => {
+    const times = (await run('rsd:12:2026-11-09'))[0];
+    expect(times.quick_replies?.map((q) => q.payload)).toEqual(['rst:12:2026-11-09:09:00', 'rst:12:2026-11-09:09:30', 'rs:12', 'rskeep']);
+    const sum = (await run('rst:12:2026-11-09:09:30'))[0];
+    expect(sum.text).toContain('Move Tooth filling from');
+    expect(sum.text).toContain('Your current time stays until then');
+    expect(sum.quick_replies?.map((q) => q.payload)).toEqual(['rsok:12:2026-11-09:09:30', 'rs:12', 'rskeep']);
+    const done = (await run('rsok:12:2026-11-09:09:30'))[0];
+    expect(calls).toEqual([['77', 12, '2026-11-09', '09:30']]);
+    expect(done.text).toContain('#2 in line');
+    expect((await run('rskeep'))[0].text).toBe('Okay, your appointment stays.');
+  });
+
+  it('a forged appointment id is rejected at every step and never requested', async () => {
+    for (const p of ['rs:12', 'rsd:12:2026-11-09', 'rst:12:2026-11-09:09:00', 'rsok:12:2026-11-09:09:00']) {
+      const r = await run(p, {}, undefined, '999');
+      expect(r[0].text).toContain('no longer available');
+    }
+    expect((await run('rsok:55:2026-11-09:09:00'))[0].text).toContain('no longer available');
+    expect(calls).toEqual([]);
+    expect((await run('rsok:012:2026-11-09:09:00'))[0].quick_replies?.[0].payload).toBe('book');
+  });
+
+  it('slot_unavailable offers fresh times; other errors show their message', async () => {
+    const taken = { requestReschedule: async () => ({ ok: false as const, code: 'slot_unavailable', message: 'x', slots: [slot('11:00')] }) };
+    const r = (await run('rsok:12:2026-11-09:09:30', taken))[0];
+    expect(r.text).toContain('just got taken');
+    expect(r.quick_replies?.[0].payload).toBe('rst:12:2026-11-09:11:00');
+    const bad = (await run('rsok:12:2026-11-09:09:30', { requestReschedule: async () => ({ ok: false, code: 'in_past', message: 'That time has passed.' }) }))[0];
+    expect(bad.text).toBe('That time has passed.');
+  });
+});
+
 describe('bot start over, summary and change answer', () => {
   const slot = (start: string): Slot => ({ start, end: start, dentistIds: [1] });
   let open: Record<string, string[]>; // `${date}|${dentist}` -> times; falls back to the `*` key
@@ -192,6 +274,9 @@ describe('bot start over, summary and change answer', () => {
     today: () => '2026-11-08',
     baseUrl: () => 'https://molarandco.vercel.app',
     signRef: (psid) => `ref-${psid}`,
+    upcoming: async () => [],
+    requestReschedule: async () => ({ ok: true, position: 1 }),
+    pendingFor: async () => null,
   };
   beforeEach(() => {
     open = { '2026-11-09|*': ['09:00', '09:30'], '2026-11-10|*': ['13:00'] };
@@ -287,7 +372,7 @@ describe('bot start over, summary and change answer', () => {
 
   it('malformed or hostile state payloads get the menu', async () => {
     for (const p of ['sum:1:x:2026-11-09:09:00', 'ok:1:1:2026-13-99:9:0', 'chg:1', 'cz:' + KEY, "ok:1:1:2026-11-09:09:00'; DROP", 'cs:']) {
-      expect((await one(p)).quick_replies.map((q) => q.payload)).toEqual(['book']);
+      expect((await one(p)).quick_replies.map((q) => q.payload)).toEqual(['book', 'resched']);
     }
   });
 
@@ -334,6 +419,9 @@ describe('QA fixes: restart words, greeting, window, ids', () => {
     today: () => '2026-11-08',
     baseUrl: () => 'https://molarandco.vercel.app',
     signRef: () => 'ref',
+    upcoming: async () => [],
+    requestReschedule: async () => ({ ok: true, position: 1 }),
+    pendingFor: async () => null,
   };
   const first = async (payload?: string, text?: string) => (await botReplies({ senderId: '1', payload, text }, deps))[0] as { text?: string; quick_replies?: { title: string; payload: string }[]; attachment?: unknown };
 
@@ -349,14 +437,14 @@ describe('QA fixes: restart words, greeting, window, ids', () => {
       expect(r[0], t).toMatchObject({ text: expect.stringContaining('starting over') });
     }
     for (const t of ['', 'hi', 'menu items?', 'I want to restart my life', 'cancel']) {
-      expect(((await first(undefined, t)) as { quick_replies: { payload: string }[] }).quick_replies.map((q) => q.payload), t).toEqual(['book']);
+      expect(((await first(undefined, t)) as { quick_replies: { payload: string }[] }).quick_replies.map((q) => q.payload), t).toEqual(['book', 'resched']);
     }
   });
 
   it('Get Started shows the greeting with the Book button, not the service list', async () => {
     const m = await first('GET_STARTED');
     expect(m.text).toContain("Molar & Co.'s booking assistant");
-    expect(m.quick_replies?.map((q) => q.payload)).toEqual(['book']);
+    expect(m.quick_replies?.map((q) => q.payload)).toEqual(['book', 'resched']);
   });
 
   it('the message with the booking link also offers Start over', async () => {
@@ -380,7 +468,7 @@ describe('QA fixes: restart words, greeting, window, ids', () => {
     for (const p of ['ok:01:any:2026-11-09:09:00', 'sum:1:01:2026-11-09:09:00', 'chg:001:any:2026-11-09:09:00', 'cs:01:any:2026-11-09:09:00', 'svc:01', 'den:1:01', 'date:01:any:2026-11-09']) {
       const m = await first(p);
       expect(m.attachment, p).toBeUndefined();
-      expect(m.quick_replies?.map((q) => q.payload), p).toEqual(['book']);
+      expect(m.quick_replies?.map((q) => q.payload), p).toEqual(['book', 'resched']);
     }
   });
 });

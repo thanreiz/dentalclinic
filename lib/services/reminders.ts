@@ -51,6 +51,7 @@ async function sendOne(a: DueReminder): Promise<'sent' | 'failed' | 'skipped'> {
     );
     if (still.length === 0) return 'skipped';
     const appt = {
+      appointmentId: Number(a.appointment_id),
       patientName: a.full_name,
       date: a.appointment_date,
       startTime: toHHMM(a.start_time),

@@ -61,7 +61,7 @@ export async function getSlots(input: SlotsInput, opts: { now?: { date: string; 
     query<{ dentist_id: number; start_time: string; end_time: string }>(
       `SELECT dentist_id, start_time, end_time FROM appointments
        WHERE dentist_id IN (${ids.map(() => '?').join(', ')}) AND appointment_date = ?
-         AND status IN ('pending', 'scheduled') AND appointment_id <> ?
+         AND (status = 'scheduled' OR (status = 'pending' AND rescheduled_from_id IS NULL)) AND appointment_id <> ?
        ORDER BY start_time`,
       [...ids, input.date, input.excludeAppointmentId ?? 0],
       conn,

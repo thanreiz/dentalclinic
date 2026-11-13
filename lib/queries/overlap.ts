@@ -25,6 +25,13 @@ export type OverlapParams = {
   chairId?: number | null;
   /** The appointment being confirmed/rescheduled; 0 for a new booking. NEVER null (PRD FR8). */
   appointmentId: number;
+  /** A second row to ignore: the original appointment when approving a patient reschedule request. */
+  alsoExcludeId?: number;
+  /**
+   * Only `scheduled` rows block. Used when staff approve a patient reschedule request: requests for
+   * the same time queue up, and the first one approved wins (the others are declined).
+   */
+  ignorePending?: boolean;
 };
 
 export type OverlapRow = {
@@ -39,13 +46,16 @@ export type OverlapRow = {
 /**
  * Listing 3.1-style overlap query (Rule 1). Same date, pending/scheduled only, not the row itself,
  * same dentist OR same chair, and new_start < existing_end AND new_end > existing_start.
+ * A patient reschedule request (pending with rescheduled_from_id) never blocks anyone: several
+ * patients may queue for the same time, first approved wins.
  */
 export const OVERLAP_SQL = `
 SELECT appointment_id, dentist_id, chair_id, start_time, end_time, status
 FROM appointments
 WHERE appointment_date = :appointment_date
-  AND status IN ('pending', 'scheduled')
+  AND (status = 'scheduled' OR (status = 'pending' AND :ignore_pending = 0 AND rescheduled_from_id IS NULL))
   AND appointment_id <> :appointment_id
+  AND appointment_id <> :also_exclude_id
   AND (dentist_id = :dentist_id OR (chair_id IS NOT NULL AND chair_id = :chair_id))
   AND start_time < :end_time
   AND end_time > :start_time`;
@@ -59,6 +69,8 @@ export async function findOverlaps(conn: Queryable, p: OverlapParams): Promise<O
     {
       appointment_date: p.date,
       appointment_id: p.appointmentId,
+      also_exclude_id: p.alsoExcludeId ?? 0,
+      ignore_pending: p.ignorePending ? 1 : 0,
       dentist_id: p.dentistId,
       chair_id: p.chairId ?? null,
       start_time: toHHMMSS(p.start),
