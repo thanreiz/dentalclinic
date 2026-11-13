@@ -5,7 +5,7 @@
  * (Listing 3.1 with :appointment_id = 0), then INSERT. A deadlock is retried once (tx.ts).
  */
 import { execute, queryOne, type Queryable } from '../db';
-import { mismatchFlag, withMismatchFlag } from '../patient-note';
+import { mismatchFlag, withBookedBy, withMismatchFlag } from '../patient-note';
 import { checkBookable, lockChair, lockDentist, workingHoursOn, type BookableResult } from '../queries/overlap';
 import { computeEndTime, slotIntervalMinutes } from '../rules';
 import { nowManila, toHHMMSS, toMinutes } from '../time';
@@ -13,7 +13,7 @@ import type { AppointmentStatus, Channel, Slot } from '../types';
 import type { BookingRequest, StaffBooking } from '../validation';
 import { ServiceError } from './errors';
 import { allDentistIds, getServiceOrThrow } from './lookups';
-import { createPatientStrict, findPatientIdByContact, matchOrCreatePatient, setMessengerPsid } from './patients';
+import { createPatientStrict, findDuplicatePatient, matchOrCreatePatient, setMessengerPsid } from './patients';
 import { assertContactRequestCap, assertGlobalRequestCaps } from './request-limits';
 import { getSlots } from './slots';
 import { transaction } from './tx';
@@ -103,18 +103,26 @@ export const DUPLICATE_REQUEST_MESSAGE =
   'You already have a request for that time. The clinic will confirm it, so there is no need to send it again.';
 
 /**
- * Duplicate guard for public requests: a patient (matched by contact number) who already has a
+ * Duplicate guard for public requests: a patient (matched by contact number, email, or name + birthdate) who already has a
  * pending or scheduled booking that overlaps this time, with any dentist, gets a clear 409
  * `duplicate_request` instead of a second row. This also covers re-opening or re-submitting the
  * same Messenger link. Runs before the slot check so a person's own request never shows up as
  * "that time was just taken". Read-only; a no-op for a brand-new contact number.
  */
+/** The existing patient the public form would reuse: same contact number, email, or name + birthdate. */
+async function matchingPatientId(
+  conn: Queryable,
+  input: { contactNumber: string; email: string; fullName: string; birthdate: string },
+): Promise<number | null> {
+  return (await findDuplicatePatient(conn, input))?.patientId ?? null;
+}
+
 async function assertNoDuplicateRequest(
   conn: Queryable,
-  input: { contactNumber: string; date: string; start: string },
+  input: { contactNumber: string; email: string; fullName: string; birthdate: string; date: string; start: string },
   end: string,
 ): Promise<void> {
-  const patientId = await findPatientIdByContact(input.contactNumber, conn);
+  const patientId = await matchingPatientId(conn, input);
   if (patientId === null) return;
   const dup = await queryOne<{ appointment_id: number }>(
     `SELECT appointment_id FROM appointments
@@ -139,11 +147,11 @@ export const LINK_USED_MESSAGE =
  */
 async function usedChatLink(
   conn: Queryable,
-  input: { contactNumber: string; serviceId: number; date: string; start: string },
+  input: { contactNumber: string; email: string; fullName: string; birthdate: string; serviceId: number; date: string; start: string },
   opts: { messengerPsid?: string; chatLinkIssuedAt?: number },
 ): Promise<{ appointmentId: number; dentistId: number; patientId: number; alreadySaved: true } | null> {
   if (!opts.messengerPsid || opts.chatLinkIssuedAt === undefined) return null;
-  const patientId = await findPatientIdByContact(input.contactNumber, conn);
+  const patientId = await matchingPatientId(conn, input);
   const row = await queryOne<{ appointment_id: number; dentist_id: number; patient_id: number; same: number | string }>(
     `SELECT a.appointment_id, a.dentist_id, a.patient_id,
             (a.patient_id <=> ? AND a.service_id = ? AND a.appointment_date = ? AND a.start_time = ?) AS same
@@ -221,7 +229,10 @@ export async function createOnlineRequest(
 
       // M2: never overwrite the record (B6), but flag a mismatch for staff in patient_note.
       const flag = existing
-        ? mismatchFlag({ fullName: existing.full_name, email: existing.email, birthdate: existing.birthdate }, typed)
+        ? mismatchFlag(
+            { fullName: existing.full_name, email: existing.email, birthdate: existing.birthdate, contactNumber: existing.contact_number },
+            { ...typed, contactNumber: input.contactNumber },
+          )
         : null;
       const appointmentId = await insertAppointment(conn, {
         patientId,
@@ -233,7 +244,15 @@ export async function createOnlineRequest(
         end,
         status: 'pending',
         channel: opts.channel ?? 'online',
-        patientNote: withMismatchFlag(flag, input.patientNote),
+        patientNote: withMismatchFlag(
+          flag,
+          withBookedBy(
+            input.bookingFor === 'other' && input.bookerName && input.bookerContact
+              ? { name: input.bookerName, relation: input.bookerRelation ?? '', contactNumber: input.bookerContact }
+              : null,
+            input.patientNote?.trim() ? input.patientNote : null,
+          ),
+        ),
       });
       return { appointmentId, dentistId: chosen, patientId };
     });

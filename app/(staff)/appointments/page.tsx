@@ -53,7 +53,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
 
       <form method="get" action="/appointments" className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-rule bg-white p-4 lg:grid-cols-6">
         <label className="col-span-2 flex flex-col gap-1 text-xs font-medium text-ink lg:col-span-2">
-          Patient name or number
+          Patient name, email, or number
           <input type="search" name="q" defaultValue={filters.q ?? ''} maxLength={100} placeholder="e.g. Maria or 917 555" className={controlClass} />
         </label>
         <label className="flex flex-col gap-1 text-xs font-medium text-ink">

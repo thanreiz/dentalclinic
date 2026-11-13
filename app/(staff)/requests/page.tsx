@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { requireStaffPage } from '@/lib/auth';
-import { splitMismatchFlag } from '@/lib/patient-note';
+import { splitBookedBy, splitMismatchFlag } from '@/lib/patient-note';
 import { listPendingRequests } from '@/lib/queries/requests';
 import { formatContact } from '@/lib/rules';
 import { formatDateHuman, formatTime12 } from '@/lib/time';
@@ -10,6 +10,7 @@ import { Card, PageHeader } from '@/components/ui/Card';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { AutoRefresh } from '@/components/staff/AutoRefresh';
+import { BookedByNote } from '@/components/staff/BookedByNote';
 import { DetailsDifferFlag } from '@/components/staff/DetailsDifferFlag';
 import { AlertIcon, ChevronRight, ClockIcon, InboxIcon, MailIcon, PhoneIcon } from '@/components/ui/icons';
 
@@ -86,10 +87,13 @@ export default async function RequestsPage() {
                     </span>
                   </div>
                   {(() => {
-                    const { flag, note } = splitMismatchFlag(r.patientNote);
+                    const split = splitMismatchFlag(r.patientNote);
+                    const flag = split.flag;
+                    const { bookedBy, note } = splitBookedBy(split.note);
                     return (
                       <>
                         {flag && <DetailsDifferFlag flag={flag} className="mt-2.5" />}
+                        {bookedBy && <BookedByNote bookedBy={bookedBy} className="mt-2.5" />}
                         {note && (
                           <p className="mt-2.5 rounded-md bg-canvas px-3 py-2 text-sm whitespace-pre-wrap text-ink ring-1 ring-rule">
                             <span className="font-medium text-ink">Patient note: </span>

@@ -5,7 +5,7 @@ import { api } from '@/components/api';
 import { DateCalendar } from '@/components/booking/DateCalendar';
 import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
-import { Checkbox, FormError, Input, Textarea } from '@/components/ui/Field';
+import { Checkbox, FormError, Input, Select, Textarea } from '@/components/ui/Field';
 import { PhoneInput } from '@/components/ui/PhoneInput';
 import { BrandIcon } from '@/components/ui/BrandLogo';
 import { AlertIcon, CalendarIcon, CheckIcon, ClockIcon, PhoneIcon, SearchIcon } from '@/components/ui/icons';
@@ -34,13 +34,23 @@ type Props = {
 };
 
 type Step = 1 | 2 | 3 | 'done';
-type Details = { fullName: string; contactNumber: string; email: string; birthdate: string; patientNote: string };
+type Details = {
+  fullName: string;
+  contactNumber: string;
+  email: string;
+  birthdate: string;
+  patientNote: string;
+  bookerName: string;
+  bookerContact: string;
+  bookerRelation: string;
+};
 type DetailKey = keyof Details;
 
 const CONSENT_TEXT =
   'I consent to the clinic collecting and processing my personal information for appointment scheduling, in line with the Data Privacy Act of 2012 (RA 10173).';
 const TAKEN_TEXT = 'That time was just taken. Please pick another time.';
-const EMPTY_DETAILS: Details = { fullName: '', contactNumber: '', email: '', birthdate: '', patientNote: '' };
+const EMPTY_DETAILS: Details = { fullName: '', contactNumber: '', email: '', birthdate: '', patientNote: '', bookerName: '', bookerContact: '', bookerRelation: '' };
+const RELATIONS = ['Parent', 'Child', 'Spouse or partner', 'Sibling', 'Grandparent', 'Grandchild', 'Other relative', 'Guardian or carer', 'Friend'];
 
 const STEPS = [
   { n: 1, label: 'Visit' },
@@ -84,6 +94,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   const [takenNotice, setTakenNotice] = useState(false);
   const [details, setDetails] = useState<Details>(EMPTY_DETAILS);
   const [consent, setConsent] = useState(false);
+  const [bookingFor, setBookingFor] = useState<'self' | 'other'>('self');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -237,6 +248,10 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
       email: details.email,
       birthdate: details.birthdate,
       patientNote: details.patientNote,
+      bookingFor,
+      ...(bookingFor === 'other'
+        ? { bookerName: details.bookerName, bookerContact: details.bookerContact, bookerRelation: details.bookerRelation }
+        : {}),
       consent,
       website: honeypotRef.current?.value ?? '',
       chatRef: prefill?.chatRef,
@@ -304,7 +319,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
   }
 
   function focusFirstError(errs: Record<string, string>) {
-    const order: string[] = ['fullName', 'contactNumber', 'email', 'birthdate', 'patientNote', 'consent'];
+    const order: string[] = ['bookerName', 'bookerContact', 'bookerRelation', 'fullName', 'contactNumber', 'email', 'birthdate', 'patientNote', 'consent'];
     const key = order.find((k) => errs[k]);
     if (key) requestAnimationFrame(() => document.getElementById(`book-${key}`)?.focus());
   }
@@ -316,6 +331,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
     setStart(null);
     setSlots(null);
     setDetails(EMPTY_DETAILS);
+    setBookingFor('self');
     setConsent(false);
     setErrors({});
     setTakenNotice(false);
@@ -587,7 +603,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
             <div>
               <p className={eyebrow}>Step 3 of 3</p>
               <h2 id="step3-heading" ref={headingRef} tabIndex={-1} className={cx(h2Class, 'mt-1')}>
-                Your details
+                {bookingFor === 'self' ? 'Your details' : 'Patient details'}
               </h2>
             </div>
 
@@ -605,10 +621,100 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               </button>
             </div>
 
+            <fieldset>
+              <legend className="mb-2 text-sm font-medium text-ink">Who is this visit for?</legend>
+              <div className="grid grid-cols-2 gap-2" role="radiogroup">
+                {(
+                  [
+                    ['self', 'Myself'],
+                    ['other', 'Someone else'],
+                  ] as const
+                ).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className={cx(
+                      'flex h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border text-sm font-semibold transition-colors',
+                      bookingFor === value ? 'border-brand-600 bg-brand-50 text-brand-900 ring-1 ring-brand-600' : 'border-rule bg-white text-ink hover:border-brand-300',
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      name="bookingFor"
+                      value={value}
+                      checked={bookingFor === value}
+                      onChange={() => {
+                        setBookingFor(value);
+                        setErrors((e) => {
+                          const rest = { ...e };
+                          delete rest.bookerName;
+                          delete rest.bookerContact;
+                          delete rest.bookerRelation;
+                          return rest;
+                        });
+                      }}
+                      className="size-4 accent-brand-700"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              {bookingFor === 'other' && (
+                <p className="mt-2 text-sm text-ink-muted">
+                  Booking for a child, parent, or anyone else? Enter your own details first, then the patient&apos;s.
+                </p>
+              )}
+            </fieldset>
+
+            {bookingFor === 'other' && (
+              <div className="grid gap-5 rounded-xl border border-rule bg-canvas p-4 sm:grid-cols-2">
+                <p className="text-sm font-semibold text-ink sm:col-span-2">Your details (person booking)</p>
+                <Input
+                  id="book-bookerName"
+                  label="Your full name"
+                  name="bookerName"
+                  autoComplete="name"
+                  required
+                  wrapperClassName="sm:col-span-2"
+                  value={details.bookerName}
+                  onChange={(e) => setDetail('bookerName', stripNameChars(e.target.value))}
+                  onBlur={() => validateField('bookerName')}
+                  error={errors.bookerName}
+                  maxLength={150}
+                />
+                <PhoneInput
+                  id="book-bookerContact"
+                  label="Your contact number"
+                  name="bookerContact"
+                  required
+                  value={details.bookerContact}
+                  onValueChange={(d) => setDetail('bookerContact', d)}
+                  onBlur={() => validateField('bookerContact')}
+                  error={errors.bookerContact}
+                />
+                <Select
+                  id="book-bookerRelation"
+                  label="Relationship to patient"
+                  name="bookerRelation"
+                  required
+                  value={details.bookerRelation}
+                  onChange={(e) => setDetail('bookerRelation', e.target.value)}
+                  error={errors.bookerRelation}
+                >
+                  <option value="">Choose…</option>
+                  {RELATIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            )}
+
             <div className="grid gap-5 sm:grid-cols-2">
+              {bookingFor === 'other' && <p className="text-sm font-semibold text-ink sm:col-span-2">Patient (the person who will visit)</p>}
               <Input
                 id="book-fullName"
-                label="Full name"
+                label={bookingFor === 'other' ? "Patient's full name" : 'Full name'}
                 name="fullName"
                 autoComplete="name"
                 required
@@ -621,7 +727,8 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               />
               <PhoneInput
                 id="book-contactNumber"
-                label="Contact number"
+                label={bookingFor === 'other' ? "Patient's contact number" : 'Contact number'}
+                hint={bookingFor === 'other' ? '10 digits, starts with 9. Their own number, if they have one.' : undefined}
                 name="contactNumber"
                 required
                 value={details.contactNumber}
@@ -631,7 +738,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               />
               <Input
                 id="book-birthdate"
-                label="Birthdate"
+                label={bookingFor === 'other' ? "Patient's birthdate" : 'Birthdate'}
                 name="birthdate"
                 type="date"
                 autoComplete="bday"
@@ -645,7 +752,7 @@ export default function BookingForm({ services, dentists, today, maxDate, clinic
               />
               <Input
                 id="book-email"
-                label="Email"
+                label={bookingFor === 'other' ? "Patient's email" : 'Email'}
                 name="email"
                 type="email"
                 inputMode="email"

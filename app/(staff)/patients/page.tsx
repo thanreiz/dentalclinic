@@ -30,7 +30,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title="Patients"
-        description="One record per patient, matched by contact number."
+        description="One record per patient, matched by contact number, email, or name + birthdate."
         actions={
           <ButtonLink href="/appointments/new" variant="primary">
             <PlusIcon className="size-4" /> New booking
@@ -45,7 +45,7 @@ export default async function PatientsPage({ searchParams }: { searchParams: Pro
           <EmptyState
             icon={<UsersIcon />}
             title={q ? 'No matching patients' : 'No patients yet'}
-            description={q ? `Nothing matches “${q}”. Try part of the name or the last digits of the number.` : 'Patients are added by online requests and staff bookings.'}
+            description={q ? `Nothing matches “${q}”. Try part of the name, the email, or the last digits of the number.` : 'Patients are added by online requests and staff bookings.'}
           />
         ) : (
           <>

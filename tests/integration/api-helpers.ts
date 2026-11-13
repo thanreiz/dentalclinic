@@ -59,15 +59,19 @@ export function newContact(): string {
   return `0966${String(Date.now() % 10000).padStart(4, '0')}${String(contactSeq).padStart(3, '0')}`.slice(0, 11);
 }
 
+/** Letters-only tag from a contact number, so each test patient has its own name and email (no dedup match). */
+const tag = (contact: string) => contact.slice(-7).replace(/\d/g, (d) => 'abcdefghij'[Number(d)]);
+
 export function bookingBody(over: Record<string, unknown> = {}) {
+  const contactNumber = newContact();
   return {
     serviceId: PROPHY,
     dentistId: REYES,
     date: workday(0),
     start: '09:00',
-    fullName: 'Test Patient',
-    contactNumber: newContact(),
-    email: 'test.patient@example.com',
+    fullName: `Test Patient ${tag(contactNumber)}`,
+    contactNumber,
+    email: `test.patient.${tag(contactNumber)}@example.com`,
     birthdate: '1990-05-05',
     patientNote: null,
     consent: true,

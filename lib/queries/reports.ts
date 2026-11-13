@@ -143,3 +143,73 @@ export async function getChannelReport(month: string): Promise<ChannelReport> {
   const total = base.reduce((n, r) => n + r.bookings, 0);
   return { month, total, rows: base.map((r) => ({ ...r, share: total === 0 ? null : r.bookings / total })) };
 }
+
+/** Every appointment dated in the month, for the spreadsheet export. Oldest first. */
+export const REPORT_APPOINTMENTS_SQL = `
+SELECT a.appointment_id, a.appointment_date, a.start_time, a.end_time, a.status, a.channel, a.requested_at,
+       p.patient_id, p.full_name, p.contact_number, p.email,
+       d.dentist_name, s.service_name, c.chair_name,
+       EXISTS (SELECT 1 FROM appointments r WHERE r.rescheduled_from_id = a.appointment_id) AS was_rescheduled
+FROM appointments a
+JOIN patients p ON p.patient_id = a.patient_id
+JOIN dentists d ON d.dentist_id = a.dentist_id
+JOIN services s ON s.service_id = a.service_id
+LEFT JOIN chairs c ON c.chair_id = a.chair_id
+WHERE a.appointment_date BETWEEN :first_day AND :last_day
+ORDER BY a.appointment_date, a.start_time, a.appointment_id`;
+
+export type ReportAppointment = {
+  appointmentId: number;
+  date: string;
+  start: string;
+  end: string;
+  status: string;
+  channel: string;
+  requestedAt: string;
+  patientId: number;
+  fullName: string;
+  contactNumber: string;
+  email: string | null;
+  dentistName: string;
+  serviceName: string;
+  chairName: string | null;
+  wasRescheduled: boolean;
+};
+
+export async function getMonthAppointments(month: string): Promise<ReportAppointment[]> {
+  const { first, last } = monthRange(month);
+  const rows = await query<{
+    appointment_id: number;
+    appointment_date: string;
+    start_time: string;
+    end_time: string;
+    status: string;
+    channel: string;
+    requested_at: string;
+    patient_id: number;
+    full_name: string;
+    contact_number: string;
+    email: string | null;
+    dentist_name: string;
+    service_name: string;
+    chair_name: string | null;
+    was_rescheduled: number | string;
+  }>(REPORT_APPOINTMENTS_SQL, { first_day: first, last_day: last });
+  return rows.map((r) => ({
+    appointmentId: r.appointment_id,
+    date: r.appointment_date,
+    start: r.start_time.slice(0, 5),
+    end: r.end_time.slice(0, 5),
+    status: r.status,
+    channel: r.channel,
+    requestedAt: r.requested_at,
+    patientId: r.patient_id,
+    fullName: r.full_name,
+    contactNumber: r.contact_number,
+    email: r.email,
+    dentistName: r.dentist_name,
+    serviceName: r.service_name,
+    chairName: r.chair_name,
+    wasRescheduled: Number(r.was_rescheduled) === 1,
+  }));
+}
