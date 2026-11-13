@@ -62,7 +62,9 @@ export const fullNameSchema = z
   .trim()
   .min(2, { error: 'Enter the full name' })
   .max(150, { error: 'Name is too long (150 characters max)' })
-  .regex(NAME_RE, { error: 'Use letters only (spaces, . - \' allowed)' });
+  .regex(NAME_RE, { error: 'Use letters only (spaces, . - \' allowed)' })
+  // One space between words, so "Ana  Cruz" and "Ana Cruz" are the same name (duplicate checks).
+  .transform((v) => v.replace(/\s+/g, ' '));
 
 export const emailSchema = z
   .string()
@@ -159,6 +161,20 @@ export const bookingRequestSchema = z.object({
   website: z.string().max(500).optional(),
   /** Signed token from the Messenger bot link; marks the request as channel 'chat'. */
   chatRef: z.string().max(200).optional(),
+  /**
+   * Who the visit is for. 'self' (default): the details above are the person booking. 'other':
+   * the details above are the PATIENT's, and booker* name the person making the booking (a parent,
+   * relative, or carer). The booker is saved on the request for staff, never as a patient record.
+   */
+  bookingFor: z.enum(['self', 'other'], { error: 'Choose who the visit is for' }).default('self'),
+  bookerName: z.union([z.literal(''), fullNameSchema]).optional(),
+  bookerContact: z.union([z.literal(''), contactNumberSchema]).optional(),
+  bookerRelation: z.string().trim().max(50, { error: 'Too long (50 characters max)' }).optional(),
+}).superRefine((v, ctx) => {
+  if (v.bookingFor !== 'other') return;
+  if (!v.bookerName) ctx.addIssue({ code: 'custom', path: ['bookerName'], message: 'Enter your full name' });
+  if (!v.bookerContact) ctx.addIssue({ code: 'custom', path: ['bookerContact'], message: 'Enter your contact number' });
+  if (!v.bookerRelation) ctx.addIssue({ code: 'custom', path: ['bookerRelation'], message: 'Say how you are related to the patient' });
 });
 export type BookingRequestInput = z.input<typeof bookingRequestSchema>;
 export type BookingRequest = z.infer<typeof bookingRequestSchema>;

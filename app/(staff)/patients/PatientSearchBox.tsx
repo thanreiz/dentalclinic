@@ -29,7 +29,7 @@ export default function PatientSearchBox({ initial }: { initial: string }) {
   return (
     <form role="search" action={pathname} method="get" onSubmit={(e) => e.preventDefault()} className="relative">
       <label htmlFor="patient-q" className="sr-only">
-        Search patients by name or contact number
+        Search patients by name, email, or contact number
       </label>
       <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-line-strong" />
       <input
@@ -38,7 +38,7 @@ export default function PatientSearchBox({ initial }: { initial: string }) {
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search name or number"
+        placeholder="Search name, email, or number"
         autoComplete="off"
         className={cx(controlBase, 'h-11 border-line-strong pr-10 pl-10')}
       />

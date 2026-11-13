@@ -185,9 +185,19 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
     }
     if (r.status === 409) {
       const code = r.data.error;
-      if (code === 'duplicate' || code === 'duplicate_contact') {
-        setErrors({ 'newPatient.contactNumber': r.data.message ?? 'Contact number already used by another patient' });
-        setFormError('This contact number already belongs to a patient. Search for them instead of adding a new record.');
+      if (code === 'duplicate' || code === 'duplicate_contact' || code === 'duplicate_email' || code === 'duplicate_name') {
+        const field = code === 'duplicate_email' ? 'email' : code === 'duplicate_name' ? 'fullName' : 'contactNumber';
+        const what = field === 'email' ? 'This email' : field === 'fullName' ? 'This name and birthdate' : 'This contact number';
+        setErrors({ [`newPatient.${field}`]: r.data.message ?? 'Already used by another patient' });
+        setFormError(`${what} already belongs to a patient. Search for them instead of adding a new record.`);
+        return;
+      }
+      if (code === 'patient_same_day') {
+        // One visit per patient per day: point staff at the booking that already exists.
+        const other = (r.data as { existingAppointmentId?: number }).existingAppointmentId;
+        setFormError(
+          `${r.data.message ?? 'This patient already has a booking on that day.'} ${other ? `See appointment #${other}, or pick another date.` : 'Pick another date.'}`,
+        );
         return;
       }
       setFormError(errorMessage(r, 'That time can no longer be booked.') + ' Pick another time.');
@@ -198,12 +208,20 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
     setFormError(errorMessage(r, 'Could not save the booking.'));
   }
 
-  function useExistingByContact() {
+  /** Switch to search, pre-filled with the field that matched an existing patient. */
+  function switchToExisting(field: 'contactNumber' | 'email' | 'fullName') {
     setMode('search');
-    setQuery(newPatient.contactNumber);
-    clearError('newPatient.contactNumber');
+    setQuery(newPatient[field]);
+    clearError(`newPatient.${field}`);
     setFormError(null);
   }
+
+  const findExisting = (field: 'contactNumber' | 'email' | 'fullName') =>
+    errors[`newPatient.${field}`] && /already/i.test(errors[`newPatient.${field}`]) ? (
+      <button type="button" onClick={() => switchToExisting(field)} className="mt-1 text-sm font-semibold text-brand-800 underline">
+        Find the existing patient
+      </button>
+    ) : null;
 
   return (
     <form onSubmit={submit} noValidate className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -212,7 +230,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
         <Card>
           <CardHeader
             title="1. Patient"
-            description="Search by name or contact number first, so the patient keeps one record."
+            description="Search by name, email, or contact number first, so the patient keeps one record."
             actions={
               !patient && (
                 <div className="inline-flex rounded-lg border border-line-strong bg-white p-0.5" role="group" aria-label="Patient source">
@@ -258,7 +276,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     role="searchbox"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Name or number"
+                    placeholder="Name, email, or number"
                     autoComplete="off"
                     className="pl-10"
                     error={errors.patient ?? errors.patientId}
@@ -315,6 +333,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
+<div>
                 <Input
                   label="Full name"
                   required
@@ -323,6 +342,8 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                   error={errors['newPatient.fullName']}
                   autoComplete="off"
                 />
+                  {findExisting('fullName')}
+                </div>
                 <div>
                   <PhoneInput
                     label="Contact number"
@@ -334,11 +355,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                     }}
                     error={errors['newPatient.contactNumber']}
                   />
-                  {errors['newPatient.contactNumber'] && /already/i.test(errors['newPatient.contactNumber']) && (
-                    <button type="button" onClick={useExistingByContact} className="mt-1 text-sm font-semibold text-brand-800 underline">
-                      Find the existing patient
-                    </button>
-                  )}
+                  {findExisting('contactNumber')}
                 </div>
                 <Input
                   label="Email"
@@ -350,6 +367,7 @@ export default function NewBookingForm({ today, services, dentists, chairCount, 
                   autoComplete="off"
                   hint="Needed for the day-before reminder."
                 />
+                {findExisting('email')}
                 <Input
                   label="Birthdate"
                   required

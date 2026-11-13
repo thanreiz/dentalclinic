@@ -21,7 +21,7 @@ export function contactSearchDigits(q: string): string | null {
 }
 
 /**
- * Search by name (LIKE, case-insensitive) or by normalized contact number (partial match).
+ * Search by name or email (LIKE, case-insensitive) or by normalized contact number (partial match).
  * Empty `q` lists everyone. Sorted by name. `page` is 1-based.
  */
 export async function searchPatients(
@@ -34,8 +34,8 @@ export async function searchPatients(
   const where: string[] = [];
   const params: unknown[] = [];
   if (text) {
-    where.push("p.full_name LIKE ? ESCAPE '\\\\'");
-    params.push(`%${likeEscape(text)}%`);
+    where.push("p.full_name LIKE ? ESCAPE '\\\\'", "p.email LIKE ? ESCAPE '\\\\'");
+    params.push(`%${likeEscape(text.replace(/\s+/g, ' '))}%`, `%${likeEscape(text)}%`);
     if (digits) {
       where.push("p.contact_number LIKE ? ESCAPE '\\\\'");
       params.push(`%${likeEscape(digits)}%`);

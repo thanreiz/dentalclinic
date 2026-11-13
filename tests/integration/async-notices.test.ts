@@ -77,6 +77,8 @@ afterEach(() => vi.unstubAllEnvs());
 const pending = (start: string, patientId = 1) => insertAppt({ patientId, date: workday(0), start, end: start.replace(/:(\d\d)$/, (_, m) => `:${String(Number(m) + 30).padStart(2, '0')}`), status: 'pending', chairId: null, channel: 'online' });
 
 describe('confirm', () => {
+  // One visit per patient per day: clear patient 1's earlier active bookings so each confirm stands alone.
+  beforeEach(() => execute("UPDATE appointments SET status = 'cancelled' WHERE patient_id = 1 AND status IN ('pending', 'scheduled')"));
   it('route answers before a slow SMTP finishes; the notice runs in after()', async () => {
     mailDelay = 400;
     const id = await pending('09:00');

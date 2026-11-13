@@ -49,7 +49,12 @@ async function ReportData({ month, threshold }: { month: string; threshold: numb
 
   return (
     <div className="motion-fade">
-      <PageHeader title="Reports" description="Computed from recorded appointments each time you open this page." actions={<ReportControls month={month} threshold={threshold} />} />
+      <PageHeader title="Reports" description="Computed from recorded appointments each time you open this page." actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <ReportControls month={month} threshold={threshold} />
+            <ExportLinks month={month} threshold={threshold} />
+          </div>
+        } />
 
       <h2 className="mb-3 text-lg font-semibold text-ink">{monthLabel(month)}</h2>
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -234,5 +239,21 @@ function BreakdownTable({ title, rows, totals }: { title: string; rows: (ReportC
         </table>
       </div>
     </Card>
+  );
+}
+
+/** Download the month's report as Excel or CSV (plain links: the browser saves the file). */
+function ExportLinks({ month, threshold }: { month: string; threshold: number }) {
+  const href = (format: 'xlsx' | 'csv') => `/api/reports/export?${new URLSearchParams({ month, threshold: String(threshold), format })}`;
+  const cls = 'inline-flex h-10 items-center rounded-lg border border-line-strong bg-white px-3 text-sm font-semibold text-ink hover:bg-canvas';
+  return (
+    <div className="flex items-center gap-2" role="group" aria-label="Export report">
+      <a href={href('xlsx')} download className={cls}>
+        Export Excel
+      </a>
+      <a href={href('csv')} download className={cls}>
+        Export CSV
+      </a>
+    </div>
   );
 }

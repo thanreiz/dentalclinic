@@ -137,11 +137,13 @@ describe('POST /api/requests', () => {
     expect(await countAppts()).toBe(before);
   });
 
-  it('a different time or day is still allowed, and so is another person at the same time', async () => {
+  it('one visit per day: a later time the same day -> 409; another day, or another person, is allowed', async () => {
     const date = workday(9);
     const contactNumber = newContact();
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
-    expect((await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '15:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
+    const sameDay = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '15:00', serviceId: FILLING, dentistId: LIM, contactNumber })));
+    expect(sameDay.status).toBe(409);
+    expect(await sameDay.json()).toMatchObject({ error: 'duplicate_request', message: expect.stringContaining('one visit per day') });
     expect((await postRequest(req('POST', '/api/requests', bookingBody({ date: workday(10), start: '13:00', serviceId: PROPHY, contactNumber })))).status).toBe(201);
     // A stranger asking for the taken time is still "slot taken", not a duplicate.
     const other = await postRequest(req('POST', '/api/requests', bookingBody({ date, start: '13:00', serviceId: PROPHY, dentistId: REYES })));
@@ -214,10 +216,10 @@ describe('POST /api/requests', () => {
 
   it('same new contact in parallel -> one patient row (unique-key race re-selects)', async () => {
     const contact = newContact();
-    const date = workday(5);
+    // Separate days (one visit per day per patient).
     const res = await Promise.all(
       ['09:00', '10:00', '11:00'].map((start, i) =>
-        postRequest(req('POST', '/api/requests', bookingBody({ date, start, contactNumber: contact, dentistId: i % 2 ? LIM : REYES }))),
+        postRequest(req('POST', '/api/requests', bookingBody({ date: workday(5 + i), start, contactNumber: contact, dentistId: i % 2 ? LIM : REYES }))),
       ),
     );
     expect(res.map((r) => r.status)).toEqual([201, 201, 201]);

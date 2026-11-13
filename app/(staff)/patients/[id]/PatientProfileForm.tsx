@@ -61,7 +61,8 @@ export default function PatientProfileForm({ patient, today }: { patient: Patien
       return;
     }
     if (r.status === 409) {
-      setErrors({ contactNumber: r.data.message ?? 'Contact number already used by another patient' });
+      const field = r.data.error === 'duplicate_email' ? 'email' : r.data.error === 'duplicate_name' ? 'fullName' : 'contactNumber';
+      setErrors({ [field]: r.data.message ?? 'Already used by another patient' });
       return;
     }
     if (r.status === 400 && r.data.issues) {

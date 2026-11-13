@@ -31,12 +31,12 @@ const count = async (sql: string, params: unknown[] = []) => Number((await query
 describe('per-contact cap (REQUEST_LIMIT_PER_CONTACT, default 3 pending)', () => {
   it('3 pending requests on one number -> 201 x3, 4th -> 429 too_many_requests; nothing saved', async () => {
     const contactNumber = newContact();
-    const date = workday(0);
-    for (const start of ['09:00', '09:30', '10:00']) {
-      expect((await send(bookingBody({ date, start, contactNumber }))).status).toBe(201);
+    // One visit per day, so the number's requests go on separate days.
+    for (const [i, start] of ['09:00', '09:30', '10:00'].entries()) {
+      expect((await send(bookingBody({ date: workday(i), start, contactNumber }))).status).toBe(201);
     }
     const before = await count('SELECT COUNT(*) AS n FROM appointments');
-    const res = await send(bookingBody({ date, start: '10:30', contactNumber }));
+    const res = await send(bookingBody({ date: workday(3), start: '10:30', contactNumber }));
     expect(res.status).toBe(429);
     const body = await res.json();
     expect(body.error).toBe('too_many_requests');
@@ -48,22 +48,24 @@ describe('per-contact cap (REQUEST_LIMIT_PER_CONTACT, default 3 pending)', () =>
 
   it('only pending rows count: once staff decline one, the number can request again', async () => {
     const contactNumber = newContact();
-    const date = workday(1);
-    for (const start of ['09:00', '09:30', '10:00']) expect((await send(bookingBody({ date, start, contactNumber }))).status).toBe(201);
-    expect((await send(bookingBody({ date, start: '10:30', contactNumber }))).status).toBe(429);
+    for (const [i, start] of ['09:00', '09:30', '10:00'].entries()) {
+      expect((await send(bookingBody({ date: workday(4 + i), start, contactNumber }))).status).toBe(201);
+    }
+    expect((await send(bookingBody({ date: workday(7), start: '10:30', contactNumber }))).status).toBe(429);
     await execute(
       `UPDATE appointments a JOIN patients p ON p.patient_id = a.patient_id
           SET a.status = 'declined' WHERE p.contact_number = ? AND a.start_time = '09:00:00'`,
       [contactNumber],
     );
-    expect((await send(bookingBody({ date, start: '10:30', contactNumber }))).status).toBe(201);
+    // The declined 09:00 request freed both the cap and its day.
+    expect((await send(bookingBody({ date: workday(4), start: '10:30', contactNumber }))).status).toBe(201);
   });
 
   it('env override: REQUEST_LIMIT_PER_CONTACT=1', async () => {
     vi.stubEnv('REQUEST_LIMIT_PER_CONTACT', '1');
     const contactNumber = newContact();
     expect((await send(bookingBody({ date: workday(2), start: '09:00', contactNumber }))).status).toBe(201);
-    expect((await send(bookingBody({ date: workday(2), start: '10:00', contactNumber }))).status).toBe(429);
+    expect((await send(bookingBody({ date: workday(3), start: '10:00', contactNumber }))).status).toBe(429);
   });
 });
 
@@ -146,7 +148,7 @@ describe('M2: request on an existing number with different details', () => {
   });
 
   it('matching details (any case/spacing) -> no flag; a brand-new number -> no flag', async () => {
-    const date = workday(6);
+    const date = workday(7); // Maria already has a request on workday(6) from the test above
     await send(bookingBody({ date, start: '10:00', ...maria, fullName: 'maria  santos', email: 'Maria.Santos@example.com', birthdate: '1994-03-12', patientNote: 'Cleaning' }));
     expect((await noteOf(date, '10:00')).patient_note).toBe('Cleaning');
     await send(bookingBody({ date, start: '11:00', patientNote: null }));

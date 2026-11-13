@@ -20,7 +20,9 @@ afterAll(async () => {
   mail.restore();
   await resetTestDb();
 });
-beforeEach(() => {
+beforeEach(async () => {
+  // One visit per patient per day: each test starts with patient 1 holding no active booking.
+  await execute("UPDATE appointments SET status = 'cancelled' WHERE patient_id = 1 AND status IN ('pending', 'scheduled')");
   chat.length = 0;
   messengerFails = false;
   mail.sent.length = 0;

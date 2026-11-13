@@ -67,7 +67,7 @@ export type AppointmentFilters = {
   status?: AppointmentStatus;
   from?: string; // 'YYYY-MM-DD', appointment date >= from
   to?: string; // 'YYYY-MM-DD', appointment date <= to
-  q?: string; // patient name, or part of the contact number
+  q?: string; // patient name or email, or part of the contact number
 };
 
 type ListRow = {
@@ -115,8 +115,8 @@ export async function listAppointments(
   const text = (filters.q ?? '').trim();
   if (text) {
     const digits = contactSearchDigits(text);
-    const parts = ["p.full_name LIKE ? ESCAPE '\\\\'"];
-    params.push(`%${likeEscape(text)}%`);
+    const parts = ["p.full_name LIKE ? ESCAPE '\\\\'", "p.email LIKE ? ESCAPE '\\\\'"];
+    params.push(`%${likeEscape(text.replace(/\s+/g, ' '))}%`, `%${likeEscape(text)}%`);
     if (digits) {
       parts.push("p.contact_number LIKE ? ESCAPE '\\\\'");
       params.push(`%${likeEscape(digits)}%`);
