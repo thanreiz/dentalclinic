@@ -14,6 +14,7 @@ import 'server-only';
 import nodemailer from 'nodemailer';
 import { atPhone, clinicName, endOfSentence } from './clinic';
 import { formatDateHuman, formatHuman, formatTime12 } from './time';
+import { manageUrl } from './manage-link';
 
 export type ApptEmail = {
   to: string;
@@ -22,6 +23,8 @@ export type ApptEmail = {
   startTime: string; // 'HH:MM'
   dentist: string;
   service: string;
+  /** When set, the notice carries the patient's self-service reschedule link. */
+  appointmentId?: number;
 };
 
 export type MailMessage = { from: string; to: string; subject: string; text: string };
@@ -90,6 +93,11 @@ export async function sendMail(msg: { to: string; subject: string; text: string 
 }
 
 
+/** "Need a different time?" line with the patient's own reschedule link, or '' without an id. */
+function rescheduleLine(a: ApptEmail): string {
+  return a.appointmentId ? `Need a different time? Reschedule online (no need to call):\n${manageUrl(a.appointmentId, a.date)}\n\n` : '';
+}
+
 function details(a: ApptEmail): string {
   return `Date: ${formatDateHuman(a.date)}\nTime: ${formatTime12(a.startTime)}\nDentist: ${a.dentist}\nService: ${a.service}`;
 }
@@ -100,7 +108,8 @@ export function confirmationEmail(a: ApptEmail) {
     subject: `Appointment confirmed: ${formatHuman(a.date, a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} is confirmed.\n\n${details(a)}\n\n` +
-      `To cancel or reschedule, call or message the clinic${atPhone()}.`,
+      rescheduleLine(a) +
+      `To cancel, call or message the clinic${atPhone()}.`,
   };
 }
 
@@ -110,21 +119,24 @@ export function reminderEmail(a: ApptEmail) {
     subject: `Reminder: your appointment tomorrow at ${formatTime12(a.startTime)}`,
     text:
       `Hi ${a.patientName},\n\nThis is a reminder of your appointment tomorrow at ${endOfSentence(clinicName())}\n\n${details(a)}\n\n` +
+      rescheduleLine(a) +
       `If you cannot come, please inform the clinic${atPhone()}.`,
   };
 }
 
 /** Staff moved an appointment: shows the old time and the new details. */
-export type RescheduleEmail = ApptEmail & { oldDate: string; oldStart: string };
+export type RescheduleEmail = ApptEmail & { oldDate: string; oldStart: string; byPatient?: boolean };
 
 export function rescheduleEmail(a: RescheduleEmail) {
   return {
     to: a.to,
     subject: `Appointment moved: ${formatHuman(a.date, a.startTime)}`,
     text:
-      `Hi ${a.patientName},\n\nYour appointment at ${clinicName()} has been moved.\n\n` +
+      `Hi ${a.patientName},\n\n` +
+      (a.byPatient ? `The clinic approved your request. Your appointment at ${clinicName()} is moved.\n\n` : `Your appointment at ${clinicName()} has been moved.\n\n`) +
       `Was: ${formatHuman(a.oldDate, a.oldStart)}\n\nNow:\n${details(a)}\n\n` +
-      `If the new time does not work for you, please call or message the clinic${atPhone()}.`,
+      rescheduleLine(a) +
+      `For anything else, please call or message the clinic${atPhone()}.`,
   };
 }
 
@@ -150,6 +162,38 @@ export function cancellationEmail(a: ApptEmail) {
   };
 }
 
+/** Patient asked to move: the request is queued for the clinic; the current appointment stays. */
+export type RescheduleRequestEmail = ApptEmail & { currentDate: string; currentStart: string; position: number };
+
+export function rescheduleRequestEmail(a: RescheduleRequestEmail) {
+  const line = a.position > 1 ? `Other patients asked for this time first (you are #${a.position} in line). The clinic approves requests first come, first served.` : 'You are first in line for this time.';
+  return {
+    to: a.to,
+    subject: `Reschedule request received: ${formatHuman(a.date, a.startTime)}`,
+    text:
+      `Hi ${a.patientName},\n\nWe got your request to move your appointment at ${endOfSentence(clinicName())} The clinic will confirm it soon.\n\n` +
+      `Requested:\n${details(a)}\n\n${line}\n\n` +
+      `Until the clinic approves it, your current appointment stays: ${formatHuman(a.currentDate, a.currentStart)}.`,
+  };
+}
+
+/** Another patient's request for the same time was approved first; the original appointment stays. */
+export type RescheduleTakenEmail = ApptEmail & { currentDate: string; currentStart: string; currentId: number };
+
+export function rescheduleTakenEmail(a: RescheduleTakenEmail) {
+  return {
+    to: a.to,
+    subject: `Requested time no longer available: ${formatHuman(a.date, a.startTime)}`,
+    text:
+      `Hi ${a.patientName},\n\nSorry, the time you asked to move to (${formatHuman(a.date, a.startTime)}) was given to another patient whose request was approved first.\n\n` +
+      `Your appointment stays: ${formatHuman(a.currentDate, a.currentStart)} with ${a.dentist}.\n\n` +
+      rescheduleLine({ ...a, appointmentId: a.currentId, date: a.currentDate }) +
+      `For anything else, please call or message the clinic${atPhone()}.`,
+  };
+}
+
+export const sendRescheduleRequestEmail = (a: RescheduleRequestEmail): Promise<MailResult> => sendMail(rescheduleRequestEmail(a));
+export const sendRescheduleTakenEmail = (a: RescheduleTakenEmail): Promise<MailResult> => sendMail(rescheduleTakenEmail(a));
 export const sendRescheduleEmail = (a: RescheduleEmail): Promise<MailResult> => sendMail(rescheduleEmail(a));
 export const sendDeclineEmail = (a: ApptEmail): Promise<MailResult> => sendMail(declineEmail(a));
 export const sendCancellationEmail = (a: ApptEmail): Promise<MailResult> => sendMail(cancellationEmail(a));

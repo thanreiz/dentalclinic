@@ -29,7 +29,7 @@ export default async function RequestsPage() {
         title="Pending requests"
         description={
           requests.length
-            ? `${requests.length} online request${requests.length === 1 ? '' : 's'} waiting${passed ? ` (${passed} already past ${passed === 1 ? 'its' : 'their'} time; decline ${passed === 1 ? 'it' : 'them'} to clear the badge)` : ''}. Oldest first; open one to pick a chair and confirm, or decline.`
+            ? `${requests.length} online request${requests.length === 1 ? '' : 's'} waiting${passed ? ` (${passed} already past ${passed === 1 ? 'its' : 'their'} time; decline ${passed === 1 ? 'it' : 'them'} to clear the badge)` : ''}. Oldest first; open one to pick a chair and confirm, or decline. Reschedule requests are approved first come, first served: the first one confirmed for a time wins.`
             : 'Online requests from the booking form show up here.'
         }
       />
@@ -62,7 +62,25 @@ export default async function RequestsPage() {
                     <p className="text-sm text-ink-muted">
                       {r.serviceName} · {r.dentistName}
                     </p>
+                    {r.rescheduleOf && (
+                      <span className="inline-flex items-center rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
+                        Reschedule request
+                      </span>
+                    )}
                   </div>
+                  {r.rescheduleOf && (
+                    <p className="mt-1 text-sm text-ink-muted">
+                      Currently: {formatDateHuman(r.rescheduleOf.date)}, {formatTime12(r.rescheduleOf.start)}
+                      {r.queuePosition != null && (
+                        <>
+                          {' · '}
+                          <span className="font-medium text-ink">
+                            {r.queuePosition > 1 ? `#${r.queuePosition} in line for this time (first approved wins)` : 'First in line'}
+                          </span>
+                        </>
+                      )}
+                    </p>
+                  )}
                   <p className="mt-1 text-sm font-medium text-ink sm:hidden">
                     {formatDateHuman(r.date)}, {formatTime12(r.start)}
                   </p>

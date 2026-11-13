@@ -21,20 +21,37 @@ type Row = {
   end_time: string;
   patient_note: string | null;
   requested_at: string;
+  rescheduled_from_id: number | null;
+  orig_date: string | null;
+  orig_start: string | null;
 };
 
 export async function listPendingRequests(now: { date: string; time: string } = nowManila()): Promise<PendingRequest[]> {
   const rows = await query<Row>(
     `SELECT a.appointment_id, p.patient_id, p.full_name, p.contact_number, p.email,
             s.service_id, s.service_name, s.duration_minutes, d.dentist_id, d.dentist_name,
-            a.appointment_date, a.start_time, a.end_time, a.patient_note, a.requested_at
+            a.appointment_date, a.start_time, a.end_time, a.patient_note, a.requested_at,
+            a.rescheduled_from_id, o.appointment_date AS orig_date, o.start_time AS orig_start
      FROM appointments a
      JOIN patients p ON p.patient_id = a.patient_id
      JOIN services s ON s.service_id = a.service_id
      JOIN dentists d ON d.dentist_id = a.dentist_id
+     LEFT JOIN appointments o ON o.appointment_id = a.rescheduled_from_id
      WHERE a.status = 'pending'
      ORDER BY a.requested_at, a.appointment_id`,
   );
+  // Rows arrive ordered by requested_at, appointment_id: the queue order for reschedule requests.
+  const resched = rows.filter((r) => r.rescheduled_from_id != null);
+  const queuePos = (r: Row): number => {
+    const s = toHHMM(r.start_time);
+    const e = toHHMM(r.end_time);
+    let n = 0;
+    for (const o of resched) {
+      if (o.dentist_id === r.dentist_id && o.appointment_date === r.appointment_date && s < toHHMM(o.end_time) && e > toHHMM(o.start_time)) n++;
+      if (o.appointment_id === r.appointment_id) break;
+    }
+    return n;
+  };
   return rows.map((r) => ({
     appointmentId: r.appointment_id,
     patientId: r.patient_id,
@@ -52,6 +69,11 @@ export async function listPendingRequests(now: { date: string; time: string } = 
     patientNote: r.patient_note,
     requestedAt: r.requested_at,
     startPassed: hasStarted(r.appointment_date, r.start_time, now),
+    rescheduleOf:
+      r.rescheduled_from_id != null && r.orig_date != null && r.orig_start != null
+        ? { appointmentId: r.rescheduled_from_id, date: r.orig_date, start: toHHMM(r.orig_start) }
+        : null,
+    queuePosition: r.rescheduled_from_id != null ? queuePos(r) : null,
   }));
 }
 

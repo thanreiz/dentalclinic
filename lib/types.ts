@@ -165,6 +165,10 @@ export type PendingRequest = {
   requestedAt: string;
   /** Start time already reached: can no longer be confirmed (Rule 3), only declined. */
   startPassed: boolean;
+  /** Set when this is a reschedule request: the original (still scheduled) appointment it would replace. */
+  rescheduleOf: { appointmentId: number; date: string; start: string } | null;
+  /** 1-based place in the first-come-first-served queue for overlapping reschedule requests; null for ordinary requests. */
+  queuePosition: number | null;
 };
 
 export type AppointmentDetailView = {

@@ -5,6 +5,7 @@
  *   pages  /book (and /book/*), /login
  *   GET    /api/slots
  *   POST   /api/requests
+ *   POST   /api/manage/reschedule (the signed patient link is checked by the route)
  *   POST   /api/auth/login
  *   GET    /api/cron/reminders   (the route checks CRON_SECRET itself)
  *   GET, POST /api/messenger     (Meta's webhook; the route checks the verify token / HMAC signature)
@@ -12,6 +13,7 @@
 export const PUBLIC_API: Record<string, readonly string[]> = {
   '/api/slots': ['GET', 'HEAD'],
   '/api/requests': ['POST'],
+  '/api/manage/reschedule': ['POST'],
   '/api/auth/login': ['POST'],
   '/api/cron/reminders': ['GET', 'HEAD'],
   '/api/messenger': ['GET', 'POST'],
